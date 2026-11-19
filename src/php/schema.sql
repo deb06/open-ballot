@@ -278,3 +278,38 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
   KEY idx_deliveries_hook (webhook_id),
   CONSTRAINT fk_deliveries_hook FOREIGN KEY (webhook_id) REFERENCES webhooks (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS election_templates (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id    INT UNSIGNED NOT NULL,
+  name       VARCHAR(120) NOT NULL,
+  payload    TEXT NOT NULL,
+  created_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_templates_user (user_id),
+  CONSTRAINT fk_templates_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS email_invitations (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  election_id INT UNSIGNED NOT NULL,
+  email      VARCHAR(160) NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  sent_at    DATETIME(3) NULL DEFAULT NULL,
+  created_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_invites_election (election_id),
+  CONSTRAINT fk_invites_election FOREIGN KEY (election_id) REFERENCES elections (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS oauth_accounts (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id    INT UNSIGNED NOT NULL,
+  provider   VARCHAR(30) NOT NULL,
+  provider_id VARCHAR(255) NOT NULL,
+  created_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_oauth (provider, provider_id),
+  KEY idx_oauth_user (user_id),
+  CONSTRAINT fk_oauth_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

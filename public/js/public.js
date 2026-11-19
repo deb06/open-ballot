@@ -18,8 +18,8 @@ async function viewHome() {
     el(
       'div',
       {},
-      el('p', { class: 'eyebrow' }, 'Secure · anonymous · receipt-verified'),
-      el('h1', {}, 'Your voice, ', el('em', {}, 'counted.')),
+      el('p', { class: 'eyebrow', 'data-i18n': 'home.eyebrow' }, window.I18n ? I18n.t('home.eyebrow') : 'Secure · anonymous · receipt-verified'),
+      el('h1', {}, window.I18n ? I18n.t('home.title.a') : 'Your voice, ', el('em', {}, window.I18n ? I18n.t('home.title.b') : 'counted.')),
       el(
         'p',
         { class: 'hero-sub' },
@@ -440,8 +440,26 @@ async function viewElection(rawId) {
 
     const maxChoices = Number(election.maxChoices || 1);
     const multi = maxChoices > 1;
-    const fieldset = el('fieldset', { class: 'ballot candidate-grid' }, el('legend', { class: 'visually-hidden' }, multi ? 'Choose up to ' + maxChoices + ' candidates' : 'Choose one candidate'));
+    const ranked = String(election.ballotType || 'single') === 'ranked';
+    const fieldset = el('fieldset', { class: 'ballot candidate-grid' }, el('legend', { class: 'visually-hidden' }, ranked ? 'Rank candidates in order of preference' : multi ? 'Choose up to ' + maxChoices + ' candidates' : 'Choose one candidate'));
+    let rankOrder = ranked ? candidates.map((c) => c.id) : [];
 
+    if (ranked) {
+      const list = el('div', { class: 'rank-list' });
+      const paintRanks = () => {
+        list.replaceChildren(...rankOrder.map((id, index) => {
+          const candidate = candidates.find((c) => c.id === id);
+          return el('div', { class: 'rank-row' },
+            el('span', { class: 'rank-num' }, String(index + 1)),
+            el('span', { class: 'grow' }, candidate.name, candidate.party ? el('span', { class: 'small muted' }, ` · ${candidate.party}`) : null),
+            el('button', { class: 'btn btn-ghost btn-sm', type: 'button', disabled: index === 0, onclick: () => { [rankOrder[index - 1], rankOrder[index]] = [rankOrder[index], rankOrder[index - 1]]; paintRanks(); } }, '↑'),
+            el('button', { class: 'btn btn-ghost btn-sm', type: 'button', disabled: index === rankOrder.length - 1, onclick: () => { [rankOrder[index + 1], rankOrder[index]] = [rankOrder[index], rankOrder[index + 1]]; paintRanks(); } }, '↓'),
+          );
+        }));
+      };
+      paintRanks();
+      fieldset.append(list);
+    } else {
     for (const candidate of candidates) {
       fieldset.append(
         el(
@@ -465,8 +483,9 @@ async function viewElection(rawId) {
         ),
       );
     }
+    }
 
-    const note = el('div', { class: 'notice' }, el('span', { class: 'inline-icon', html: icons.lock }), el('div', {}, 'Your choice is secret. Only the aggregate tally is published — never who voted for whom.'));
+    const note = el('div', { class: 'notice' }, el('span', { class: 'inline-icon', html: icons.lock }), el('div', {}, ranked ? 'Rank all candidates from most to least preferred. Your ranking is secret — only the aggregate tally is published.' : 'Your choice is secret. Only the aggregate tally is published — never who voted for whom.'));
 
     form.append(
       stepMount,
@@ -488,13 +507,13 @@ async function viewElection(rawId) {
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const checked = [...form.querySelectorAll('input[name="candidate"]:checked')];
+      const checked = ranked ? rankOrder.map((id) => ({ value: String(id) })) : [...form.querySelectorAll('input[name="candidate"]:checked')];
       if (!checked.length) {
         toast('Choose a candidate before submitting your ballot.', 'error');
         return;
       }
       const candidateIds = checked.map((input) => Number(input.value));
-      if (maxChoices > 1 && candidateIds.length > maxChoices) {
+      if (!ranked && maxChoices > 1 && candidateIds.length > maxChoices) {
         toast(`Choose at most ${maxChoices} candidates.`, 'error');
         return;
       }
@@ -558,6 +577,23 @@ async function viewElection(rawId) {
   );
 
   /* Results */
+  if (election.resultsVisible && String(election.ballotType || 'single') === 'ranked') {
+    (async () => {
+      try {
+        const irv = await api('GET', `/api/elections/${election.id}/irv`);
+        if (!irv.rounds || !irv.rounds.length) return;
+        resultsMount.append(el('div', { class: 'card stack' },
+          el('h3', { style: { margin: 0 } }, 'Ranked-choice rounds'),
+          irv.winner ? el('p', {}, el('strong', {}, `Winner: ${irv.winner}`)) : null,
+          ...irv.rounds.map((round, i) => el('div', { class: 'card-flat' },
+            el('strong', {}, `Round ${i + 1}`),
+            ...round.counts.map((c) => el('div', { class: 'row-between small' }, c.name, `${c.votes} votes`)),
+          )),
+        ));
+      } catch { /* IRV view is best-effort */ }
+    })();
+  }
+
   if (election.resultsVisible) {
     resultsMount.append(resultsCard(election.results, { live: election.status === 'open' }));
     const signedBox = el('div', { class: 'row', style: { gap: '8px', marginTop: '10px', flexWrap: 'wrap' } },
@@ -978,7 +1014,7 @@ function authLayout({ title, subtitle, form, alt }) {
   return el(
     'div',
     { class: 'auth-card' },
-    el('div', { class: 'auth-head' }, el('p', { class: 'eyebrow', style: { justifyContent: 'center' } }, 'Secure access'), el('h1', {}, title), el('p', {}, subtitle)),
+    el('div', { class: 'auth-head' }, el('p', { class: 'eyebrow', 'data-i18n': 'home.eyebrow', style: { justifyContent: 'center' } }, window.I18n ? I18n.t('home.eyebrow') : 'Secure access'), el('h1', {}, title), el('p', {}, subtitle)),
     el('div', { class: 'card' }, form),
     alt ? el('p', { class: 'auth-alt' }, alt) : null,
   );
@@ -1344,7 +1380,7 @@ function verificationCard(data) {
   const merkleSlot = el('div', { class: 'checkpoint-slot' });
   list.append(el('div', { class: 'checkpoint is-pending' },
     el('span', { class: 'checkpoint-icon', 'aria-hidden': 'true', html: icons.clock }),
-    el('div', { class: 'grow' }, el('strong', {}, 'Included in the Merkle root'), el('div', { class: 'small muted' }, 'Prove your ballot is part of the published tree.'), merkleSlot),
+    el('div', { class: 'grow' }, el('strong', {}, 'Included in the Merkle root'), el('div', { class: 'small muted' }, data.merkleIndex ? `Ballot #${data.merkleIndex} of ${data.merkleTotal} in the published tree.` : 'Prove your ballot is part of the published tree.'), merkleSlot),
   ));
 
   const signedSlot = el('div', { class: 'checkpoint-slot' });
@@ -1601,14 +1637,100 @@ async function viewAccount() {
     } catch (error) { toast(error.message, 'error'); trustToggle.checked = !trustToggle.checked; }
   });
 
+  const recoveryEmail = el('input', { class: 'input', type: 'email', placeholder: 'you@backup.com', 'aria-label': 'Recovery email' });
+  const recoveryPassword = el('input', { class: 'input', type: 'password', placeholder: 'Current password', 'aria-label': 'Current password' });
+  const recoveryInfo = el('p', { class: 'small muted' }, 'No recovery contact set.');
+  (async () => {
+    try { const d = await api('GET', '/api/account/recovery'); recoveryInfo.textContent = d.email ? `Recovery contact: ${d.email}${d.verified ? ' (verified)' : ' (pending verification)'}` : 'No recovery contact set.'; }
+    catch { /* ignore */ }
+  })();
+  const recoveryCard = el('div', { class: 'card stack' },
+    el('h2', { style: { margin: 0 } }, 'Recovery contact'), recoveryInfo,
+    el('div', { class: 'form-grid' },
+      el('div', { class: 'field' }, el('label', {}, 'Backup email'), recoveryEmail),
+      el('div', { class: 'field' }, el('label', {}, 'Confirm with password'), recoveryPassword),
+    ),
+    el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: async () => {
+      try { await api('POST', '/api/account/recovery', { email: recoveryEmail.value, password: recoveryPassword.value }); toast('Check your backup email for a confirmation code.', 'success'); }
+      catch (error) { toast(error.message, 'error'); }
+    } }, 'Send confirmation code'),
+    el('p', { class: 'tiny muted' }, 'A code is emailed to the backup address. Enter it at /account/recovery/confirm (or use the account recovery flow).'),
+  );
+
+  const digestToggle = el('input', { type: 'checkbox', id: nextId('digest') });
+  (async () => { try { const d = await api('GET', '/api/account/digest'); digestToggle.checked = d.optedIn; } catch {} })();
+  digestToggle.addEventListener('change', async () => {
+    try { await api('POST', '/api/account/digest', { optedIn: digestToggle.checked }); toast(digestToggle.checked ? 'Weekly digest enabled.' : 'Digest disabled.', 'success'); }
+    catch (error) { toast(error.message, 'error'); digestToggle.checked = !digestToggle.checked; }
+  });
+  const digestCard = el('div', { class: 'card stack' },
+    el('h2', { style: { margin: 0 } }, 'Weekly digest'),
+    el('label', { class: 'checkbox-label small', for: digestToggle.id, style: { display: 'flex', alignItems: 'center', gap: '8px' } }, digestToggle, ' Email me a roundup of new open elections'),
+  );
+
   return [
-    el('div', { class: 'stack-lg' }, profile, el('div', {}, el('h2', {}, 'Your ballots'), el('p', { class: 'muted' }, 'Ballots you have cast and the receipts saved on this device.'), ballotList), securityCard, sessionsCard, trustedCard, passwordForm),
+    el('div', { class: 'stack-lg' }, profile, el('div', {}, el('h2', {}, 'Your ballots'), el('p', { class: 'muted' }, 'Ballots you have cast and the receipts saved on this device.'), ballotList), securityCard, recoveryCard, digestCard, sessionsCard, trustedCard, passwordForm),
   ];
 }
 
 /* --------------------------------------------------------------------------
    Not found
    -------------------------------------------------------------------------- */
+
+async function viewParty() {
+  const stage = el('div', { class: 'party-stage' }, el('p', { class: 'small muted' }, 'Connecting to live results…'));
+  const tick = async () => {
+    try {
+      const data = await api('GET', '/api/stats');
+      stage.replaceChildren(
+        el('div', { class: 'party-stat' }, el('div', { class: 'party-number' }, formatNumber(data.ballotsCast)), el('div', { class: 'party-label' }, 'ballots cast')),
+        el('div', { class: 'party-stat' }, el('div', { class: 'party-number' }, formatNumber(data.openElections)), el('div', { class: 'party-label' }, 'elections open')),
+        el('div', { class: 'party-stat' }, el('div', { class: 'party-number' }, formatNumber(data.registeredVoters)), el('div', { class: 'party-label' }, 'registered voters')),
+      );
+    } catch { stage.replaceChildren(el('p', { class: 'small muted' }, 'Live data unavailable.')); }
+  };
+  tick();
+  addTimer(tick, 5000);
+  return [
+    el('div', { class: 'party-wrap' },
+      el('p', { class: 'eyebrow' }, 'Live transparency'),
+      el('h1', {}, 'The results party'),
+      el('p', { class: 'muted' }, 'A live, anonymous view of participation across the platform. No individual ballots — just the collective picture.'),
+      stage,
+      el('a', { class: 'btn btn-outline', href: '/archive' }, 'See final results', iconEl('arrow')),
+    ),
+  ];
+}
+
+async function viewObserver() {
+  if (!state.user || state.user.role !== 'observer') return viewNotFound();
+  const box = el('div', { class: 'stack' }, el('p', { class: 'small muted' }, 'Loading read-only election state…'));
+  (async () => {
+    try {
+      const [elections, chain] = await Promise.all([api('GET', '/api/admin/elections'), api('GET', '/api/audit/verify')]);
+      box.replaceChildren(
+        el('div', { class: 'card stack' }, el('h2', { style: { margin: 0 } }, 'Elections (read-only)'),
+          Components.dataTable({
+            columns: [
+              { key: 'title', label: 'Election' },
+              { key: 'status', label: 'Status', render: (e) => statusPill(e.status) },
+              { key: 'totalVotes', label: 'Ballots', align: 'right', render: (e) => formatNumber(e.totalVotes) },
+            ],
+            rows: elections.elections, exportName: 'observer-elections', pageSize: 10,
+          }),
+        ),
+        el('div', { class: 'card stack' }, el('h2', { style: { margin: 0 } }, 'Audit chain'),
+          el('p', { class: 'small muted' }, `${formatNumber(chain.entries)} entries · head ${chain.chainHead.slice(0, 16)}…`),
+          el('a', { class: 'btn btn-outline btn-sm', href: '/audit' }, 'Open public audit page', iconEl('arrow')),
+        ),
+      );
+    } catch (error) { box.replaceChildren(el('p', { class: 'form-error' }, error.message)); }
+  })();
+  return [el('div', { class: 'stack-lg' },
+    el('div', {}, el('p', { class: 'eyebrow' }, 'Observer access'), el('h1', { style: { margin: 0 } }, 'Election observation')),
+    box,
+  )];
+}
 
 async function viewStatus() {
   const box = el('div', { class: 'card stack' }, el('p', { class: 'small muted' }, 'Checking services…'));

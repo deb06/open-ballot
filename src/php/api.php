@@ -573,9 +573,10 @@ function api_routes(): array
                         [$voteId, $electionId, null, $receiptHash],
                     );
                     foreach ($candidates as $c) {
+                        $rank = array_search((int) $c['id'], $candidateIds, true);
                         db_exec(
-                            'INSERT INTO vote_choices (vote_id, candidate_id) VALUES (?, ?)',
-                            [$voteId, (int) $c['id']],
+                            'INSERT INTO vote_choices (vote_id, candidate_id, rank) VALUES (?, ?, ?)',
+                            [$voteId, (int) $c['id'], $rank === false ? 0 : (int) $rank],
                         );
                     }
 
@@ -665,6 +666,8 @@ function api_routes(): array
             'merkleRoot' => $merkleRoot,
             'merkleLeaf' => $leaf,
             'merkleProof' => $proof,
+            'merkleIndex' => (int) $leafIndex + 1,
+            'merkleTotal' => count($leaves),
         ]);
     });
 
@@ -819,6 +822,13 @@ function api_routes(): array
         ]);
     });
 
+    $add('GET', '/api/elections/:id/irv', static function (array $ctx): void {
+        $election = get_election($ctx['params']['id']);
+        if ($election === null) fail(404, 'Election not found.', 'not_found');
+        if (($election['ballot_type'] ?? 'single') !== 'ranked') fail(400, 'This election is not ranked-choice.', 'not_ranked');
+        send_json(200, irv_results((int) $election['id']));
+    });
+
     $add('GET', '/api/elections/:id/results/signed', static function (array $ctx): void {
         $id = (int) $ctx['params']['id'];
         send_json(200, signed_results_for($id));
@@ -832,6 +842,191 @@ function api_routes(): array
         }
         $valid = verify_results_signature($payload, $signature);
         send_json(200, ['valid' => $valid]);
+    });
+
+    $add('GET', '/api/auth/oauth/:provider', static function (array $ctx): void {
+        $provider = (string) $ctx['params']['provider'];
+        $cfg = oauth_config($provider);
+        if ($cfg === null) fail(404, 'That sign-in provider is not configured.', 'provider_unavailable');
+        $redirect = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/api/auth/oauth/' . $provider . '/callback');
+        $state = bin2hex(random_bytes(16));
+        set_cookie('oauth_state_' . $provider, $state, 600);
+        $url = $cfg['authorize'] . '?' . http_build_query([
+            'client_id' => $cfg['id'], 'redirect_uri' => $redirect,
+            'response_type' => 'code', 'scope' => $cfg['scope'], 'state' => $state,
+        ]);
+        header('Location: ' . $url, true, 302);
+    });
+
+    $add('GET', '/api/auth/oauth/:provider/callback', static function (array $ctx): void {
+        $provider = (string) $ctx['params']['provider'];
+        $cfg = oauth_config($provider);
+        if ($cfg === null) fail(404, 'Provider not configured.', 'provider_unavailable');
+        $expected = $_COOKIE['oauth_state_' . $provider] ?? null;
+        $state = as_text($ctx['query']['state'] ?? null);
+        if (!is_string($expected) || !hash_equals($expected, $state)) fail(400, 'Invalid sign-in state.', 'invalid_state');
+        $code = as_text($ctx['query']['code'] ?? null);
+        if ($code === '') fail(400, 'No authorisation code received.', 'missing_code');
+        $info = oauth_user_info($provider, $cfg, $code);
+        $user = $info === null ? null : oauth_provision($info, $provider);
+        if ($user === null) fail(401, 'Could not sign you in with that provider.', 'oauth_failed');
+        $now = now_iso();
+        db_exec('UPDATE users SET last_login_at = ? WHERE id = ?', [iso_to_sql($now), (int) $user['id']]);
+        $user['last_login_at'] = iso_to_sql($now);
+        $public = public_user($user);
+        $csrf = create_session($public, $ctx['ip']);
+        audit((int) $user['id'], 'auth.oauth_login', ['provider' => $provider], $ctx['ip']);
+        header('Location: ' . (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/?oauth=success'), true, 302);
+    });
+
+    /* ------------------------------------------------------------------ */
+    /* Remaining features                                                  */
+    /* ------------------------------------------------------------------ */
+
+    /* Recovery contact */
+    $add('GET', '/api/account/recovery', static function (array $ctx): void {
+        $row = db_one('SELECT recovery_email, recovery_verified_at FROM users WHERE id = ?', [(int) $ctx['user']['id']]);
+        send_json(200, [
+            'email' => $row['recovery_email'] ?? null,
+            'verified' => !empty($row['recovery_verified_at']),
+        ]);
+    }, ['auth' => true]);
+
+    $add('POST', '/api/account/recovery', static function (array $ctx): void {
+        $body = $ctx['body'];
+        $email = strtolower(trim(as_text($body['email'] ?? null)));
+        $password = as_text($body['password'] ?? null);
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) fail(400, 'Enter a valid email.', 'invalid_email');
+        $row = db_one('SELECT password_hash FROM users WHERE id = ?', [(int) $ctx['user']['id']]);
+        if ($row === null || !verify_password($password, (string) $row['password_hash'])) fail(401, 'Password is incorrect.', 'invalid_password');
+        $code = strtoupper(bin2hex(random_bytes(4)));
+        db_exec('UPDATE users SET recovery_email = ?, recovery_verified_at = NULL WHERE id = ?', [$email, (int) $ctx['user']['id']]);
+        db_exec(
+            'INSERT INTO password_resets (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)',
+            [(int) $ctx['user']['id'], sha256($code), iso_to_sql(now_iso_at(time() + 3600)), iso_to_sql(now_iso())],
+        );
+        send_mail($email, 'Confirm your recovery email', "Your confirmation code is:\n\n{$code}\n\nIt expires in one hour.");
+        send_json(200, ['ok' => true]);
+    }, ['auth' => true]);
+
+    $add('POST', '/api/account/recovery/confirm', static function (array $ctx): void {
+        $code = strtoupper(as_text($ctx['body']['code'] ?? null));
+        $row = db_one(
+            'SELECT id FROM password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?',
+            [sha256($code), iso_to_sql(now_iso())],
+        );
+        if ($row === null) fail(400, 'That code is invalid or expired.', 'invalid_code');
+        db_exec('UPDATE password_resets SET used_at = ? WHERE id = ?', [iso_to_sql(now_iso()), (int) $row['id']]);
+        db_exec('UPDATE users SET recovery_verified_at = ? WHERE id = ?', [iso_to_sql(now_iso()), (int) $ctx['user']['id']]);
+        send_json(200, ['ok' => true]);
+    }, ['auth' => true]);
+
+    $add('POST', '/api/auth/recovery/reset', static function (array $ctx): void {
+        $email = strtolower(trim(as_text($ctx['body']['email'] ?? null)));
+        $code = strtoupper(as_text($ctx['body']['code'] ?? null));
+        $newPassword = validate_password($ctx['body']['newPassword'] ?? null);
+        $row = db_one('SELECT id FROM users WHERE recovery_email = ? AND recovery_verified_at IS NOT NULL', [$email]);
+        if ($row === null) fail(404, 'No verified recovery contact for that email.', 'not_found');
+        $reset = db_one('SELECT id FROM password_resets WHERE token_hash = ? AND user_id = ? AND used_at IS NULL AND expires_at > ?', [sha256($code), (int) $row['id'], iso_to_sql(now_iso())]);
+        if ($reset === null) fail(400, 'That code is invalid or expired.', 'invalid_code');
+        db_exec('UPDATE users SET password_hash = ? WHERE id = ?', [hash_password($newPassword), (int) $row['id']]);
+        db_exec('UPDATE password_resets SET used_at = ? WHERE id = ?', [iso_to_sql(now_iso()), (int) $reset['id']]);
+        db_exec('DELETE FROM sessions WHERE user_id = ?', [(int) $row['id']]);
+        audit((int) $row['id'], 'auth.recovery_reset', [], $ctx['ip']);
+        send_json(200, ['ok' => true]);
+    });
+
+    /* Election templates */
+    $admin('GET', '/api/admin/templates', static function (array $ctx): void {
+        $rows = db_all('SELECT id, name, created_at FROM election_templates WHERE user_id = ? ORDER BY created_at DESC', [(int) $ctx['user']['id']]);
+        send_json(200, ['templates' => $rows]);
+    });
+
+    $admin('POST', '/api/admin/templates', static function (array $ctx): void {
+        $name = require_text($ctx['body']['name'] ?? null, 2, 120, 'Name');
+        $election = get_election($ctx['body']['electionId'] ?? 0);
+        if ($election === null) fail(404, 'Election not found.', 'not_found');
+        $candidates = db_all('SELECT name, party, bio FROM candidates WHERE election_id = ? ORDER BY position, id', [(int) $election['id']]);
+        $payload = [
+            'title' => $election['title'], 'description' => $election['description'],
+            'resultsVisibility' => $election['results_visibility'], 'maxChoices' => (int) $election['max_choices'],
+            'ballotType' => $election['ballot_type'] ?? 'single', 'brandColor' => $election['brand_color'] ?? null,
+            'candidates' => $candidates,
+        ];
+        db_exec('INSERT INTO election_templates (user_id, name, payload, created_at) VALUES (?, ?, ?, ?)', [(int) $ctx['user']['id'], $name, json_encode($payload), iso_to_sql(now_iso())]);
+        send_json(201, ['ok' => true]);
+    });
+
+    $admin('POST', '/api/admin/templates/:id/apply', static function (array $ctx): void {
+        $row = db_one('SELECT payload FROM election_templates WHERE id = ? AND user_id = ?', [(int) $ctx['params']['id'], (int) $ctx['user']['id']]);
+        if ($row === null) fail(404, 'Template not found.', 'not_found');
+        $p = json_decode((string) $row['payload'], true) ?: [];
+        $now = now_iso();
+        $newId = db_insert(
+            'INSERT INTO elections (title, description, status, results_visibility, max_choices, ballot_type, brand_color, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [($p['title'] ?? 'Untitled') . ' (from template)', $p['description'] ?? '', 'draft', $p['resultsVisibility'] ?? 'after_close', (int) ($p['maxChoices'] ?? 1), $p['ballotType'] ?? 'single', $p['brandColor'] ?? null, (int) $ctx['user']['id'], iso_to_sql($now), iso_to_sql($now)],
+        );
+        foreach (($p['candidates'] ?? []) as $c) {
+            db_exec('INSERT INTO candidates (election_id, name, party, bio, created_at) VALUES (?, ?, ?, ?, ?)', [$newId, $c['name'], $c['party'] ?? '', $c['bio'] ?? '', iso_to_sql($now)]);
+        }
+        send_json(201, ['id' => $newId]);
+    });
+
+    $admin('DELETE', '/api/admin/templates/:id', static function (array $ctx): void {
+        db_exec('DELETE FROM election_templates WHERE id = ? AND user_id = ?', [(int) $ctx['params']['id'], (int) $ctx['user']['id']]);
+        send_json(200, ['ok' => true]);
+    });
+
+    /* Email invitations */
+    $admin('GET', '/api/admin/elections/:id/invitations', static function (array $ctx): void {
+        $rows = db_all('SELECT id, email, sent_at, created_at FROM email_invitations WHERE election_id = ? ORDER BY created_at DESC', [(int) $ctx['params']['id']]);
+        send_json(200, ['invitations' => $rows]);
+    });
+
+    $admin('POST', '/api/admin/elections/:id/invitations', static function (array $ctx): void {
+        $id = (int) $ctx['params']['id'];
+        $election = get_election($id);
+        if ($election === null) fail(404, 'Election not found.', 'not_found');
+        $emails = preg_split('/[\s,;]+/', as_text($ctx['body']['emails'] ?? null)) ?: [];
+        $sent = 0;
+        foreach ($emails as $email) {
+            $email = strtolower(trim($email));
+            if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) continue;
+            $token = random_token(24);
+            db_exec('INSERT INTO email_invitations (election_id, email, token_hash, created_at) VALUES (?, ?, ?, ?)', [$id, $email, sha256($token), iso_to_sql(now_iso())]);
+            $url = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/election/' . $id . '?invite=' . $token);
+            send_mail($email, 'You are invited to vote', "An election is open for voting:\n\n{$election['title']}\n\n{$url}\n\nRegister or sign in to cast your ballot.");
+            $sent += 1;
+        }
+        audit((int) $ctx['user']['id'], 'election.invitations_sent', ['electionId' => $id, 'count' => $sent], $ctx['ip']);
+        send_json(200, ['sent' => $sent]);
+    });
+
+    /* Digest opt-in + cron */
+    $add('GET', '/api/account/digest', static function (array $ctx): void {
+        $row = db_one('SELECT digest_optin FROM users WHERE id = ?', [(int) $ctx['user']['id']]);
+        send_json(200, ['optedIn' => !empty($row['digest_optin'])]);
+    }, ['auth' => true]);
+
+    $add('POST', '/api/account/digest', static function (array $ctx): void {
+        $value = !empty($ctx['body']['optedIn']) ? 1 : 0;
+        db_exec('UPDATE users SET digest_optin = ? WHERE id = ?', [$value, (int) $ctx['user']['id']]);
+        send_json(200, ['ok' => true]);
+    }, ['auth' => true]);
+
+    $add('GET', '/api/cron/digest', static function (array $ctx): void {
+        $secret = env_value('CRON_SECRET');
+        if ($secret === null || !hash_equals($secret, as_text($ctx['query']['secret'] ?? null))) {
+            fail(401, 'Invalid cron secret.', 'unauthorized');
+        }
+        $recent = db_all("SELECT id, title FROM elections WHERE status = 'open' AND created_at > ?", [iso_to_sql(now_iso_at(time() - 7 * 86400))]);
+        if (!$recent) { send_json(200, ['sent' => 0]); return; }
+        $users = db_all('SELECT email FROM users WHERE digest_optin = 1 AND active = 1');
+        $lines = array_map(static fn (array $e): string => '- ' . $e['title'] . ' (' . env_value('APP_URL', 'http://127.0.0.1:3000') . '/election/' . $e['id'] . ')', $recent);
+        $body = "New open elections this week:\n\n" . implode("\n", $lines) . "\n\nManage your digest in Account settings.";
+        $sent = 0;
+        foreach ($users as $u) { if (send_mail((string) $u['email'], 'Open Ballot election digest', $body)) $sent += 1; }
+        send_json(200, ['sent' => $sent, 'elections' => count($recent)]);
     });
 
     /* ------------------------------------------------------------------ */
@@ -1420,14 +1615,17 @@ function api_routes(): array
         $now = now_iso();
         $id = db_insert(
             'INSERT INTO elections
-               (title, description, status, results_visibility, max_choices, opens_at, closes_at, created_by, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+               (title, description, status, results_visibility, max_choices, ballot_type, brand_color, logo_url, opens_at, closes_at, created_by, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $title,
                 $description,
                 'draft',
                 $resultsVisibility,
                 $maxChoices,
+                in_array($ctx['body']['ballotType'] ?? 'single', ['single', 'ranked'], true) ? ($ctx['body']['ballotType'] ?? 'single') : 'single',
+                as_text($ctx['body']['brandColor'] ?? null) ?: null,
+                as_text($ctx['body']['logoUrl'] ?? null) ?: null,
                 iso_to_sql($opensAt),
                 iso_to_sql($closesAt),
                 (int) $ctx['user']['id'],
@@ -1531,6 +1729,9 @@ function api_routes(): array
                 ? one_of($body['resultsVisibility'], ['always', 'after_vote', 'after_close', 'hidden'])
                 : $row['results_visibility'],
             'maxChoices' => $has('maxChoices') ? max(1, (int) $body['maxChoices']) : (int) $row['max_choices'],
+            'ballotType' => $has('ballotType') && in_array($body['ballotType'], ['single', 'ranked'], true) ? $body['ballotType'] : (string) ($row['ballot_type'] ?? 'single'),
+            'brandColor' => $has('brandColor') ? (as_text($body['brandColor']) ?: null) : ($row['brand_color'] ?? null),
+            'logoUrl' => $has('logoUrl') ? (as_text($body['logoUrl']) ?: null) : ($row['logo_url'] ?? null),
             'opensAt' => $has('opensAt') ? parse_date($body['opensAt'], 'Opening time') : sql_to_iso($row['opens_at']),
             'closesAt' => $has('closesAt') ? parse_date($body['closesAt'], 'Closing time') : sql_to_iso($row['closes_at']),
             'status' => $row['status'],
@@ -1554,6 +1755,7 @@ function api_routes(): array
         db_exec(
             'UPDATE elections
              SET title = ?, description = ?, results_visibility = ?, max_choices = ?,
+                 ballot_type = ?, brand_color = ?, logo_url = ?,
                  opens_at = ?, closes_at = ?, status = ?, updated_at = ?
              WHERE id = ?',
             [
@@ -1561,6 +1763,9 @@ function api_routes(): array
                 $next['description'],
                 $next['resultsVisibility'],
                 $next['maxChoices'],
+                $next['ballotType'],
+                $next['brandColor'],
+                $next['logoUrl'],
                 iso_to_sql($next['opensAt']),
                 iso_to_sql($next['closesAt']),
                 $next['status'],
@@ -1751,7 +1956,7 @@ function api_routes(): array
         $name = require_text($body['name'] ?? null, 2, 80, 'Full name');
         $email = normalize_email($body['email'] ?? null);
         $password = validate_password($body['password'] ?? null);
-        $role = array_key_exists('role', $body) ? one_of($body['role'], ['voter', 'admin']) : 'voter';
+        $role = array_key_exists('role', $body) ? one_of($body['role'], ['voter', 'admin', 'observer']) : 'voter';
         if (db_one('SELECT id FROM users WHERE email = ?', [$email]) !== null) {
             fail(409, 'An account with that email already exists.', 'email_taken');
         }
@@ -1814,7 +2019,7 @@ function api_routes(): array
 
         $body = $ctx['body'];
         $has = static fn (string $key): bool => array_key_exists($key, $body);
-        $role = $has('role') ? one_of($body['role'], ['voter', 'admin']) : $target['role'];
+        $role = $has('role') ? one_of($body['role'], ['voter', 'admin', 'observer']) : $target['role'];
         $active = $has('active') ? (js_bool($body['active']) ? 1 : 0) : (int) $target['active'];
 
         if ((int) $target['id'] === (int) $ctx['user']['id']) {
@@ -1926,7 +2131,13 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
             if ($user === null) {
                 throw new HttpError(401, 'Sign in to continue.', 'auth_required');
             }
-            throw new HttpError(403, 'Administrator access required.', 'forbidden');
+            // Observers may read election state, results, schema and audit — never mutate.
+            $observerRead = $method === 'GET' && ($user['role'] ?? '') === 'observer'
+                && preg_match('#^/api/admin/(overview|elections|audit|schema)(/.*)?$#', $pathname) === 1
+                && !str_contains($pathname, '/results/signed');
+            if (!$observerRead) {
+                throw new HttpError(403, 'Administrator access required.', 'forbidden');
+            }
         }
         if (!empty($options['auth']) && $user === null) {
             throw new HttpError(401, 'Sign in to continue.', 'auth_required');

@@ -219,3 +219,32 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
   created_at TIMESTAMP(3) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_deliveries_hook ON webhook_deliveries(webhook_id);
+
+CREATE TABLE IF NOT EXISTS election_templates (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name       VARCHAR(120) NOT NULL,
+  payload    TEXT NOT NULL,
+  created_at TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_templates_user ON election_templates(user_id);
+
+CREATE TABLE IF NOT EXISTS email_invitations (
+  id         SERIAL PRIMARY KEY,
+  election_id INT NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
+  email      VARCHAR(160) NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  sent_at    TIMESTAMP(3) NULL,
+  created_at TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_invites_election ON email_invitations(election_id);
+
+CREATE TABLE IF NOT EXISTS oauth_accounts (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider   VARCHAR(30) NOT NULL,
+  provider_id VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP(3) NOT NULL,
+  UNIQUE (provider, provider_id)
+);
+CREATE INDEX IF NOT EXISTS idx_oauth_user ON oauth_accounts(user_id);

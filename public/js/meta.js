@@ -23,6 +23,8 @@
     privacy: { title: 'Privacy', description: 'How Open Ballot handles your data and keeps ballots anonymous.' },
     audit: { title: 'Public audit chain', description: 'Inspect the published HMAC chain of election and administrative events.' },
     archive: { title: 'Results archive', description: 'Final, signed tallies from every published election.' },
+    party: { title: 'Results party', description: 'A live, anonymous view of election participation.' },
+    observer: { title: 'Election observation', description: 'Read-only election state for observers.' },
     status: { title: 'Service status', description: 'Current health of Open Ballot services.' },
   };
 

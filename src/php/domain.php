@@ -366,6 +366,9 @@ function serialize_election(array $row, ?array $viewer): array
         'status' => $status,
         'resultsVisibility' => $row['results_visibility'],
         'maxChoices' => (int) ($row['max_choices'] ?? 1),
+        'ballotType' => (string) ($row['ballot_type'] ?? 'single'),
+        'brandColor' => $row['brand_color'] ?? null,
+        'logoUrl' => $row['logo_url'] ?? null,
         'opensAt' => sql_to_iso($row['opens_at']),
         'closesAt' => sql_to_iso($row['closes_at']),
         'createdAt' => sql_to_iso($row['created_at']),
@@ -915,4 +918,49 @@ function log_webhook_delivery(int $webhookId, string $event, string $payload, ?i
             [$webhookId, $event, mb_substr($payload, 0, 4000), $code, $success ? 1 : 0, $error === null ? null : mb_substr($error, 0, 300), iso_to_sql(now_iso())],
         );
     } catch (Throwable) { /* delivery log is best-effort */ }
+}
+
+/** Instant-runoff tally: returns rounds and the winner for ranked ballots. */
+function irv_results(int $electionId): array
+{
+    $candidates = db_all('SELECT id, name, party FROM candidates WHERE election_id = ? ORDER BY position, id', [$electionId]);
+    if (!$candidates) return ['rounds' => [], 'winner' => null];
+    $names = [];
+    foreach ($candidates as $c) $names[(int) $c['id']] = $c['name'];
+    $ballots = [];
+    $rows = db_all(
+        'SELECT vc.vote_id, vc.candidate_id, vc.rank FROM vote_choices vc
+         JOIN votes v ON v.id = vc.vote_id WHERE v.election_id = ? ORDER BY vc.vote_id, vc.rank',
+        [$electionId],
+    );
+    foreach ($rows as $r) {
+        $vid = (string) $r['vote_id'];
+        $ballots[$vid][(int) $r['rank']] = (int) $r['candidate_id'];
+    }
+    foreach ($ballots as &$prefs) ksort($prefs);
+    unset($prefs);
+
+    $active = array_map(static fn (array $c): int => (int) $c['id'], $candidates);
+    $rounds = [];
+    $winner = null;
+    while (count($active) > 0) {
+        $counts = array_fill_keys($active, 0);
+        foreach ($ballots as $prefs) {
+            foreach ($prefs as $cid) {
+                if (in_array($cid, $active, true)) { $counts[$cid] += 1; break; }
+            }
+        }
+        arsort($counts);
+        $total = array_sum($counts);
+        $rounds[] = [
+            'counts' => array_map(static fn (int $cid, int $n): array => ['id' => $cid, 'name' => $names[$cid] ?? '', 'votes' => $n], array_keys($counts), array_values($counts)),
+            'total' => $total,
+        ];
+        $top = array_key_first($counts);
+        if ($top === null || $total === 0) break;
+        if (reset($counts) > $total / 2) { $winner = (int) $top; break; }
+        $lowest = array_key_last($counts);
+        $active = array_values(array_filter($active, static fn (int $cid): bool => $cid !== $lowest));
+    }
+    return ['rounds' => $rounds, 'winner' => $winner === null ? null : ($names[$winner] ?? null)];
 }

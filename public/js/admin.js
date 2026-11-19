@@ -46,6 +46,16 @@ function adminNav(active) {
   );
 }
 
+function formError(box, error) {
+  const details = error && error.details;
+  let text = error && error.message ? error.message : 'Something went wrong.';
+  if (details && typeof details === 'object') {
+    const parts = Object.entries(details).map(([field, message]) => `${field}: ${message}`);
+    if (parts.length) text += ' — ' + parts.join('; ');
+  }
+  box.textContent = text;
+}
+
 function adminHeader(title, subtitle, actions = null) {
   return el(
     'div',
@@ -311,6 +321,8 @@ function openElectionForm() {
   const opensAt = el('input', { class: 'input', id: nextId('opens'), type: 'datetime-local' });
   const closesAt = el('input', { class: 'input', id: nextId('closes'), type: 'datetime-local' });
   const maxChoices = el('input', { class: 'input', id: nextId('maxChoices'), type: 'number', min: '1', value: '1' });
+  const ballotType = el('select', { class: 'select', id: nextId('ballotType') }, el('option', { value: 'single' }, 'Single / multi-choice'), el('option', { value: 'ranked' }, 'Ranked choice (IRV)'));
+  const brandColor = el('input', { class: 'input', id: nextId('brandColor'), type: 'color', value: '#8b7bff', style: { padding: '4px', height: '42px' } });
 
   const form = el(
     'form',
@@ -319,6 +331,7 @@ function openElectionForm() {
     el('div', { class: 'field' }, el('label', { for: title.id }, 'Title'), title),
     el('div', { class: 'field' }, el('label', { for: description.id }, 'Description'), description),
     el('div', { class: 'form-grid' }, el('div', { class: 'field' }, el('label', { for: visibility.id }, 'When are results published?'), visibility), el('div', { class: 'field' }, el('label', { for: maxChoices.id }, 'Max choices per ballot'), maxChoices)),
+    el('div', { class: 'form-grid' }, el('div', { class: 'field' }, el('label', { for: ballotType.id }, 'Ballot type'), ballotType), el('div', { class: 'field' }, el('label', { for: brandColor.id }, 'Brand colour'), brandColor)),
     el('div', { class: 'form-grid' }, el('div', { class: 'field' }, el('label', { for: opensAt.id }, 'Opens at (optional)'), opensAt), el('div', { class: 'field' }, el('label', { for: closesAt.id }, 'Closes at (optional)'), closesAt)),
     el('p', { class: 'small muted', style: { margin: 0 } }, 'Set max choices to 1 for single-winner elections, or higher for multi-choice ballots. Participation and ballots are stored separately, so a ballot can never be traced back to a voter.'),
   );
@@ -353,6 +366,8 @@ function openElectionForm() {
         description: description.value,
         resultsVisibility: visibility.value,
         maxChoices: Number(maxChoices.value || 1),
+        ballotType: ballotType.value,
+        brandColor: brandColor.value,
         opensAt: opensAt.value ? new Date(opensAt.value).toISOString() : null,
         closesAt: closesAt.value ? new Date(closesAt.value).toISOString() : null,
       });
@@ -360,7 +375,7 @@ function openElectionForm() {
       dialog.close();
       go(`#/admin/election/${data.election.id}`);
     } catch (error) {
-      errorBox.textContent = error.message;
+      formError(errorBox, error);
       setBusy(submit, false);
     }
   });
@@ -450,6 +465,7 @@ async function viewAdminElection(rawId) {
     { id: 'results', label: 'Results', count: election.totalVotes, panel: results },
     { id: 'voters', label: 'Voters', panel: electionVotersPanel(id) },
     { id: 'audit', label: 'Audit', panel: electionAuditPanel(id) },
+    { id: 'templates', label: 'Templates', panel: electionTemplatesPanel(id) },
     { id: 'manage', label: 'Manage', panel: danger },
   ];
 
@@ -460,14 +476,59 @@ async function viewAdminElection(rawId) {
 
 /* Tabbed manager ---------------------------------------------------------- */
 
-const ELECTION_TAB_IDS = ['settings', 'candidates', 'results', 'voters', 'audit', 'manage'];
+const ELECTION_TAB_IDS = ['settings', 'candidates', 'results', 'voters', 'audit', 'templates', 'manage'];
+
+function electionTemplatesPanel(electionId) {
+  const host = el('div', { class: 'stack' }, el('p', { class: 'small muted' }, 'Loading templates…'));
+  const load = async () => {
+    try {
+      const data = await api('GET', '/api/admin/templates');
+      const name = el('input', { class: 'input', placeholder: 'Template name', 'aria-label': 'Template name' });
+      host.replaceChildren(
+        el('div', { class: 'card-flat stack' },
+          el('strong', {}, 'Save this election as a template'),
+          el('div', { class: 'row' }, name, el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: async () => {
+            try { await api('POST', '/api/admin/templates', { name: name.value, electionId }); toast('Template saved.', 'success'); name.value = ''; load(); }
+            catch (error) { toast(error.message, 'error'); }
+          } }, 'Save template')),
+        ),
+        data.templates.length
+          ? Components.dataTable({
+              columns: [
+                { key: 'name', label: 'Template' },
+                { key: 'created_at', label: 'Created', render: (t) => formatDate(t.created_at) },
+                { key: 'actions', label: 'Actions', sortable: false, render: (t) => el('div', { class: 'row', style: { gap: '6px' } },
+                  el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: async () => { try { const r = await api('POST', `/api/admin/templates/${t.id}/apply`); toast('Draft created from template.', 'success'); go(`#/admin/election/${r.id}`); } catch (e) { toast(e.message, 'error'); } } }, 'Apply'),
+                  el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => { try { await api('DELETE', `/api/admin/templates/${t.id}`); load(); } catch (e) { toast(e.message, 'error'); } } }, 'Delete'),
+                ) },
+              ],
+              rows: data.templates, exportName: 'templates', pageSize: 10, empty: 'No saved templates.',
+            })
+          : el('p', { class: 'small muted' }, 'No saved templates yet.'),
+      );
+    } catch (error) { host.replaceChildren(el('p', { class: 'form-error' }, error.message)); }
+  };
+  load();
+  return host;
+}
 
 function electionVotersPanel(electionId) {
-  const host = el('div', { class: 'stack' }, el('p', { class: 'small muted' }, 'Loading voters…'));
+  const inviteEmails = el('textarea', { class: 'textarea mono', rows: '3', placeholder: 'one@example.com, two@example.com', 'aria-label': 'Invite email addresses' });
+  const inviteBox = el('div', { class: 'card-flat stack' },
+    el('strong', {}, 'Invite voters by email'),
+    inviteEmails,
+    el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: async () => {
+      try { const r = await api('POST', `/api/admin/elections/${electionId}/invitations`, { emails: inviteEmails.value }); toast(`${r.sent} ${plural(r.sent, 'invitation')} sent.`, 'success'); inviteEmails.value = ''; }
+      catch (error) { toast(error.message, 'error'); }
+    } }, 'Send invitations'),
+  );
+
+  const listHost = el('div', {}, el('p', { class: 'small muted' }, 'Loading voters…'));
+  const host = el('div', { class: 'stack' }, inviteBox, listHost);
   (async () => {
     try {
       const data = await api('GET', `/api/admin/elections/${electionId}/voters`);
-      host.replaceChildren(
+      listHost.replaceChildren(
         data.voters.length
           ? Components.dataTable({
               columns: [
@@ -483,7 +544,7 @@ function electionVotersPanel(electionId) {
             })
           : emptyState({ icon: 'users', title: 'No voters yet', message: 'Voters appear here once they cast a ballot.' }),
       );
-    } catch (error) { host.replaceChildren(el('p', { class: 'form-error' }, error.message)); }
+    } catch (error) { listHost.replaceChildren(el('p', { class: 'form-error' }, error.message)); }
   })();
   return host;
 }
@@ -692,7 +753,7 @@ function settingsForm(election) {
       toast('Election settings saved.', 'success');
       handleRoute();
     } catch (error) {
-      errorBox.textContent = error.message;
+      formError(errorBox, error);
       setBusy(submit, false);
     }
   });
@@ -806,7 +867,7 @@ function openCandidateImportModal(election) {
       dialog.close();
       handleRoute();
     } catch (error) {
-      errorBox.textContent = error.message;
+      formError(errorBox, error);
       setBusy(save, false);
     }
   } }, iconEl('upload'), 'Import candidates');
@@ -854,7 +915,7 @@ function openCandidateModal({ election, candidate = null }) {
       dialog.close();
       handleRoute();
     } catch (error) {
-      errorBox.textContent = error.message;
+      formError(errorBox, error);
       setBusy(save, false);
     }
   });
@@ -1157,7 +1218,7 @@ async function viewAdminUsers() {
         pageSize: 10,
         empty: 'No accounts match your search.',
       }));
-    } catch (error) { errorBox.textContent = error.message; }
+    } catch (error) { formError(errorBox, error); }
   };
 
   await load();
@@ -1205,7 +1266,7 @@ function openUserForm(onSaved) {
       dialog.close();
       if (typeof onSaved === 'function') await onSaved('');
     } catch (error) {
-      errorBox.textContent = error.message;
+      formError(errorBox, error);
       setBusy(save, false);
     }
   });
@@ -1423,7 +1484,7 @@ async function viewAdminWebhooks() {
         pageSize: 10,
         empty: 'No webhooks configured.',
       }));
-    } catch (error) { errorBox.textContent = error.message; }
+    } catch (error) { formError(errorBox, error); }
   };
   const urlInput = el('input', { class: 'input', type: 'url', placeholder: 'https://example.com/hooks/open-ballot', 'aria-label': 'Webhook URL' });
   const eventsInput = el('input', { class: 'input', type: 'text', value: 'vote.cast', placeholder: 'vote.cast, election.close', 'aria-label': 'Events (comma separated)' });
@@ -1441,7 +1502,7 @@ async function viewAdminWebhooks() {
       secretBox.hidden = false;
       urlInput.value = '';
       load();
-    } catch (error) { errorBox.textContent = error.message; }
+    } catch (error) { formError(errorBox, error); }
     finally { setBusy(addBtn, false); }
   } }, iconEl('plus'), 'Add webhook');
 
@@ -1505,7 +1566,7 @@ async function viewAdminApiKeys() {
         pageSize: 10,
         empty: 'No API keys yet.',
       }));
-    } catch (error) { errorBox.textContent = error.message; }
+    } catch (error) { formError(errorBox, error); }
   };
 
   const name = el('input', { class: 'input', placeholder: 'e.g. Research dashboard', 'aria-label': 'Key name' });
@@ -1521,7 +1582,7 @@ async function viewAdminApiKeys() {
       secretBox.hidden = false;
       name.value = '';
       load();
-    } catch (error) { errorBox.textContent = error.message; }
+    } catch (error) { formError(errorBox, error); }
   } }, iconEl('plus'), 'Create key');
 
   load();
@@ -1802,7 +1863,7 @@ async function viewAdminLogin() {
       toast(`Welcome, ${data.user.name.split(' ')[0]}.`, 'success');
       go('#/admin');
     } catch (error) {
-      errorBox.textContent = error.message;
+      formError(errorBox, error);
       password.focus();
       password.select();
     } finally {

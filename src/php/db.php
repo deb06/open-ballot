@@ -340,6 +340,37 @@ function db_migrate_multi_choice(): void
     $pdo->exec('INSERT IGNORE INTO vote_choices (vote_id, candidate_id) SELECT id, candidate_id FROM votes WHERE candidate_id IS NOT NULL');
 }
 
+function db_add_column(string $table, string $column, string $mysqlDef, string $pgDef): void
+{
+    if (db_column_exists($table, $column)) {
+        return;
+    }
+    $cfg = config('db');
+    $def = ($cfg['driver'] ?? 'mysql') === 'pgsql' ? $pgDef : $mysqlDef;
+    try {
+        db()->exec("ALTER TABLE {$table} ADD COLUMN {$column} {$def}");
+    } catch (Throwable) { /* already present or not supported */ }
+}
+
+function db_migrate_final(): void
+{
+    db_add_column('users', 'recovery_email', 'VARCHAR(160) NULL DEFAULT NULL', 'VARCHAR(160) NULL');
+    db_add_column('users', 'recovery_verified_at', 'DATETIME(3) NULL DEFAULT NULL', 'TIMESTAMP(3) NULL');
+    db_add_column('users', 'digest_optin', 'TINYINT(1) NOT NULL DEFAULT 0', 'SMALLINT NOT NULL DEFAULT 0');
+    db_add_column('elections', 'ballot_type', "VARCHAR(20) NOT NULL DEFAULT 'single'", "VARCHAR(20) NOT NULL DEFAULT 'single'");
+    db_add_column('elections', 'brand_color', 'VARCHAR(20) NULL DEFAULT NULL', 'VARCHAR(20) NULL');
+    db_add_column('elections', 'logo_url', 'VARCHAR(300) NULL DEFAULT NULL', 'VARCHAR(300) NULL');
+    db_add_column('candidates', 'position', 'INT UNSIGNED NOT NULL DEFAULT 0', 'INT NOT NULL DEFAULT 0');
+    db_add_column('vote_choices', 'rank', 'INT UNSIGNED NOT NULL DEFAULT 0', 'INT NOT NULL DEFAULT 0');
+    // Widen role to allow observers (MySQL only; PG uses VARCHAR).
+    $cfg = config('db');
+    if (($cfg['driver'] ?? 'mysql') !== 'pgsql') {
+        try {
+            db()->exec("ALTER TABLE users MODIFY COLUMN role ENUM('voter','admin','observer') NOT NULL DEFAULT 'voter'");
+        } catch (Throwable) { /* keep existing enum */ }
+    }
+}
+
 function db_schema_installed(): bool
 {
     try {
@@ -383,6 +414,7 @@ function db_ensure_ready(): void
             db_migrate_multi_choice();
         }
         db_migrate_merkle();
+        db_migrate_final();
     }
     // DDL above may have changed table shapes; drop the connection so PostgreSQL
     // discards cached plans tied to the old result types.

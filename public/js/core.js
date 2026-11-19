@@ -29,25 +29,27 @@ function applyTheme(theme) {
   } catch {
     /* storage may be unavailable */
   }
-  const requested = theme || document.documentElement.getAttribute('data-theme') || stored;
-  const next = requested === 'light' ? 'light' : 'dark';
+  const requested = theme || document.documentElement.getAttribute('data-theme-pref') || document.documentElement.getAttribute('data-theme') || stored;
+  const next = requested === 'system' ? (window.OpenBallotTheme ? window.OpenBallotTheme.resolve('system') : 'dark') : (requested === 'light' ? 'light' : 'dark');
   document.documentElement.setAttribute('data-theme', next);
-  if (window.OpenBallotTheme) window.OpenBallotTheme.apply(next);
+  const pref = requested === 'system' || requested === 'light' || requested === 'dark' ? requested : 'dark';
+  document.documentElement.setAttribute('data-theme-pref', pref);
+  if (window.OpenBallotTheme) window.OpenBallotTheme.apply(pref);
   try {
-    localStorage.setItem(THEME_KEY, next);
+    localStorage.setItem(THEME_KEY, pref);
   } catch {
     /* storage may be unavailable */
   }
   const toggle = document.getElementById('theme-toggle');
   if (toggle) {
-    toggle.setAttribute('aria-label', next === 'light' ? 'Switch to dark theme' : 'Switch to light theme');
-    toggle.innerHTML = next === 'light' ? icons.moon : icons.sun;
+    toggle.setAttribute('aria-label', `Theme: ${pref} (click to change)`);
+    toggle.innerHTML = pref === 'system' ? icons.sparkle : pref === 'light' ? icons.moon : icons.sun;
   }
 }
 
 function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme');
-  applyTheme(current === 'light' ? 'dark' : 'light');
+  const current = document.documentElement.getAttribute('data-theme-pref') || 'dark';
+  applyTheme(current === 'dark' ? 'light' : current === 'light' ? 'system' : 'dark');
 }
 
 /* --------------------------------------------------------------------------
@@ -754,6 +756,16 @@ function renderHeader() {
   actions.replaceChildren();
 
   actions.append(
+    el('button', {
+      class: 'btn btn-ghost btn-sm btn-icon',
+      type: 'button',
+      'aria-label': 'Switch language',
+      title: 'Language / Idioma',
+      onclick: () => {
+        if (!window.I18n) return;
+        window.I18n.setLang(window.I18n.current() === 'en' ? 'es' : 'en');
+      },
+    }, el('span', { class: 'lang-label' }, (window.I18n && window.I18n.current() === 'es') ? 'ES' : 'EN')),
     el(
       'button',
       {
@@ -784,9 +796,12 @@ function renderHeader() {
       el(
         'a',
         { class: 'btn btn-ghost btn-sm', href: '/account', title: state.user.email },
-        el('span', { class: 'badge badge-accent' }, state.user.role === 'admin' ? 'Admin' : 'Voter'),
+        el('span', { class: 'badge badge-accent' }, state.user.role === 'admin' ? 'Admin' : state.user.role === 'observer' ? 'Observer' : 'Voter'),
         state.user.name.split(' ')[0],
       ),
+      state.user.role === 'observer'
+        ? el('a', { class: 'btn btn-ghost btn-sm', href: '/observer' }, 'Observe')
+        : null,
       el(
         'button',
         { class: 'btn btn-ghost btn-sm', type: 'button', onclick: signOut, 'aria-label': 'Sign out' },
@@ -920,6 +935,8 @@ async function viewFor(parts) {
   if (root === 'privacy') return viewPrivacy();
   if (root === 'archive') return viewArchive();
   if (root === 'audit') return viewAuditChain();
+  if (root === 'observer') return viewObserver();
+  if (root === 'party') return viewParty();
   if (root === 'status') return viewStatus();
   if (root === 'account') return viewAccount();
   if (root === 'design') return viewDesign();
@@ -1104,6 +1121,17 @@ function setupCommandPalette() {
   });
 }
 
+function setupI18n() {
+  const apply = () => {
+    if (!window.I18n) return;
+    document.querySelectorAll('[data-i18n]').forEach((node) => {
+      node.textContent = window.I18n.t(node.dataset.i18n);
+    });
+  };
+  document.addEventListener('languagechange', () => { apply(); if (typeof renderHeader === 'function') renderHeader(); });
+  apply();
+}
+
 function setupErrorReporting() {
   window.addEventListener('error', (event) => {
     if (!event.message) return;
@@ -1133,6 +1161,7 @@ function setupLinkInterception() {
 async function boot() {
   applyTheme();
   setupNav();
+  setupI18n();
   setupCommandPalette();
   setupErrorReporting();
   setupLinkInterception();

@@ -44,6 +44,16 @@ services:
         value: production
       - key: SENTRY_DSN
         sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: OAUTH_GITHUB_ID
+        sync: false
+      - key: OAUTH_GITHUB_SECRET
+        sync: false
+      - key: OAUTH_GOOGLE_ID
+        sync: false
+      - key: OAUTH_GOOGLE_SECRET
+        sync: false
 
 databases:
   - name: open-ballot-db
