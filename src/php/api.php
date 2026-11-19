@@ -36,6 +36,10 @@ function api_routes(): array
             'options' => $options,
         ];
     };
+    // Shorthand for admin-guarded routes.
+    $admin = function (string $method, string $pattern, callable $handler) use ($add): void {
+        $add($method, $pattern, $handler, ['admin' => true]);
+    };
 
     /* -------------------------------------------------------------- */
     /* Public: stats                                                   */
@@ -562,6 +566,7 @@ function api_routes(): array
         }
 
         audit((int) $ctx['user']['id'], 'vote.cast', ['electionId' => $electionId], $ctx['ip']);
+        fire_webhooks('vote.cast', ['electionId' => $electionId]);
 
         send_json(201, [
             'receipt' => $receipt,
@@ -686,6 +691,112 @@ function api_routes(): array
         }
         send_json(200, ['tables' => $result]);
     }, ['admin' => true]);
+
+    /* ------------------------------------------------------------------ */
+    /* Notifications                                                       */
+    /* ------------------------------------------------------------------ */
+
+    $add('GET', '/api/notifications', static function (array $ctx): void {
+        $rows = db_all(
+            'SELECT id, type, title, body, link, read_at, created_at FROM notifications
+             WHERE user_id = ? ORDER BY created_at DESC LIMIT 50',
+            [(int) $ctx['user']['id']],
+        );
+        $unread = (int) db_scalar(
+            'SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL',
+            [(int) $ctx['user']['id']],
+        );
+        send_json(200, ['notifications' => $rows, 'unread' => $unread]);
+    }, ['auth' => true]);
+
+    $add('POST', '/api/notifications/:id/read', static function (array $ctx): void {
+        $id = (int) $ctx['params']['id'];
+        $row = db_one('SELECT id FROM notifications WHERE id = ? AND user_id = ?', [$id, (int) $ctx['user']['id']]);
+        if ($row === null) {
+            fail(404, 'Notification not found.', 'not_found');
+        }
+        db_exec('UPDATE notifications SET read_at = ? WHERE id = ?', [iso_to_sql(now_iso()), $id]);
+        send_json(200, ['ok' => true]);
+    }, ['auth' => true]);
+
+    $add('POST', '/api/notifications/read-all', static function (array $ctx): void {
+        db_exec('UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL', [iso_to_sql(now_iso()), (int) $ctx['user']['id']]);
+        send_json(200, ['ok' => true]);
+    }, ['auth' => true]);
+
+    /* ------------------------------------------------------------------ */
+    /* Election analytics + audit export                                   */
+    /* ------------------------------------------------------------------ */
+
+    $admin('GET', '/api/admin/elections/:id/analytics', static function (array $ctx): void {
+        $id = (int) $ctx['params']['id'];
+        if (get_election($id) === null) {
+            fail(404, 'Election not found.', 'not_found');
+        }
+        $total = (int) db_scalar('SELECT COUNT(*) FROM votes WHERE election_id = ?', [$id]);
+        $peakResult = db_one(
+            'SELECT DATE(voted_at) AS day, COUNT(*) AS votes FROM participation
+             WHERE election_id = ? GROUP BY DATE(voted_at) ORDER BY votes DESC LIMIT 1',
+            [$id],
+        );
+        $daily = db_all(
+            'SELECT DATE(voted_at) AS day, COUNT(*) AS votes FROM participation
+             WHERE election_id = ? GROUP BY DATE(voted_at) ORDER BY day ASC',
+            [$id],
+        );
+        send_json(200, ['totalVotes' => $total, 'peakDay' => $peakResult, 'daily' => $daily]);
+    });
+
+    $admin('GET', '/api/admin/audit/export', static function (array $ctx): void {
+        $rows = db_all('SELECT a.*, u.name AS actor_name FROM audit_log a LEFT JOIN users u ON u.id = a.actor_id ORDER BY a.id ASC');
+        $header = 'HMAC-Signed Audit Log' . "\n" . 'Generated: ' . now_iso() . "\n\n";
+        $lines = [];
+        $prev = str_repeat('0', 64);
+        foreach ($rows as $r) {
+            $entry = sprintf('%s|%s|%s|%s', $r['created_at'], $r['actor_name'] ?? 'system', $r['action'], $r['details']);
+            $hash = hash_hmac('sha256', $prev . $entry, (string) config('app_name'));
+            $lines[] = $entry . '|' . $hash;
+            $prev = $hash;
+        }
+        $content = $header . implode("\n", $lines);
+        send_json(200, ['exported' => count($rows), 'chainHead' => $prev, 'content' => $content]);
+    });
+
+    /* ------------------------------------------------------------------ */
+    /* Webhooks                                                            */
+    /* ------------------------------------------------------------------ */
+
+    $admin('GET', '/api/admin/webhooks', static function (array $ctx): void {
+        $rows = db_all('SELECT id, url, events, active, last_sent_at, created_at FROM webhooks WHERE user_id = ? ORDER BY created_at DESC', [(int) $ctx['user']['id']]);
+        send_json(200, ['webhooks' => $rows]);
+    });
+
+    $admin('POST', '/api/admin/webhooks', static function (array $ctx): void {
+        $body = $ctx['body'];
+        $url = require_text($body['url'] ?? null, 10, 500, 'URL');
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            fail(400, 'A valid URL is required.', 'invalid_url');
+        }
+        $events = as_text($body['events'] ?? 'vote.cast');
+        $secret = bin2hex(random_bytes(32));
+        $id = db_insert(
+            'INSERT INTO webhooks (user_id, url, events, secret, active, created_at) VALUES (?, ?, ?, ?, 1, ?)',
+            [(int) $ctx['user']['id'], $url, $events, $secret, iso_to_sql(now_iso())],
+        );
+        audit((int) $ctx['user']['id'], 'webhook.created', ['id' => $id, 'url' => $url], $ctx['ip']);
+        send_json(201, ['id' => $id, 'secret' => $secret, 'url' => $url, 'events' => $events]);
+    });
+
+    $admin('DELETE', '/api/admin/webhooks/:id', static function (array $ctx): void {
+        $id = (int) $ctx['params']['id'];
+        $row = db_one('SELECT id FROM webhooks WHERE id = ? AND user_id = ?', [$id, (int) $ctx['user']['id']]);
+        if ($row === null) {
+            fail(404, 'Webhook not found.', 'not_found');
+        }
+        db_exec('DELETE FROM webhooks WHERE id = ?', [$id]);
+        audit((int) $ctx['user']['id'], 'webhook.deleted', ['id' => $id], $ctx['ip']);
+        send_json(200, ['ok' => true]);
+    });
 
     $add('POST', '/api/auth/passkeys/register/options', static function (array $ctx): void {
         $user = $ctx['user'];
@@ -1021,6 +1132,81 @@ function api_routes(): array
         $row = get_election($id);
         audit((int) $ctx['user']['id'], 'election.create', ['electionId' => $id, 'title' => $title], $ctx['ip']);
         send_json(201, ['election' => serialize_election($row, ['id' => (int) $ctx['user']['id'], 'role' => 'admin'])]);
+    });
+
+    // Clone an existing election (settings + candidates) as a new draft.
+    $admin('POST', '/api/admin/elections/from-template/:id', static function (array $ctx): void {
+        $source = get_election($ctx['params']['id']);
+        if ($source === null) {
+            fail(404, 'Template election not found.', 'not_found');
+        }
+        $body = $ctx['body'];
+        $title = require_text($body['title'] ?? null, 3, 120, 'Title') ?: ($source['title'] . ' (copy)');
+        $now = now_iso();
+        $newId = db_insert(
+            'INSERT INTO elections
+               (title, description, status, results_visibility, max_choices, opens_at, closes_at, created_by, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                $title,
+                $source['description'],
+                'draft',
+                $source['results_visibility'],
+                $source['max_choices'],
+                $source['opens_at'],
+                $source['closes_at'],
+                (int) $ctx['user']['id'],
+                iso_to_sql($now),
+                iso_to_sql($now),
+            ],
+        );
+        $candidates = db_all('SELECT name, party, bio FROM candidates WHERE election_id = ? ORDER BY id', [(int) $source['id']]);
+        foreach ($candidates as $c) {
+            db_insert(
+                'INSERT INTO candidates (election_id, name, party, bio, created_at) VALUES (?, ?, ?, ?, ?)',
+                [$newId, $c['name'], $c['party'], $c['bio'], iso_to_sql($now)],
+            );
+        }
+        audit((int) $ctx['user']['id'], 'election.clone', ['from' => (int) $source['id'], 'to' => $newId], $ctx['ip']);
+        send_json(201, ['election' => get_election($newId), 'candidatesCloned' => count($candidates)]);
+    });
+
+    // Bulk-import candidates from CSV: a header row + name,party,bio columns.
+    $admin('POST', '/api/admin/elections/:id/candidates/import', static function (array $ctx): void {
+        $election = get_election($ctx['params']['id']);
+        if ($election === null) {
+            fail(404, 'Election not found.', 'not_found');
+        }
+        if ($election['status'] !== 'draft') {
+            fail(409, 'Candidates can only be imported into a draft election.', 'election_locked');
+        }
+        $csv = as_text($ctx['body']['csv'] ?? null);
+        if ($csv === '') {
+            fail(400, 'CSV content is required.', 'csv_required');
+        }
+        $lines = preg_split('/\r?\n/', $csv) ?: [];
+        $imported = 0;
+        $now = iso_to_sql(now_iso());
+        foreach ($lines as $index => $line) {
+            if (trim($line) === '') {
+                continue;
+            }
+            $cols = str_getcsv($line);
+            if ($index === 0 && strtolower(trim($cols[0] ?? '')) === 'name') {
+                continue; // header
+            }
+            $name = trim((string) ($cols[0] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            db_insert(
+                'INSERT INTO candidates (election_id, name, party, bio, created_at) VALUES (?, ?, ?, ?, ?)',
+                [(int) $election['id'], mb_substr($name, 0, 80), mb_substr(trim((string) ($cols[1] ?? '')), 0, 60), mb_substr(trim((string) ($cols[2] ?? '')), 0, 300), $now],
+            );
+            $imported += 1;
+        }
+        audit((int) $ctx['user']['id'], 'election.candidates_imported', ['electionId' => (int) $election['id'], 'count' => $imported], $ctx['ip']);
+        send_json(200, ['imported' => $imported]);
     });
 
     $admin('PATCH', '/api/admin/elections/:id', static function (array $ctx): void {
@@ -1412,9 +1598,9 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
                 $matches,
             )));
             header('Allow: ' . implode(', ', $allowed));
-            send_json(405, ['error' => ['message' => 'Method not allowed.', 'code' => 'method_not_allowed']]);
+            send_json(405, error_envelope(405, 'Method not allowed.', 'method_not_allowed'));
         } else {
-            send_json(404, ['error' => ['message' => 'Not found.', 'code' => 'not_found']]);
+            send_json(404, error_envelope(404, 'Not found.', 'not_found'));
         }
         return;
     }
@@ -1499,7 +1685,7 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
         $message = $status >= 500
             ? 'Something went wrong on our end. Please try again.'
             : $error->getMessage();
-        send_json($status, ['error' => ['message' => $message, 'code' => $error->errorCode]], $error->headers);
+        send_json($status, error_envelope($status, $message, $error->errorCode), $error->headers);
     } catch (Throwable $error) {
         error_log(sprintf(
             '[error] %s %s: %s in %s:%d',
@@ -1509,9 +1695,6 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
             $error->getFile(),
             $error->getLine(),
         ));
-        send_json(500, ['error' => [
-            'message' => 'Something went wrong on our end. Please try again.',
-            'code' => 'error',
-        ]]);
+        send_json(500, error_envelope(500, 'Something went wrong on our end. Please try again.', 'error'));
     }
 }

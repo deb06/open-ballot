@@ -583,3 +583,35 @@ function consume_webauthn_challenge(string $challenge, string $type): bool
     db_exec('DELETE FROM webauthn_challenges WHERE id = ?', [(int) $row['id']]);
     return true;
 }
+
+/* --------------------------------------------------------------------------
+   Webhooks (best-effort, fire-and-forget)
+   -------------------------------------------------------------------------- */
+
+function fire_webhooks(string $event, array $payload): void
+{
+    $hooks = db_all("SELECT url, secret, events FROM webhooks WHERE active = 1");
+    foreach ($hooks as $hook) {
+        $events = array_map('trim', explode(',', (string) $hook['events']));
+        if (!in_array($event, $events, true) && !in_array('*', $events, true)) {
+            continue;
+        }
+        $body = json_encode([
+            'event' => $event,
+            'timestamp' => now_iso(),
+            'data' => $payload,
+        ], JSON_UNESCAPED_SLASHES);
+        $signature = hash_hmac('sha256', (string) $body, (string) $hook['secret']);
+        // Non-blocking: short timeout, ignore failures so voting is never delayed.
+        @file_get_contents((string) $hook['url'], false, stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\r\nX-Webhook-Signature: {$signature}\r\n",
+                'content' => $body,
+                'timeout' => 2,
+                'ignore_errors' => true,
+            ],
+        ]));
+        db_exec('UPDATE webhooks SET last_sent_at = ? WHERE url = ?', [iso_to_sql(now_iso()), $hook['url']]);
+    }
+}

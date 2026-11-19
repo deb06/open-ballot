@@ -198,3 +198,32 @@ CREATE TABLE IF NOT EXISTS webauthn_challenges (
   KEY idx_webauthn_challenges_user (user_id),
   KEY idx_webauthn_challenges_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id    INT UNSIGNED NOT NULL,
+  type       VARCHAR(40) NOT NULL,
+  title      VARCHAR(160) NOT NULL,
+  body       VARCHAR(500) NOT NULL DEFAULT '',
+  link       VARCHAR(200) NULL DEFAULT NULL,
+  read_at    DATETIME(3) NULL DEFAULT NULL,
+  created_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_notifications_user (user_id),
+  KEY idx_notifications_read (read_at),
+  CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS webhooks (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id    INT UNSIGNED NOT NULL,
+  url        VARCHAR(500) NOT NULL,
+  events     VARCHAR(500) NOT NULL,
+  secret     VARCHAR(64) NOT NULL,
+  active     TINYINT(1) NOT NULL DEFAULT 1,
+  last_sent_at DATETIME(3) NULL DEFAULT NULL,
+  created_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_webhooks_user (user_id),
+  CONSTRAINT fk_webhooks_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -47,7 +47,7 @@ try {
         return true;
     }
 
-    send_json(404, ['error' => ['message' => 'Not found.', 'code' => 'not_found']]);
+    send_json(404, error_envelope(404, 'Not found.', 'not_found'));
 } catch (Throwable $error) {
     error_log(sprintf(
         '[fatal] %s %s: %s in %s:%d',
@@ -58,10 +58,7 @@ try {
         $error->getLine(),
     ));
     if (!headers_sent()) {
-        send_json(500, ['error' => [
-            'message' => 'Something went wrong on our end. Please try again.',
-            'code' => 'error',
-        ]]);
+        send_json(500, error_envelope(500, 'Something went wrong on our end. Please try again.', 'error'));
     }
 }
 

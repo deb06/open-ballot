@@ -53,7 +53,7 @@ function security_headers(): void
     header('X-Permitted-Cross-Domain-Policies: none');
     header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()');
     if (request_is_secure()) {
-        header('Strict-Transport-Security: max-age=31536000');
+        header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
     }
     header(
         'Content-Security-Policy: ' . implode('; ', [

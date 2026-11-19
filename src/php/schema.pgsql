@@ -154,3 +154,28 @@ CREATE TABLE IF NOT EXISTS webauthn_challenges (
 );
 CREATE INDEX IF NOT EXISTS idx_webauthn_challenges_user ON webauthn_challenges(user_id);
 CREATE INDEX IF NOT EXISTS idx_webauthn_challenges_expires ON webauthn_challenges(expires_at);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type       VARCHAR(40) NOT NULL,
+  title      VARCHAR(160) NOT NULL,
+  body       VARCHAR(500) NOT NULL DEFAULT '',
+  link       VARCHAR(200) NULL,
+  read_at    TIMESTAMP(3) NULL,
+  created_at TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read_at);
+
+CREATE TABLE IF NOT EXISTS webhooks (
+  id           SERIAL PRIMARY KEY,
+  user_id      INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  url          VARCHAR(500) NOT NULL,
+  events       VARCHAR(500) NOT NULL,
+  secret       VARCHAR(64) NOT NULL,
+  active       SMALLINT NOT NULL DEFAULT 1,
+  last_sent_at TIMESTAMP(3) NULL,
+  created_at   TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_webhooks_user ON webhooks(user_id);
