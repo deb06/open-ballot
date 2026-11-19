@@ -1075,7 +1075,73 @@ button, input, select, textarea { font: inherit; color: inherit; }
    Admin
    -------------------------------------------------------------------------- */
 
-.admin-shell { display: grid; gap: 26px; }
+/* Schema ERD diagram ----------------------------------------------------- */
+
+.schema-diagram-wrap { overflow: auto; padding: 8px; }
+.schema-canvas { position: relative; }
+.schema-lines { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 0; }
+.schema-line { stroke: var(--accent); stroke-width: 1.5; opacity: 0.55; }
+.schema-arrow { fill: var(--accent); opacity: 0.7; }
+
+.schema-card {
+  position: absolute;
+  background: var(--surface-gradient);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  z-index: 1;
+}
+.schema-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+.schema-card-name { font-weight: 700; font-size: 0.9rem; color: var(--text); }
+.schema-card-count { font-size: 0.72rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.schema-card-cols { padding: 4px 0; }
+.schema-card-col {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+.schema-card-col:last-child { border-bottom: 0; }
+.schema-card-colname { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 0.78rem; color: var(--text); }
+.schema-card-coltype { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: lowercase; }
+.schema-fk {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--cyan-400);
+  letter-spacing: 0.04em;
+}
+.schema-legend {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  align-items: center;
+}
+.schema-legend-line {
+  display: inline-block;
+  width: 24px;
+  height: 2px;
+  background: var(--accent);
+  margin-right: 6px;
+  vertical-align: middle;
+  opacity: 0.6;
+}
 
 /* Schema visualization (Supabase-style cards) ---------------------------- */
 

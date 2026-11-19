@@ -1175,31 +1175,106 @@ async function viewAdminSchema() {
   if (guard) return guard;
 
   const data = await api('GET', '/api/admin/schema');
-  const cards = data.tables.map((table) => {
-    const pk = (name) => name === 'id' || name.endsWith('_id') === false && name === 'id';
-    return el(
-      'div',
-      { class: 'schema-table' },
-      el('div', { class: 'schema-table-header' }, el('span', { class: 'schema-table-name' }, table.table), el('span', { class: 'schema-table-count' }, `${table.columns.length} cols`)),
-      el(
-        'div',
-        { class: 'schema-columns' },
-        ...table.columns.map((c) => {
-          const isPk = c.column_name === 'id';
-          return el(
-            'div',
-            { class: `schema-column${isPk ? ' is-pk' : ''}` },
-            el('span', { class: 'schema-col-name' }, c.column_name, isPk ? el('span', { class: 'schema-pk' }, 'PK') : null),
-            el('span', { class: `schema-col-type schema-type-${c.data_type}` }, c.data_type),
-            el('span', { class: 'schema-col-null' }, c.is_nullable === 'YES' || c.is_nullable === 'yes' ? 'nullable' : 'not null'),
-          );
-        }),
-      ),
-    );
+  const tables = data.tables;
+
+  const tableByName = Object.fromEntries(tables.map((t) => [t.table, t]));
+  const relationships = [];
+  for (const t of tables) {
+    for (const c of t.columns) {
+      const name = c.column_name;
+      if (name.endsWith('_id') && name !== 'id') {
+        const base = name.replace(/_id$/, '');
+        const candidates = [base + 's', base, base + 'es'];
+        const ref = candidates.find((n) => tableByName[n]);
+        if (ref && ref !== t.table) {
+          relationships.push({ from: t.table, to: ref, column: name });
+        }
+      }
+    }
+  }
+
+  const COLS = 3;
+  const CARD_W = 250;
+  const CARD_GAP = 28;
+  const ROW_GAP = 28;
+  const cardHeight = (t) => 40 + t.columns.length * 24;
+
+  const positions = {};
+  const colHeights = Array(COLS).fill(0);
+  tables.forEach((t, i) => {
+    const col = i % COLS;
+    const x = col * (CARD_W + CARD_GAP);
+    const y = colHeights[col];
+    positions[t.table] = { x, y, w: CARD_W, h: cardHeight(t) };
+    colHeights[col] += cardHeight(t) + ROW_GAP;
   });
+  const totalH = Math.max(...colHeights);
+  const totalW = COLS * (CARD_W + CARD_GAP) - CARD_GAP;
+
+  const container = el('div', { class: 'schema-diagram-wrap' });
+  const canvas = el('div', { class: 'schema-canvas', style: { width: totalW + 'px', height: totalH + 'px', position: 'relative' } });
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'schema-lines');
+  svg.setAttribute('width', totalW);
+  svg.setAttribute('height', totalH);
+  svg.style.position = 'absolute';
+  svg.style.top = '0';
+  svg.style.left = '0';
+  svg.style.pointerEvents = 'none';
+  canvas.append(svg);
+
+  for (const rel of relationships) {
+    const a = positions[rel.from];
+    const b = positions[rel.to];
+    if (!a || !b) continue;
+    const x1 = a.x + a.w;
+    const y1 = a.y + 20;
+    const x2 = b.x;
+    const y2 = b.y + 20;
+    const mx = (x1 + x2) / 2;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`);
+    path.setAttribute('class', 'schema-line');
+    path.setAttribute('fill', 'none');
+    svg.append(path);
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    arrow.setAttribute('points', `${x2},${y2} ${x2 - 8},${y2 - 4} ${x2 - 8},${y2 + 4}`);
+    arrow.setAttribute('class', 'schema-arrow');
+    svg.append(arrow);
+  }
+
+  for (const t of tables) {
+    const p = positions[t.table];
+    const card = el('div', { class: 'schema-card', style: { left: p.x + 'px', top: p.y + 'px', width: p.w + 'px' } });
+    card.append(el('div', { class: 'schema-card-header' }, el('span', { class: 'schema-card-name' }, t.table), el('span', { class: 'schema-card-count' }, `${t.columns.length}`)));
+    const colList = el('div', { class: 'schema-card-cols' });
+    for (const c of t.columns) {
+      const isPk = c.column_name === 'id';
+      const isFk = c.column_name.endsWith('_id') && c.column_name !== 'id';
+      colList.append(el('div', { class: 'schema-card-col' },
+        el('span', { class: 'schema-card-colname' }, c.column_name, isPk ? el('span', { class: 'schema-pk' }, 'PK') : null, isFk ? el('span', { class: 'schema-fk' }, 'FK') : null),
+        el('span', { class: 'schema-card-coltype' }, c.data_type),
+      ));
+    }
+    card.append(colList);
+    canvas.append(card);
+  }
+
+  container.append(canvas);
+
+  const legend = el('div', { class: 'schema-legend' },
+    el('span', {}, el('span', { class: 'schema-legend-line' }), ' foreign key'),
+    el('span', {}, el('span', { class: 'schema-pk' }, 'PK'), ' primary key'),
+    el('span', {}, el('span', { class: 'schema-fk' }, 'FK'), ' foreign key column'),
+  );
 
   return [
-    el('div', { class: 'admin-shell' }, adminHeader('Schema', 'Tables, columns and types in the live database.'), adminNav('schema'), el('div', { class: 'schema-grid' }, ...cards)),
+    el('div', { class: 'admin-shell' },
+      adminHeader('Schema', 'Entity-relationship diagram of the live database.'),
+      adminNav('schema'),
+      el('div', { class: 'card' }, container, legend),
+    ),
   ];
 }
 
