@@ -1077,44 +1077,72 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* Schema ERD diagram ----------------------------------------------------- */
 
-.schema-diagram-wrap { overflow: auto; padding: 8px; }
-.schema-canvas { position: relative; }
+.schema-diagram-wrap { overflow: auto; padding: 6px 6px 14px; max-height: 78vh; }
+.schema-canvas { position: relative; margin: 0 auto; }
 .schema-lines { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 0; }
-.schema-line { stroke: var(--accent); stroke-width: 1.5; opacity: 0.55; }
-.schema-arrow { fill: var(--accent); opacity: 0.7; }
+
+/* Faint static track that stays visible. */
+.schema-track {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  opacity: 0.22;
+}
+/* The glowing "worm" — one short dash that flows along the whole path. */
+.schema-worm {
+  fill: none;
+  stroke: url(#worm-grad);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px rgba(139, 123, 255, 0.8));
+  animation-name: schema-worm-flow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes schema-worm-flow {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: calc(-1 * var(--worm-len)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .schema-worm { animation: none; stroke-dasharray: none !important; opacity: 0.7; }
+}
+
+.schema-arrow { fill: var(--cyan-400); opacity: 0.85; }
 
 .schema-card {
   position: absolute;
-  background: var(--surface-gradient);
-  border: 1px solid var(--line);
+  background: var(--surface-1);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow), 0 0 0 1px rgba(0, 0, 0, 0.06);
   z-index: 1;
 }
 .schema-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 8px 13px;
   background: var(--surface-2);
   border-bottom: 1px solid var(--line);
 }
-.schema-card-name { font-weight: 700; font-size: 0.9rem; color: var(--text); }
-.schema-card-count { font-size: 0.72rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.schema-card-cols { padding: 4px 0; }
+.schema-card-name { font-weight: 700; font-size: 0.88rem; color: var(--text); white-space: nowrap; }
+.schema-card-count { font-size: 0.7rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.schema-card-cols { padding: 3px 0; }
 .schema-card-col {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 4px 12px;
+  height: 24px;
+  padding: 0 13px;
   font-size: 0.8rem;
   border-bottom: 1px solid var(--line);
+  white-space: nowrap;
 }
 .schema-card-col:last-child { border-bottom: 0; }
-.schema-card-colname { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 0.78rem; color: var(--text); }
-.schema-card-coltype { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: lowercase; }
+.schema-card-colname { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 0.76rem; color: var(--text); white-space: nowrap; }
+.schema-card-coltype { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono); white-space: nowrap; }
 .schema-fk {
   font-size: 0.6rem;
   font-weight: 700;
@@ -1133,14 +1161,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--text-muted);
   align-items: center;
 }
-.schema-legend-line {
+.schema-legend-worm {
   display: inline-block;
-  width: 24px;
-  height: 2px;
-  background: var(--accent);
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #8b7bff, #22d3ee, #8b7bff);
+  background-size: 200% 100%;
   margin-right: 6px;
   vertical-align: middle;
-  opacity: 0.6;
+  animation: legend-worm 1.6s linear infinite;
+  box-shadow: 0 0 6px rgba(139, 123, 255, 0.7);
+}
+@keyframes legend-worm {
+  from { background-position: 0% 0; }
+  to { background-position: -200% 0; }
 }
 
 /* Schema visualization (Supabase-style cards) ---------------------------- */

@@ -1177,6 +1177,16 @@ async function viewAdminSchema() {
   const data = await api('GET', '/api/admin/schema');
   const tables = data.tables;
 
+  const shortType = (t) => ({
+    'character varying': 'varchar',
+    'timestamp without time zone': 'timestamp',
+    'timestamp with time zone': 'timestamptz',
+    integer: 'int',
+    'integer unsigned': 'int',
+    'smallint unsigned': 'smallint',
+    'character': 'char',
+  }[t] || t);
+
   const tableByName = Object.fromEntries(tables.map((t) => [t.table, t]));
   const relationships = [];
   for (const t of tables) {
@@ -1184,7 +1194,7 @@ async function viewAdminSchema() {
       const name = c.column_name;
       if (name.endsWith('_id') && name !== 'id') {
         const base = name.replace(/_id$/, '');
-        const candidates = [base + 's', base, base + 'es'];
+        const candidates = [base + 's', base, base + 'es', 'election', 'user'];
         const ref = candidates.find((n) => tableByName[n]);
         if (ref && ref !== t.table) {
           relationships.push({ from: t.table, to: ref, column: name });
@@ -1193,53 +1203,108 @@ async function viewAdminSchema() {
     }
   }
 
+  // Wider cards, solid backgrounds, generous gaps.
   const COLS = 3;
-  const CARD_W = 250;
-  const CARD_GAP = 28;
-  const ROW_GAP = 28;
-  const cardHeight = (t) => 40 + t.columns.length * 24;
+  const CARD_W = 320;
+  const CARD_GAP = 44;
+  const ROW_GAP = 34;
+  const HEADER_H = 38;
+  const ROW_H = 24;
+  const cardHeight = (t) => HEADER_H + t.columns.length * ROW_H + 10;
+
+  // Put the "hub" tables (users, elections) in the middle column so lines fan out.
+  const hubs = tables.filter((t) => ['users', 'elections'].includes(t.table));
+  const others = tables.filter((t) => !['users', 'elections'].includes(t.table));
+  const ordered = [];
+  const half = Math.ceil(others.length / 2);
+  ordered.push(...others.slice(0, half));
+  ordered.push(...hubs);
+  ordered.push(...others.slice(half));
 
   const positions = {};
   const colHeights = Array(COLS).fill(0);
-  tables.forEach((t, i) => {
+  ordered.forEach((t, i) => {
     const col = i % COLS;
     const x = col * (CARD_W + CARD_GAP);
     const y = colHeights[col];
-    positions[t.table] = { x, y, w: CARD_W, h: cardHeight(t) };
+    positions[t.table] = { x, y, w: CARD_W, h: cardHeight(t), col };
     colHeights[col] += cardHeight(t) + ROW_GAP;
   });
   const totalH = Math.max(...colHeights);
   const totalW = COLS * (CARD_W + CARD_GAP) - CARD_GAP;
 
   const container = el('div', { class: 'schema-diagram-wrap' });
-  const canvas = el('div', { class: 'schema-canvas', style: { width: totalW + 'px', height: totalH + 'px', position: 'relative' } });
+  const canvas = el('div', { class: 'schema-canvas', style: { width: totalW + 'px', height: totalH + 'px' } });
 
+  // SVG layer behind the cards — solid card backgrounds hide lines passing beneath.
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('class', 'schema-lines');
   svg.setAttribute('width', totalW);
   svg.setAttribute('height', totalH);
-  svg.style.position = 'absolute';
-  svg.style.top = '0';
-  svg.style.left = '0';
-  svg.style.pointerEvents = 'none';
   canvas.append(svg);
+
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+  grad.setAttribute('id', 'worm-grad');
+  grad.setAttribute('x1', '0'); grad.setAttribute('y1', '0');
+  grad.setAttribute('x2', '1'); grad.setAttribute('y2', '0');
+  for (const [offset, color] of [['0%', '#8b7bff'], ['50%', '#22d3ee'], ['100%', '#8b7bff']]) {
+    const stop = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+    stop.setAttribute('offset', offset);
+    stop.setAttribute('stop-color', color);
+    grad.append(stop);
+  }
+  defs.append(grad);
+  svg.append(defs);
 
   for (const rel of relationships) {
     const a = positions[rel.from];
     const b = positions[rel.to];
     if (!a || !b) continue;
-    const x1 = a.x + a.w;
-    const y1 = a.y + 20;
-    const x2 = b.x;
-    const y2 = b.y + 20;
-    const mx = (x1 + x2) / 2;
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`);
-    path.setAttribute('class', 'schema-line');
-    path.setAttribute('fill', 'none');
-    svg.append(path);
+
+    // Anchor on the FK column row inside each card.
+    const fromIdx = tables.find((t) => t.table === rel.from).columns.findIndex((c) => c.column_name === rel.column);
+    const toIdx = 0; // primary key is the first column
+    const ay = a.y + HEADER_H + Math.max(0, fromIdx) * ROW_H + ROW_H / 2;
+    const by = b.y + HEADER_H + toIdx * ROW_H + ROW_H / 2;
+
+    let x1, x2, y1, y2, d;
+    if (b.x > a.x) {
+      x1 = a.x + a.w; x2 = b.x; y1 = ay; y2 = by;
+      const mx = (x1 + x2) / 2;
+      d = `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+    } else if (b.x < a.x) {
+      x1 = a.x; x2 = b.x + b.w; y1 = ay; y2 = by;
+      const mx = (x1 + x2) / 2;
+      d = `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+    } else {
+      x1 = a.x + a.w / 2; x2 = b.x + b.w / 2;
+      y1 = a.y + a.h; y2 = b.y;
+      const my = (y1 + y2) / 2;
+      d = `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`;
+    }
+
+    // Faint static track.
+    const track = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    track.setAttribute('d', d);
+    track.setAttribute('class', 'schema-track');
+    svg.append(track);
+
+    // Animated worm: one short glowing segment that flows along the whole path.
+    const worm = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    worm.setAttribute('d', d);
+    worm.setAttribute('class', 'schema-worm');
+    svg.append(worm);
+    const len = worm.getTotalLength();
+    worm.style.strokeDasharray = `26 ${len}`;
+    worm.style.setProperty('--worm-len', String(len));
+    worm.style.animationDuration = `${1.6 + len / 260}s`;
+
+    // Arrow at the target edge.
     const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    arrow.setAttribute('points', `${x2},${y2} ${x2 - 8},${y2 - 4} ${x2 - 8},${y2 + 4}`);
+    if (b.x > a.x) arrow.setAttribute('points', `${x2},${y2} ${x2 - 9},${y2 - 5} ${x2 - 9},${y2 + 5}`);
+    else if (b.x < a.x) arrow.setAttribute('points', `${x2},${y2} ${x2 + 9},${y2 - 5} ${x2 + 9},${y2 + 5}`);
+    else arrow.setAttribute('points', `${x2},${y2} ${x2 - 5},${y2 - 9} ${x2 + 5},${y2 - 9}`);
     arrow.setAttribute('class', 'schema-arrow');
     svg.append(arrow);
   }
@@ -1254,7 +1319,7 @@ async function viewAdminSchema() {
       const isFk = c.column_name.endsWith('_id') && c.column_name !== 'id';
       colList.append(el('div', { class: 'schema-card-col' },
         el('span', { class: 'schema-card-colname' }, c.column_name, isPk ? el('span', { class: 'schema-pk' }, 'PK') : null, isFk ? el('span', { class: 'schema-fk' }, 'FK') : null),
-        el('span', { class: 'schema-card-coltype' }, c.data_type),
+        el('span', { class: 'schema-card-coltype' }, shortType(c.data_type)),
       ));
     }
     card.append(colList);
@@ -1264,7 +1329,7 @@ async function viewAdminSchema() {
   container.append(canvas);
 
   const legend = el('div', { class: 'schema-legend' },
-    el('span', {}, el('span', { class: 'schema-legend-line' }), ' foreign key'),
+    el('span', {}, el('span', { class: 'schema-legend-worm' }), ' relationship (animated)'),
     el('span', {}, el('span', { class: 'schema-pk' }, 'PK'), ' primary key'),
     el('span', {}, el('span', { class: 'schema-fk' }, 'FK'), ' foreign key column'),
   );
