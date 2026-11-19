@@ -1569,15 +1569,13 @@ async function viewAdminSchema() {
     svg.append(track);
     linePaths.push(d);
 
-    // Animated worm: one short glowing segment that flows along the whole path.
+    // Continuous stream of glowing dots flowing from source to target.
+    // A repeating dash pattern (tiny dot + gap) animated by exactly one
+    // pattern period gives a seamless, always-on flow with no blink.
     const worm = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     worm.setAttribute('d', d);
     worm.setAttribute('class', 'schema-worm');
     svg.append(worm);
-    const len = worm.getTotalLength();
-    worm.style.strokeDasharray = `26 ${len}`;
-    worm.style.setProperty('--worm-len', String(len));
-    worm.style.animationDuration = `${1.6 + len / 260}s`;
 
     // Arrow at the target edge.
     const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');

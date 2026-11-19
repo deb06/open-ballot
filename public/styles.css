@@ -1091,23 +1091,24 @@ button, input, select, textarea { font: inherit; color: inherit; }
   stroke-width: 1.5;
   opacity: 0.22;
 }
-/* The glowing "worm" — one short dash that flows along the whole path. */
+/* A continuous stream of glowing dots flowing source -> target.
+   Dash pattern = 1px dot + 17px gap = 18px period. Animating the offset by
+   exactly one period is seamless, so the flow never blinks or empties. */
 .schema-worm {
   fill: none;
   stroke: url(#worm-grad);
-  stroke-width: 3.5;
+  stroke-width: 4;
   stroke-linecap: round;
-  filter: drop-shadow(0 0 4px rgba(139, 123, 255, 0.8));
-  animation-name: schema-worm-flow;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
+  stroke-dasharray: 1 17;
+  filter: drop-shadow(0 0 5px rgba(139, 123, 255, 0.9));
+  animation: schema-worm-flow 0.9s linear infinite;
 }
 @keyframes schema-worm-flow {
   from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: calc(-1 * var(--worm-len)); }
+  to { stroke-dashoffset: -18; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .schema-worm { animation: none; stroke-dasharray: none !important; opacity: 0.7; }
+  .schema-worm { animation: none; stroke-dasharray: 2 14; opacity: 0.75; }
 }
 
 .schema-arrow { fill: var(--cyan-400); opacity: 0.85; }
@@ -1166,19 +1167,19 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .schema-legend-worm {
   display: inline-block;
-  width: 26px;
-  height: 3px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #8b7bff, #22d3ee, #8b7bff);
-  background-size: 200% 100%;
+  width: 32px;
+  height: 4px;
   margin-right: 6px;
   vertical-align: middle;
-  animation: legend-worm 1.6s linear infinite;
-  box-shadow: 0 0 6px rgba(139, 123, 255, 0.7);
+  background-image: radial-gradient(circle, var(--accent-bright) 40%, transparent 45%);
+  background-size: 9px 4px;
+  background-repeat: repeat-x;
+  animation: legend-dots 0.9s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(139, 123, 255, 0.9));
 }
-@keyframes legend-worm {
-  from { background-position: 0% 0; }
-  to { background-position: -200% 0; }
+@keyframes legend-dots {
+  from { background-position: 0 0; }
+  to { background-position: -9px 0; }
 }
 
 /* Schema visualization (Supabase-style cards) ---------------------------- */
