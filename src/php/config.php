@@ -25,6 +25,7 @@ return [
     'trust_proxy' => env_value('TRUST_PROXY', '0') === '1',
     'db' => [
         'driver' => env_value('DB_DRIVER', 'mysql'),
+        'sslmode' => env_value('DB_SSLMODE', 'require'),
         'host' => env_value('DB_HOST', '127.0.0.1'),
         'port' => (int) env_value('DB_PORT', env_value('DB_DRIVER', 'mysql') === 'pgsql' ? '5433' : '3307'),
         'name' => env_value('DB_NAME', 'open_ballot'),

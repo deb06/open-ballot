@@ -144,3 +144,13 @@ CREATE TABLE IF NOT EXISTS passkeys (
   last_used_at TIMESTAMP(3) NULL
 );
 CREATE INDEX IF NOT EXISTS idx_passkeys_user ON passkeys(user_id);
+
+CREATE TABLE IF NOT EXISTS webauthn_challenges (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT NULL REFERENCES users(id) ON DELETE CASCADE,
+  challenge  CHAR(64) NOT NULL,
+  type       VARCHAR(20) NOT NULL,
+  expires_at TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_webauthn_challenges_user ON webauthn_challenges(user_id);
+CREATE INDEX IF NOT EXISTS idx_webauthn_challenges_expires ON webauthn_challenges(expires_at);

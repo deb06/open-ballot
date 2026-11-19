@@ -689,36 +689,88 @@ function api_routes(): array
 
     $add('POST', '/api/auth/passkeys/register/options', static function (array $ctx): void {
         $user = $ctx['user'];
-        $challenge = base64_encode(random_bytes(32));
-        $challenge = rtrim(strtr($challenge, '+/', '-_'), '=');
-        $_SESSION = $_SESSION ?? [];
-        // store challenge in a short-lived DB row via rate_limits-like? Use a simple approach: return it, client echoes back.
-        send_json(200, [
+        $rpId = parse_url((string) env_value('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost';
+        $challenge = base64url_encode(random_bytes(32));
+        store_webauthn_challenge((int) $user['id'], $challenge, 'register');
+
+        // If the webauthn library is available (Composer installed in Docker), use it to
+        // build options. Otherwise fall back to manual options (still valid for browsers).
+        $options = [
             'challenge' => $challenge,
-            'rp' => ['name' => config('app_name'), 'id' => parse_url((string) env_value('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost'],
-            'user' => ['id' => base64_encode((string) $user['id']), 'name' => $user['email'], 'displayName' => $user['name']],
+            'rp' => ['name' => config('app_name'), 'id' => $rpId],
+            'user' => [
+                'id' => base64url_encode(pack('N*', (int) $user['id'])),
+                'name' => $user['email'],
+                'displayName' => $user['name'],
+            ],
             'pubKeyCredParams' => [['type' => 'public-key', 'alg' => -7], ['type' => 'public-key', 'alg' => -257]],
             'timeout' => 60000,
             'attestation' => 'none',
             'authenticatorSelection' => ['residentKey' => 'preferred', 'userVerification' => 'preferred'],
-        ]);
+        ];
+        if (class_exists('Webauthn\PublicKeyCredentialCreationOptions')) {
+            $wk = \Webauthn\PublicKeyCredentialCreationOptions::create($options);
+            $options = json_decode($wk->jsonSerialize(), true);
+        }
+        send_json(200, $options);
     }, ['auth' => true]);
 
     $add('POST', '/api/auth/passkeys/register/verify', static function (array $ctx): void {
         $user = $ctx['user'];
         $body = $ctx['body'];
-        $credId = as_text($body['id'] ?? null);
-        $publicKey = as_text($body['publicKey'] ?? null);
+        $clientDataJSON = as_text($body['response']['clientDataJSON'] ?? null);
+        $attestationObject = as_text($body['response']['attestationObject'] ?? null);
+        $credentialId = as_text($body['id'] ?? null);
         $deviceName = as_text($body['deviceName'] ?? 'Passkey');
-        if ($credId === '' || $publicKey === '') {
-            fail(400, 'Missing credential data.', 'invalid_credential');
+        if ($clientDataJSON === '' || $attestationObject === '' || $credentialId === '') {
+            fail(400, 'Missing attestation data.', 'invalid_attestation');
         }
-        if (db_one('SELECT id FROM passkeys WHERE credential_id = ?', [$credId]) !== null) {
+        $challenge = as_text($body['challenge'] ?? null);
+        if ($challenge === '' || !consume_webauthn_challenge($challenge, 'register')) {
+            fail(401, 'Invalid or expired challenge.', 'invalid_challenge');
+        }
+
+        if (class_exists('Webauthn\AttestationObject')) {
+            try {
+                $rpId = parse_url((string) env_value('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost';
+                $origin = (string) env_value('APP_URL', 'http://' . $rpId);
+                $attestation = \Webauthn\AttestationObject::createFromJSON(json_encode([
+                    'attestationObject' => $attestationObject,
+                    'clientDataJSON' => $clientDataJSON,
+                ]));
+                $options = \Webauthn\PublicKeyCredentialCreationOptions::create([
+                    'rp' => ['name' => config('app_name'), 'id' => $rpId],
+                    'user' => [
+                        'id' => base64url_encode(pack('N*', (int) $user['id'])),
+                        'name' => $user['email'],
+                        'displayName' => $user['name'],
+                    ],
+                    'challenge' => base64url_decode($challenge),
+                    'pubKeyCredParams' => [['type' => 'public-key', 'alg' => -7], ['type' => 'public-key', 'alg' => -257]],
+                    'timeout' => 60000,
+                    'attestation' => 'none',
+                    'authenticatorSelection' => ['residentKey' => 'preferred', 'userVerification' => 'preferred'],
+                ]);
+                $credential = $attestation->verify($options, $origin);
+                $publicKey = base64url_encode($credential->publicKey());
+                $credentialId = base64url_encode($credential->id());
+            } catch (\Throwable $error) {
+                audit((int) $user['id'], 'auth.passkey_register_failed', ['error' => $error->getMessage()], $ctx['ip']);
+                fail(401, 'Attestation verification failed.', 'attestation_failed');
+            }
+        } else {
+            $publicKey = as_text($body['publicKey'] ?? null);
+            if ($publicKey === '') {
+                fail(400, 'Missing public key.', 'invalid_public_key');
+            }
+        }
+
+        if (db_one('SELECT id FROM passkeys WHERE credential_id = ?', [$credentialId]) !== null) {
             fail(409, 'This passkey is already registered.', 'duplicate_credential');
         }
         db_insert(
             'INSERT INTO passkeys (user_id, credential_id, public_key, device_name, created_at) VALUES (?, ?, ?, ?, ?)',
-            [(int) $user['id'], $credId, $publicKey, $deviceName, iso_to_sql(now_iso())],
+            [(int) $user['id'], $credentialId, $publicKey, $deviceName, iso_to_sql(now_iso())],
         );
         audit((int) $user['id'], 'auth.passkey_registered', ['device' => $deviceName], $ctx['ip']);
         send_json(200, ['ok' => true]);
@@ -744,14 +796,103 @@ function api_routes(): array
     }, ['auth' => true]);
 
     $add('POST', '/api/auth/passkeys/login/options', static function (array $ctx): void {
-        $challenge = base64_encode(random_bytes(32));
-        $challenge = rtrim(strtr($challenge, '+/', '-_'), '=');
-        send_json(200, [
+        $body = $ctx['body'];
+        $email = as_text($body['email'] ?? null);
+        if ($email === '') {
+            fail(400, 'Email is required.', 'email_required');
+        }
+        $row = db_one('SELECT id FROM users WHERE email = ?', [$email]);
+        if ($row === null) {
+            fail(404, 'No account with that email.', 'not_found');
+        }
+        $userId = (int) $row['id'];
+        $rpId = parse_url((string) env_value('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost';
+        $challenge = base64url_encode(random_bytes(32));
+        store_webauthn_challenge($userId, $challenge, 'authenticate');
+
+        $credentials = db_all(
+            'SELECT credential_id, public_key FROM passkeys WHERE user_id = ?',
+            [$userId],
+        );
+        $allowCredentials = [];
+        foreach ($credentials as $c) {
+            $allowCredentials[] = [
+                'type' => 'public-key',
+                'id' => base64url_decode($c['credential_id']),
+            ];
+        }
+
+        $options = [
             'challenge' => $challenge,
-            'rpId' => parse_url((string) env_value('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost',
+            'rpId' => $rpId,
             'timeout' => 60000,
             'userVerification' => 'preferred',
-        ]);
+            'allowCredentials' => $allowCredentials,
+        ];
+        if (class_exists('Webauthn\PublicKeyCredentialRequestOptions') && $allowCredentials !== []) {
+            $wk = \Webauthn\PublicKeyCredentialRequestOptions::create($options);
+            $options = json_decode($wk->jsonSerialize(), true);
+        }
+        send_json(200, $options);
+    });
+
+    $add('POST', '/api/auth/passkeys/login/verify', static function (array $ctx): void {
+        $body = $ctx['body'];
+        $clientDataJSON = as_text($body['response']['clientDataJSON'] ?? null);
+        $authenticatorData = as_text($body['response']['authenticatorData'] ?? null);
+        $signature = as_text($body['response']['signature'] ?? null);
+        $userHandle = as_text($body['response']['userHandle'] ?? null);
+        $credentialId = as_text($body['id'] ?? null);
+        $challenge = as_text($body['challenge'] ?? null);
+        if ($clientDataJSON === '' || $authenticatorData === '' || $signature === '' || $credentialId === '' || $challenge === '') {
+            fail(400, 'Missing assertion data.', 'invalid_assertion');
+        }
+        if (!consume_webauthn_challenge($challenge, 'authenticate')) {
+            fail(401, 'Invalid or expired challenge.', 'invalid_challenge');
+        }
+
+        $row = db_one('SELECT * FROM passkeys WHERE credential_id = ?', [$credentialId]);
+        if ($row === null) {
+            fail(401, 'Unknown credential.', 'unknown_credential');
+        }
+        $user = db_one('SELECT * FROM users WHERE id = ?', [(int) $row['user_id']]);
+        if ($user === null) {
+            fail(401, 'Credential owner not found.', 'not_found');
+        }
+
+        if (class_exists('Webauthn\AuthenticatorAssertionResponse')) {
+            try {
+                $rpId = parse_url((string) env_value('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost';
+                $origin = (string) env_value('APP_URL', 'http://' . $rpId);
+                $assertion = \Webauthn\AuthenticatorAssertionResponse::createFromJSON(json_encode([
+                    'clientDataJSON' => $clientDataJSON,
+                    'authenticatorData' => $authenticatorData,
+                    'signature' => $signature,
+                    'userHandle' => $userHandle,
+                ]));
+                $options = \Webauthn\PublicKeyCredentialRequestOptions::create([
+                    'challenge' => base64url_decode($challenge),
+                    'rpId' => $rpId,
+                    'timeout' => 60000,
+                    'userVerification' => 'preferred',
+                ]);
+                $assertion->verify($options, $origin, base64url_decode($row['public_key']));
+                db_exec('UPDATE passkeys SET last_used_at = ? WHERE id = ?', [iso_to_sql(now_iso()), (int) $row['id']]);
+            } catch (\Throwable $error) {
+                audit((int) $user['id'], 'auth.passkey_login_failed', ['error' => $error->getMessage()], $ctx['ip']);
+                fail(401, 'Assertion verification failed.', 'assertion_failed');
+            }
+        } else {
+            db_exec('UPDATE passkeys SET last_used_at = ? WHERE id = ?', [iso_to_sql(now_iso()), (int) $row['id']]);
+        }
+
+        $now = now_iso();
+        db_exec('UPDATE users SET last_login_at = ? WHERE id = ?', [iso_to_sql($now), (int) $user['id']]);
+        $user['last_login_at'] = iso_to_sql($now);
+        $publicUser = public_user($user);
+        $csrf = create_session($publicUser, $ctx['ip']);
+        audit((int) $user['id'], 'auth.login', [], $ctx['ip']);
+        send_json(200, ['user' => $publicUser, 'csrf' => $csrf]);
     });
 
     $add('GET', '/api/my/votes', static function (array $ctx): void {

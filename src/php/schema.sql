@@ -187,3 +187,14 @@ CREATE TABLE IF NOT EXISTS passkeys (
   KEY idx_passkeys_user (user_id),
   CONSTRAINT fk_passkeys_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS webauthn_challenges (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id    INT UNSIGNED NULL,
+  challenge  CHAR(64) NOT NULL,
+  type       ENUM('register','authenticate') NOT NULL,
+  expires_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_webauthn_challenges_user (user_id),
+  KEY idx_webauthn_challenges_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

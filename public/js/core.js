@@ -779,6 +779,7 @@ async function viewFor(parts) {
   if (root === 'reset-password' && sub) return viewResetPassword(sub);
   if (root === 'verify-email' && sub) return viewVerifyEmail(sub);
   if (root === 'register') return viewRegister();
+  if (root === 'passkeys') return viewPasskeys();
   if (root === 'account') return viewAccount();
   if (root === 'design') return viewDesign();
   if (root === 'admin' && sub === 'login') return viewAdminLogin();
@@ -790,6 +791,14 @@ async function viewFor(parts) {
   if (sub === 'schema') return viewAdminSchema();
   }
   return viewNotFound();
+}
+
+function authOnly() {
+  if (!state.user) {
+    go('#/login');
+    return true;
+  }
+  return false;
 }
 
 async function handleRoute() {

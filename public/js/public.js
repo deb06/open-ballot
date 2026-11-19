@@ -753,12 +753,69 @@ function viewLogin() {
   const password = el('input', { class: 'input', type: 'password', id: nextId('password'), required: true, autocomplete: 'current-password', placeholder: 'Your password' });
   const submit = el('button', { class: 'btn btn-primary btn-block btn-lg', type: 'submit' }, 'Sign in');
 
+  const passkeyBtn = el(
+    'button',
+    {
+      class: 'btn btn-outline btn-block btn-lg',
+      type: 'button',
+      onclick: async () => {
+        try {
+          setBusy(passkeyBtn, true, 'Starting passkey…');
+          const data = await api('POST', '/api/auth/passkeys/login/options', { email: email.value });
+          if ('serviceWorker' in navigator && 'credentials' in navigator) {
+            const assertion = await navigator.credentials.get({
+              publicKey: {
+                challenge: Uint8Array.from(atob(data.challenge), c => c.charCodeAt(0)),
+                rpId: data.rpId,
+                allowCredentials: data.allowCredentials?.map(c => ({
+                  id: Uint8Array.from(atob(c.id), x => x.charCodeAt(0)),
+                  type: 'public-key',
+                })) || [],
+                userVerification: data.userVerification || 'preferred',
+                timeout: data.timeout || 60000,
+              },
+            });
+            const resp = assertion.response;
+            const clientDataJSON = btoa(String.fromCharCode(...new Uint8Array(resp.clientDataJSON)));
+            const authenticatorData = btoa(String.fromCharCode(...new Uint8Array(resp.authenticatorData)));
+            const signature = btoa(String.fromCharCode(...new Uint8Array(resp.signature)));
+            const userHandle = resp.userHandle ? btoa(String.fromCharCode(...new Uint8Array(resp.userHandle))) : '';
+            const verify = await api('POST', '/api/auth/passkeys/login/verify', {
+              id: assertion.id,
+              challenge: data.challenge,
+              response: { clientDataJSON, authenticatorData, signature, userHandle },
+            });
+            state.user = verify.user;
+            state.csrf = verify.csrf;
+            renderHeader();
+            toast(`Welcome back, ${verify.user.name.split(' ')[0]}.`, 'success');
+            const target = state.returnTo && state.returnTo.startsWith('#/') ? state.returnTo : '#/';
+            state.returnTo = null;
+            go(target);
+          } else {
+            toast('Passkeys are not supported in this browser.', 'error');
+          }
+        } catch (error) {
+          errorBox.textContent = error.message;
+        } finally {
+          setBusy(passkeyBtn, false);
+        }
+      },
+    },
+    iconEl('fingerprint'),
+    'Sign in with Passkey',
+  );
+  if (!('PublicKeyCredential' in window)) {
+    passkeyBtn.style.display = 'none';
+  }
+
   const form = el(
     'form',
     { class: 'stack', novalidate: true },
     errorBox,
     el('div', { class: 'field' }, el('label', { for: email.id }, 'Email'), email),
     el('div', { class: 'field' }, el('label', { for: password.id }, 'Password'), password),
+    passkeyBtn,
     submit,
   );
 
@@ -850,7 +907,21 @@ function viewRegister() {
       state.csrf = data.csrf;
       renderHeader();
       toast('Account created. You can vote in any open election.', 'success');
-      go('#/');
+      if ('PublicKeyCredential' in window) {
+        const setup = await confirmDialog({
+          title: 'Set up passkey?',
+          message: 'Sign in faster with a passkey (fingerprint, Face ID, Windows Hello, or security key).',
+          confirmLabel: 'Set up passkey',
+        });
+        if (setup) {
+          await registerPasskey();
+          go('#/');
+        } else {
+          go('#/');
+        }
+      } else {
+        go('#/');
+      }
     } catch (error) {
       errorBox.textContent = error.message;
     } finally {
@@ -1211,4 +1282,128 @@ function viewVerifyEmail(token) {
     }
   })();
   return box;
+}
+
+/* --------------------------------------------------------------------------
+   Passkey (WebAuthn) registration + management
+   -------------------------------------------------------------------------- */
+
+async function registerPasskey() {
+  try {
+    const options = await api('POST', '/api/auth/passkeys/register/options');
+    if (!('PublicKeyCredential' in window)) throw new Error('Passkeys not supported');
+
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge: Uint8Array.from(atob(options.challenge), c => c.charCodeAt(0)),
+        rp: options.rp,
+        user: {
+          id: Uint8Array.from(atob(options.user.id), c => c.charCodeAt(0)),
+          name: options.user.name,
+          displayName: options.user.displayName,
+        },
+        pubKeyCredParams: options.pubKeyCredParams,
+        timeout: options.timeout,
+        attestation: options.attestation,
+        authenticatorSelection: options.authenticatorSelection,
+      },
+    });
+
+    const resp = cred.response;
+    const clientDataJSON = btoa(String.fromCharCode(...new Uint8Array(resp.clientDataJSON)));
+    const attestationObject = btoa(String.fromCharCode(...new Uint8Array(resp.attestationObject)));
+    const id = btoa(String.fromCharCode(...new Uint8Array(cred.id)));
+
+    await api('POST', '/api/auth/passkeys/register/verify', {
+      id,
+      challenge: options.challenge,
+      response: { clientDataJSON, attestationObject },
+      deviceName: 'Passkey',
+    });
+    toast('Passkey registered.', 'success');
+  } catch (error) {
+    toast(error.message || 'Passkey registration failed.', 'error');
+  }
+}
+
+async function viewPasskeys() {
+  const guard = authOnly();
+  if (guard) return guard;
+
+  const errorBox = el('div', { class: 'form-error', role: 'alert' });
+  const addBtn = el(
+    'button',
+    {
+      class: 'btn btn-primary',
+      type: 'button',
+      onclick: registerPasskey,
+    },
+    iconEl('fingerprint'),
+    'Add passkey',
+  );
+  if (!('PublicKeyCredential' in window)) {
+    addBtn.style.display = 'none';
+    errorBox.textContent = 'Passkeys are not supported in this browser.';
+  }
+
+  const list = el('div', { class: 'stack-sm' });
+
+  const load = async () => {
+    try {
+      const data = await api('GET', '/api/auth/passkeys');
+      const rows = data.passkeys.length
+        ? data.passkeys.map((pk) =>
+            el(
+              'div',
+              { class: 'card-flat row-between', style: { padding: '10px 14px' } },
+              el(
+                'div',
+                {},
+                el('div', { class: 'cell-title' }, pk.device_name || 'Passkey'),
+                el('div', { class: 'cell-sub muted' }, `Created ${formatDate(pk.created_at)}` + (pk.last_used_at ? ` · Last used ${formatDateTime(pk.last_used_at)}` : '')),
+              ),
+              el(
+                'button',
+                {
+                  class: 'btn btn-ghost btn-sm',
+                  type: 'button',
+                  onclick: async () => {
+                    const ok = await confirmDialog({ title: 'Remove passkey?', message: 'You will no longer be able to sign in with this passkey.', confirmLabel: 'Remove' });
+                    if (!ok) return;
+                    try {
+                      await api('DELETE', `/api/auth/passkeys/${pk.id}`);
+                      toast('Passkey removed.', 'success');
+                      load();
+                    } catch (error) {
+                      toast(error.message, 'error');
+                    }
+                  },
+                },
+                iconEl('trash'),
+                'Remove',
+              ),
+            ),
+          )
+        : [el('p', { class: 'muted' }, 'No passkeys registered.')];
+      list.replaceChildren(...rows);
+    } catch (error) {
+      errorBox.textContent = error.message;
+    }
+  };
+
+  load();
+
+  return [
+    el('div', { class: 'admin-shell' },
+      adminHeader('Passkeys', 'Manage your passkeys for passwordless sign-in.'),
+      el('div', { class: 'card' },
+        el('div', { class: 'row-between' },
+          el('h2', { style: { margin: 0 } }, 'Passkeys'),
+          addBtn,
+        ),
+        errorBox,
+        list,
+      ),
+    ),
+  ];
 }

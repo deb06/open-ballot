@@ -543,3 +543,43 @@ function merkle_verify(string $leaf, array $proof, string $root): bool
     }
     return hash_equals($root, $current);
 }
+
+/* --------------------------------------------------------------------------
+   WebAuthn helpers
+   -------------------------------------------------------------------------- */
+
+function base64url_encode(string $data): string
+{
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+function base64url_decode(string $data): ?string
+{
+    $data = strtr($data, '-_', '+/');
+    $data = str_pad($data, strlen($data) % 4, '=', STR_PAD_RIGHT);
+    $decoded = base64_decode($data, true);
+    return $decoded === false ? null : $decoded;
+}
+
+function store_webauthn_challenge(int $userId, string $challenge, string $type, int $ttlSeconds = 300): void
+{
+    $hash = sha256($challenge);
+    db_exec(
+        'INSERT INTO webauthn_challenges (user_id, challenge, type, expires_at) VALUES (?, ?, ?, ?)',
+        [$userId, $hash, $type, iso_to_sql(now_iso_at(time() + $ttlSeconds))],
+    );
+}
+
+function consume_webauthn_challenge(string $challenge, string $type): bool
+{
+    $hash = sha256($challenge);
+    $row = db_one(
+        'SELECT id FROM webauthn_challenges WHERE challenge = ? AND type = ? AND expires_at > ? LIMIT 1',
+        [$hash, $type, iso_to_sql(now_iso())],
+    );
+    if ($row === null) {
+        return false;
+    }
+    db_exec('DELETE FROM webauthn_challenges WHERE id = ?', [(int) $row['id']]);
+    return true;
+}

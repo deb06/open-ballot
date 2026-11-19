@@ -6,25 +6,29 @@ declare(strict_types=1);
  * PDO connection, schema bootstrap and first-run seed data.
  */
 
-function db(): PDO
+function db_connect(): PDO
 {
-    static $pdo = null;
-    if ($pdo instanceof PDO) {
-        return $pdo;
-    }
-
     $cfg = config('db');
     $driver = $cfg['driver'] ?? 'mysql';
+    if ($driver === 'pgssl') {
+        $driver = 'pgsql';
+    }
     if ($driver === 'pgsql') {
-        $dsn = sprintf('pgsql:host=%s;port=%d;dbname=%s;sslmode=require', $cfg['host'], (int) $cfg['port'], $cfg['name']);
+        $sslmode = $cfg['sslmode'] ?? 'require';
+        $dsn = sprintf('pgsql:host=%s;port=%d;dbname=%s;sslmode=%s', $cfg['host'], (int) $cfg['port'], $cfg['name'], $sslmode);
     } else {
         $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $cfg['host'], (int) $cfg['port'], $cfg['name']);
     }
 
+    $driver = $cfg['driver'] ?? 'mysql';
     $pdo = new PDO($dsn, $cfg['user'], $cfg['pass'], [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES => false,
+        // PostgreSQL with server-side prepares caches query plans across DDL,
+        // which produces "cached plan must not change result type" in a
+        // long-lived server. Client-side emulation avoids stale plans. All
+        // LIMIT/OFFSET values in this app are inlined ints, so this is safe.
+        PDO::ATTR_EMULATE_PREPARES => $driver === 'pgsql',
         PDO::ATTR_STRINGIFY_FETCHES => false,
     ]);
 
@@ -33,6 +37,26 @@ function db(): PDO
     }
 
     return $pdo;
+}
+
+/**
+ * Drop the cached connection. Called after DDL so PostgreSQL discards cached
+ * query plans whose result type changed (otherwise: "cached plan must not
+ * change result type").
+ */
+function db_reconnect(): void
+{
+    if (isset($GLOBALS['__ob_pdo']) && $GLOBALS['__ob_pdo'] instanceof PDO) {
+        $GLOBALS['__ob_pdo'] = null;
+    }
+}
+
+function db(): PDO
+{
+    if (!isset($GLOBALS['__ob_pdo']) || !($GLOBALS['__ob_pdo'] instanceof PDO)) {
+        $GLOBALS['__ob_pdo'] = db_connect();
+    }
+    return $GLOBALS['__ob_pdo'];
 }
 
 /**
@@ -337,14 +361,6 @@ function db_migrate_merkle(): void
         }
     }
 }
-{
-    try {
-        db()->query('SELECT 1 FROM users LIMIT 1');
-        return true;
-    } catch (PDOException) {
-        return false;
-    }
-}
 
 function db_ensure_ready(): void
 {
@@ -368,6 +384,9 @@ function db_ensure_ready(): void
         }
         db_migrate_merkle();
     }
+    // DDL above may have changed table shapes; drop the connection so PostgreSQL
+    // discards cached plans tied to the old result types.
+    db_reconnect();
     // Rate-limit counters are per process lifetime in the original design; clearing
     // them on (re)start keeps the limits effective without permanently blocking
     // a client across server restarts (and keeps the test suite repeatable).
