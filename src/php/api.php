@@ -655,6 +655,8 @@ function api_routes(): array
         }
         send_json(200, ['tables' => $result]);
     }, ['admin' => true]);
+
+    $add('GET', '/api/my/votes', static function (array $ctx): void {
         $rows = db_all(
             'SELECT e.*, p.voted_at
              FROM participation p
