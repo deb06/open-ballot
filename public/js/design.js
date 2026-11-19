@@ -127,6 +127,55 @@ function viewDesign() {
   }));
   wrap.append(heading);
 
+
+  /* ---- Foundation components ------------------------------------------ */
+  const foundation = el('div', { class: 'showcase-section' });
+  foundation.append(el('h3', { text: 'Foundations' }));
+
+  foundation.append(el('h4', { text: 'Breadcrumbs' }));
+  foundation.append(C.breadcrumbs([
+    { label: 'Home', href: '/' },
+    { label: 'Admin', href: '/admin' },
+    { label: 'Voters' },
+  ]));
+
+  foundation.append(el('h4', { text: 'Stepper' }));
+  foundation.append(C.stepper([{ label: 'Review' }, { label: 'Confirm' }, { label: 'Receipt' }], 1));
+
+  foundation.append(el('h4', { text: 'Timeline' }));
+  foundation.append(C.timeline([
+    { title: 'Ballot cast', meta: 'Today', body: 'A ballot was recorded and a receipt issued.', tone: 'success' },
+    { title: 'Voting opened', meta: 'Yesterday', body: 'The election was opened to voters.' },
+    { title: 'Election created', meta: '3 days ago', tone: 'warning' },
+  ]));
+
+  foundation.append(el('h4', { text: 'Empty states' }));
+  const states = el('div', { class: 'showcase-row' });
+  states.append(C.emptyState({ variant: 'empty', title: 'No ballots' }));
+  states.append(C.emptyState({ variant: 'denied', title: 'Access denied' }));
+  states.append(C.emptyState({ variant: 'offline', title: 'Offline' }));
+  foundation.append(states);
+
+  foundation.append(el('h4', { text: 'File drop' }));
+  foundation.append(C.fileDrop({ label: 'Drop a CSV or click to browse', hint: 'name,party,bio' }));
+
+  foundation.append(el('h4', { text: 'Data table' }));
+  foundation.append(C.dataTable({
+    columns: [
+      { key: 'name', label: 'Name' },
+      { key: 'role', label: 'Role' },
+      { key: 'votes', label: 'Ballots', align: 'right' },
+    ],
+    rows: [
+      { name: 'Aarav Mehta', role: 'Voter', votes: 12 },
+      { name: 'Sofia Alvarez', role: 'Admin', votes: 8 },
+      { name: 'Noah Williams', role: 'Voter', votes: 5 },
+    ],
+    exportName: 'showcase',
+    pageSize: 2,
+  }));
+  wrap.append(foundation);
+
   return [
     C.sectionHeading({ eyebrow: 'Open Ballot', title: 'Design system', subtitle: 'Tokens, components and states. Open #/design to review.' }),
     wrap,

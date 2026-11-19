@@ -387,3 +387,163 @@
 .strength-bar[data-score="3"]::after { background: var(--amber-500, #f59e0b); }
 .strength-bar[data-score="4"]::after,
 .strength-bar[data-score="5"]::after { background: var(--emerald-500, #10b981); }
+
+/* ==========================================================================
+   Foundation components — breadcrumbs, stepper, file drop, timeline, table
+   ========================================================================== */
+
+/* Breadcrumbs -------------------------------------------------------------- */
+.breadcrumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: var(--text-sm); color: var(--text-muted); }
+.breadcrumbs .crumb { color: var(--text-muted); text-decoration: none; }
+.breadcrumbs a.crumb:hover { color: var(--accent-bright); }
+.breadcrumbs .crumb.is-current { color: var(--text); font-weight: var(--weight-medium); }
+.breadcrumbs .crumb-sep { color: var(--text-faint); }
+
+/* Stepper ----------------------------------------------------------------- */
+.stepper { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; gap: 0; }
+.stepper-step { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; position: relative; text-align: center; }
+.stepper-step:not(:last-child)::after {
+  content: ''; position: absolute; top: 15px; left: calc(50% + 20px); right: calc(-50% + 20px);
+  height: 2px; background: var(--line-strong);
+}
+.stepper-step.is-done:not(:last-child)::after { background: var(--success); }
+.stepper-marker {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  font-size: var(--text-sm); font-weight: var(--weight-bold);
+  background: var(--surface-3); color: var(--text-muted);
+  border: 2px solid var(--line-strong); position: relative; z-index: 1;
+}
+.stepper-step.is-current .stepper-marker { background: var(--accent); color: var(--on-accent); border-color: var(--accent); box-shadow: var(--shadow-focus-ring); }
+.stepper-step.is-done .stepper-marker { background: var(--success-soft); color: var(--success); border-color: var(--success); }
+.stepper-label { font-size: var(--text-xs); color: var(--text-muted); }
+.stepper-step.is-current .stepper-label { color: var(--text); font-weight: var(--weight-semibold); }
+
+/* File drop ---------------------------------------------------------------- */
+.file-drop {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: var(--space-8) var(--space-5); border: 2px dashed var(--line-strong);
+  border-radius: var(--radius); background: var(--inset-bg); cursor: pointer;
+  transition: border-color var(--duration) var(--ease), background var(--duration) var(--ease);
+  text-align: center;
+}
+.file-drop:hover, .file-drop.is-dragging { border-color: var(--accent); background: var(--accent-soft); }
+.file-drop.has-file { border-style: solid; border-color: var(--success); }
+.file-drop-icon { color: var(--accent-bright); }
+.file-drop-icon svg { width: 32px; height: 32px; }
+.file-drop-label { font-weight: var(--weight-medium); color: var(--text); }
+.file-drop-name { color: var(--accent-bright); font-weight: var(--weight-semibold); }
+
+/* Timeline ----------------------------------------------------------------- */
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline-item { position: relative; padding: 0 0 var(--space-6) var(--space-7); }
+.timeline-item:not(:last-child)::before {
+  content: ''; position: absolute; left: 7px; top: 16px; bottom: 0; width: 2px; background: var(--line-strong);
+}
+.timeline-marker {
+  position: absolute; left: 0; top: 4px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--surface-3); border: 3px solid var(--accent); box-shadow: var(--shadow-xs);
+}
+.timeline-item.tone-success .timeline-marker { border-color: var(--success); }
+.timeline-item.tone-warning .timeline-marker { border-color: var(--warning); }
+.timeline-item.tone-danger .timeline-marker { border-color: var(--danger); }
+.timeline-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.timeline-text { color: var(--text-muted); margin-top: 4px; }
+
+/* Data table ---------------------------------------------------------------- */
+.data-table { display: flex; flex-direction: column; gap: 10px; }
+.dt-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.dt-search { max-width: 260px; }
+.dt-columns { position: relative; }
+.dt-column-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--z-raised);
+  min-width: 180px; padding: 8px; background: var(--surface-1); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow);
+}
+.dt-column-option { display: flex; align-items: center; gap: 8px; padding: 5px 6px; font-size: var(--text-sm); cursor: pointer; border-radius: 6px; }
+.dt-column-option:hover { background: var(--panel-hover); }
+.dt-host { max-height: 62vh; overflow: auto; }
+.data-table-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.data-table-table th, .data-table-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.data-table-table thead th { position: sticky; top: 0; background: var(--surface-2); z-index: 1; color: var(--text-muted); font-weight: var(--weight-semibold); }
+.data-table-table.is-dense th, .data-table-table.is-dense td { padding: 5px 10px; }
+.data-table-table tbody tr:hover { background: var(--panel-hover); }
+.data-table-table .align-right { text-align: right; }
+.data-table-table .align-center { text-align: center; }
+.dt-sort { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 0; }
+.dt-sort:hover { color: var(--accent-bright); }
+.dt-sort-icon { font-size: var(--text-xs); color: var(--text-faint); }
+.dt-empty { padding: 32px !important; text-align: center; }
+.dt-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* Empty-state variants ----------------------------------------------------- */
+.empty-error .empty-icon, .empty-offline .empty-icon { color: var(--danger); }
+.empty-denied .empty-icon { color: var(--warning); }
+.empty-notfound .empty-icon { color: var(--accent-bright); }
+
+@media (max-width: 720px) {
+  .dt-search { max-width: none; width: 100%; }
+  .dt-toolbar { align-items: stretch; }
+  .stepper-label { font-size: 0.68rem; }
+}
+
+/* ==========================================================================
+   App shell foundations — command palette, breadcrumbs, admin side rail
+   ========================================================================== */
+
+/* Command palette ---------------------------------------------------------- */
+.palette-backdrop {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  background: var(--backdrop); backdrop-filter: blur(6px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 12vh 16px 16px;
+}
+.palette-panel {
+  width: min(640px, 100%); max-height: 70vh; overflow: hidden;
+  display: flex; flex-direction: column;
+  background: var(--modal-bg); border: 1px solid var(--line-strong);
+  border-radius: var(--radius); box-shadow: var(--shadow-lg);
+}
+.palette-input { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding: 16px 18px; font-size: var(--text-md); }
+.palette-input:focus { box-shadow: none; background: transparent; }
+.palette-results { overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+.palette-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border: 0; border-radius: var(--radius-xs);
+  background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer;
+}
+.palette-item.is-active, .palette-item:hover { background: var(--accent-soft); }
+.palette-item.is-active .palette-item-label { color: var(--accent-bright); }
+.palette-item-label { font-weight: var(--weight-medium); }
+.palette-empty { padding: 24px; text-align: center; }
+
+/* Auto breadcrumbs --------------------------------------------------------- */
+.auto-breadcrumbs { margin-bottom: var(--space-5); }
+
+/* Admin contextual side rail ---------------------------------------------- */
+@media (min-width: 1024px) {
+  body[data-area="admin"] .admin-shell {
+    grid-template-columns: 216px minmax(0, 1fr);
+    align-items: start;
+    column-gap: var(--space-7);
+  }
+  body[data-area="admin"] .admin-shell > .admin-nav {
+    grid-column: 1;
+    grid-row: 1 / span 30;
+    position: sticky;
+    top: calc(var(--header-h) + var(--space-4));
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    background: var(--surface-1);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-3);
+    box-shadow: var(--shadow-sm);
+  }
+  body[data-area="admin"] .admin-shell > *:not(.admin-nav) { grid-column: 2; }
+  body[data-area="admin"] .admin-shell > .admin-nav a { text-align: left; }
+}
+
+@media (max-width: 1023px) {
+  body[data-area="admin"] .admin-shell { gap: var(--space-5); }
+}

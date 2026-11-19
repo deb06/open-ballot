@@ -132,6 +132,7 @@
   --shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.65);
   --shadow-lg: 0 40px 90px -30px rgba(0, 0, 0, 0.8);
   --ring: 0 0 0 3px rgba(139, 123, 255, 0.35);
+  --shadow-focus-ring: 0 0 0 3px rgba(139, 123, 255, 0.4);
 
   /* --------------------------------------------------------------------------
      Typography
@@ -165,6 +166,7 @@
      -------------------------------------------------------------------------- */
   --duration-fast: 120ms;
   --duration: 180ms;
+  --duration-normal: var(--duration);
   --duration-slow: 280ms;
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
@@ -193,6 +195,36 @@
   --z-modal: 400;
   --z-toast: 500;
   --z-tooltip: 600;
+
+  /* --------------------------------------------------------------------------
+     Status scale (election lifecycle) — theme-aware
+     -------------------------------------------------------------------------- */
+  --status-open-fg: #6ee7b7;
+  --status-open-bg: rgba(16, 185, 129, 0.14);
+  --status-open-line: rgba(16, 185, 129, 0.4);
+
+  --status-closed-fg: #cbd5e1;
+  --status-closed-bg: rgba(148, 163, 184, 0.14);
+  --status-closed-line: rgba(148, 163, 184, 0.35);
+
+  --status-scheduled-fg: #7dd3fc;
+  --status-scheduled-bg: rgba(14, 165, 233, 0.14);
+  --status-scheduled-line: rgba(14, 165, 233, 0.4);
+
+  --status-draft-fg: #c4b5fd;
+  --status-draft-bg: rgba(139, 123, 255, 0.14);
+  --status-draft-line: rgba(139, 123, 255, 0.4);
+
+  /* --------------------------------------------------------------------------
+     Data-visualization palette (6 categorical, accessible on dark)
+     -------------------------------------------------------------------------- */
+  --viz-1: #8b7bff;
+  --viz-2: #22d3ee;
+  --viz-3: #34d399;
+  --viz-4: #fbbf24;
+  --viz-5: #fb7185;
+  --viz-6: #a78bfa;
+  --viz-grid: rgba(255, 255, 255, 0.08);
 }
 
 /* --------------------------------------------------------------------------
@@ -241,6 +273,26 @@
   --shadow: 0 20px 50px -20px rgba(16, 24, 40, 0.28);
   --shadow-lg: 0 32px 70px -28px rgba(16, 24, 40, 0.35);
   --ring: 0 0 0 3px rgba(122, 102, 242, 0.25);
+  --shadow-focus-ring: 0 0 0 3px rgba(122, 102, 242, 0.3);
+
+  /* status scale — darker foregrounds for light surfaces */
+  --status-open-fg: #047857;
+  --status-open-bg: rgba(16, 185, 129, 0.12);
+  --status-open-line: rgba(5, 150, 105, 0.35);
+
+  --status-closed-fg: #475569;
+  --status-closed-bg: rgba(100, 116, 139, 0.12);
+  --status-closed-line: rgba(100, 116, 139, 0.3);
+
+  --status-scheduled-fg: #0369a1;
+  --status-scheduled-bg: rgba(14, 165, 233, 0.12);
+  --status-scheduled-line: rgba(3, 105, 161, 0.3);
+
+  --status-draft-fg: #6d28d9;
+  --status-draft-bg: rgba(139, 123, 255, 0.12);
+  --status-draft-line: rgba(109, 40, 217, 0.3);
+
+  --viz-grid: rgba(17, 24, 39, 0.1);
 }
 
 /* Respect reduced-motion preferences */

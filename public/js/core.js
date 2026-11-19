@@ -757,6 +757,17 @@ function renderHeader() {
     el(
       'button',
       {
+        class: 'btn btn-ghost btn-sm btn-icon header-search',
+        type: 'button',
+        onclick: openCommandPalette,
+        'aria-label': 'Open command palette (Ctrl+K)',
+        title: 'Search (Ctrl+K)',
+      },
+      el('span', { html: icons.search }),
+    ),
+    el(
+      'button',
+      {
         class: 'btn btn-ghost btn-sm btn-icon',
         type: 'button',
         id: 'theme-toggle',
@@ -931,6 +942,25 @@ function authOnly() {
   return false;
 }
 
+function autoBreadcrumbs(parts) {
+  const ROOT = {
+    election: 'Elections', verify: 'Verify ballot', login: 'Sign in', register: 'Create account',
+    account: 'Account', passkeys: 'Passkeys', help: 'Help', privacy: 'Privacy',
+    status: 'Status', audit: 'Audit chain', admin: 'Admin',
+  };
+  const root = parts[0];
+  if (!ROOT[root]) return null;
+  const items = [{ label: 'Home', href: '/' }];
+  if (root === 'admin') {
+    items.push({ label: 'Admin', href: '/admin' });
+    const SUB = { users: 'Voters', audit: 'Audit log', webhooks: 'Webhooks', schema: 'Schema', election: 'Elections' };
+    if (parts[1]) items.push({ label: SUB[parts[1]] || parts[1], href: null });
+  } else {
+    items.push({ label: ROOT[root], href: null });
+  }
+  return Components.breadcrumbs(items, { class: 'auto-breadcrumbs' });
+}
+
 async function handleRoute() {
   const token = ++routeToken;
   clearTimers();
@@ -944,6 +974,7 @@ async function handleRoute() {
   if (window.OpenBallotMeta) window.OpenBallotMeta.apply(parts);
 
   const main = app();
+  document.body.dataset.area = parts[0] === 'admin' ? 'admin' : 'public';
   main.replaceChildren(loading());
   window.scrollTo({ top: 0, behavior: 'auto' });
 
@@ -951,10 +982,124 @@ async function handleRoute() {
     const nodes = await viewFor(parts);
     if (token !== routeToken) return;
     main.replaceChildren(...(Array.isArray(nodes) ? nodes : [nodes]));
+    if (parts.length && window.Components && !main.querySelector('.breadcrumb, .breadcrumbs')) {
+      const crumbs = autoBreadcrumbs(parts);
+      if (crumbs) main.prepend(crumbs);
+    }
   } catch (error) {
     if (token !== routeToken) return;
     main.replaceChildren(errorView(error));
   }
+}
+
+/* --------------------------------------------------------------------------
+   Command palette (Ctrl/Cmd + K)
+   -------------------------------------------------------------------------- */
+
+let commandPaletteNode = null;
+
+function paletteItems() {
+  const items = [
+    { label: 'Home', hint: 'Browse elections', path: '/' },
+    { label: 'Verify a ballot', hint: 'Check a receipt', path: '/verify' },
+    { label: 'Help & FAQ', hint: 'Support', path: '/help' },
+    { label: 'Privacy', hint: 'Legal', path: '/privacy' },
+    { label: 'Status', hint: 'Service health', path: '/status' },
+    { label: 'Audit chain', hint: 'Transparency', path: '/audit' },
+  ];
+  if (state.user) {
+    items.push({ label: 'My account', hint: 'Ballots & security', path: '/account' });
+    items.push({ label: 'Passkeys', hint: 'Passwordless sign-in', path: '/passkeys' });
+  } else {
+    items.push({ label: 'Sign in', hint: 'Account', path: '/login' });
+    items.push({ label: 'Create account', hint: 'Register', path: '/register' });
+  }
+  if (state.user && state.user.role === 'admin') {
+    items.push(
+      { label: 'Admin overview', hint: 'Dashboard', path: '/admin' },
+      { label: 'Voters', hint: 'Admin · register', path: '/admin/users' },
+      { label: 'Audit log', hint: 'Admin', path: '/admin/audit' },
+      { label: 'Webhooks', hint: 'Admin', path: '/admin/webhooks' },
+      { label: 'Schema', hint: 'Admin · ERD', path: '/admin/schema' },
+    );
+  }
+  items.push(
+    { label: 'Toggle theme', hint: 'Dark / light', action: toggleTheme },
+    ...(state.user ? [{ label: 'Sign out', hint: 'Account', action: signOut }] : []),
+  );
+  return items;
+}
+
+function closeCommandPalette() {
+  if (commandPaletteNode) {
+    commandPaletteNode.remove();
+    commandPaletteNode = null;
+    releaseScrollLock();
+  }
+}
+
+function openCommandPalette() {
+  if (commandPaletteNode) { closeCommandPalette(); return; }
+  let items = paletteItems();
+  let index = 0;
+
+  const results = el('div', { class: 'palette-results', role: 'listbox', 'aria-label': 'Commands' });
+  const input = el('input', {
+    class: 'input palette-input', type: 'search', placeholder: 'Search pages and actions…',
+    'aria-label': 'Search commands', autocomplete: 'off', spellcheck: 'false',
+    oninput: (e) => { query = e.target.value.toLowerCase(); index = 0; paint(); },
+  });
+  let query = '';
+
+  const activate = (item) => {
+    closeCommandPalette();
+    if (item.action) item.action();
+    else go(item.path);
+  };
+
+  function paint() {
+    const filtered = items.filter((item) => !query || `${item.label} ${item.hint || ''}`.toLowerCase().includes(query)).slice(0, 12);
+    index = Math.min(index, Math.max(0, filtered.length - 1));
+    results.replaceChildren(...filtered.map((item, i) =>
+      el('button', {
+        class: `palette-item${i === index ? ' is-active' : ''}`,
+        type: 'button', role: 'option', 'aria-selected': i === index ? 'true' : 'false',
+        onmouseenter: () => { index = i; paint(); },
+        onclick: () => activate(item),
+      },
+        el('span', { class: 'palette-item-label', text: item.label }),
+        item.hint ? el('span', { class: 'palette-item-hint small muted', text: item.hint }) : null,
+      ),
+    ));
+    if (!filtered.length) results.append(el('div', { class: 'palette-empty small muted' }, 'No matches.'));
+  }
+
+  const panel = el('div', { class: 'palette-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Command palette' }, input, results);
+  const backdrop = el('div', { class: 'palette-backdrop', onclick: closeCommandPalette }, panel);
+  backdrop.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); closeCommandPalette(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); index += 1; paint(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); index = Math.max(0, index - 1); paint(); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      const filtered = items.filter((item) => !query || `${item.label} ${item.hint || ''}`.toLowerCase().includes(query)).slice(0, 12);
+      if (filtered[index]) activate(filtered[index]);
+    }
+  });
+  paint();
+  document.getElementById('modal-root').append(backdrop);
+  commandPaletteNode = backdrop;
+  lockScroll();
+  requestAnimationFrame(() => input.focus());
+}
+
+function setupCommandPalette() {
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      openCommandPalette();
+    }
+  });
 }
 
 function setupLinkInterception() {
@@ -973,6 +1118,7 @@ function setupLinkInterception() {
 async function boot() {
   applyTheme();
   setupNav();
+  setupCommandPalette();
   setupLinkInterception();
   renderHeader();
   await refreshMe();

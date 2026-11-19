@@ -1075,6 +1075,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
    Admin
    -------------------------------------------------------------------------- */
 
+/* Admin shell ------------------------------------------------------------- */
+.admin-shell { display: grid; gap: 26px; }
+
 /* Schema ERD diagram ----------------------------------------------------- */
 
 .schema-diagram-wrap { overflow: auto; padding: 6px 6px 14px; max-height: 78vh; }

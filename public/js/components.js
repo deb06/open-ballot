@@ -137,8 +137,18 @@ const Components = (() => {
      Empty state
      ------------------------------------------------------------------------ */
   function emptyState(props = {}, ...children) {
-    const { icon = 'ballot', title = 'Nothing here yet', message = '', ...rest } = props;
-    const node = el('div', { ...rest, class: ['empty-state', props.class].filter(Boolean).join(' ') });
+    const VARIANTS = {
+      empty: { icon: 'ballot', title: 'Nothing here yet' },
+      error: { icon: 'alert', title: 'Something went wrong' },
+      offline: { icon: 'alert', title: 'You are offline' },
+      denied: { icon: 'lock', title: 'Access denied' },
+      notfound: { icon: 'search', title: 'Page not found' },
+    };
+    const { variant = 'empty', icon: iconProp = null, title: titleProp = null, message = '', ...rest } = props;
+    const preset = VARIANTS[variant] || VARIANTS.empty;
+    const icon = iconProp || preset.icon;
+    const title = titleProp || preset.title;
+    const node = el('div', { ...rest, class: ['empty-state', `empty-${variant}`, props.class].filter(Boolean).join(' ') });
     node.append(el('div', { class: 'empty-icon', 'aria-hidden': 'true', html: icons[icon] || icons.ballot }));
     node.append(el('h3', { class: 'empty-title', text: title }));
     if (message) node.append(el('p', { class: 'empty-message', text: message }));
@@ -240,9 +250,211 @@ const Components = (() => {
     return node;
   }
 
+  /* ------------------------------------------------------------------------
+     Breadcrumbs
+     ------------------------------------------------------------------------ */
+  function breadcrumbs(items = [], props = {}) {
+    const nav = el('nav', { ...props, class: ['breadcrumbs', props.class].filter(Boolean).join(' '), 'aria-label': 'Breadcrumb' });
+    items.forEach((item, index) => {
+      const last = index === items.length - 1;
+      if (last) {
+        nav.append(el('span', { class: 'crumb is-current', 'aria-current': 'page' }, item.label));
+      } else {
+        nav.append(el('a', { class: 'crumb', href: item.href || '#' }, item.label));
+        nav.append(el('span', { class: 'crumb-sep', 'aria-hidden': 'true' }, '/'));
+      }
+    });
+    return nav;
+  }
+
+  /* ------------------------------------------------------------------------
+     Stepper
+     ------------------------------------------------------------------------ */
+  function stepper(steps = [], active = 0, props = {}) {
+    const node = el('ol', { ...props, class: ['stepper', props.class].filter(Boolean).join(' ') });
+    steps.forEach((step, index) => {
+      const state = index < active ? 'done' : index === active ? 'current' : 'todo';
+      node.append(el('li', { class: `stepper-step is-${state}`, 'aria-current': state === 'current' ? 'step' : null },
+        el('span', { class: 'stepper-marker', 'aria-hidden': 'true' }, state === 'done' ? '✓' : String(index + 1)),
+        el('span', { class: 'stepper-label' }, step.label || step),
+      ));
+    });
+    return node;
+  }
+
+  /* ------------------------------------------------------------------------
+     File drop zone
+     ------------------------------------------------------------------------ */
+  function fileDrop(props = {}) {
+    const { accept = '', label = 'Drop a file here or click to browse', hint = '', onFile = null, multiple = false, id = nextId('filedrop'), ...rest } = props;
+    const input = el('input', { id, type: 'file', class: 'visually-hidden', accept, multiple });
+    const zone = el('label', {
+      ...rest,
+      for: id,
+      class: ['file-drop', props.class].filter(Boolean).join(' '),
+    },
+      el('span', { class: 'file-drop-icon', 'aria-hidden': 'true', html: icons.upload || '' }),
+      el('span', { class: 'file-drop-label', text: label }),
+      hint ? el('span', { class: 'file-drop-hint small muted', text: hint }) : null,
+      input,
+    );
+    const handle = (files) => {
+      if (!files || !files.length) return;
+      zone.classList.add('has-file');
+      const nameZone = zone.querySelector('.file-drop-name');
+      const text = multiple ? `${files.length} files selected` : files[0].name;
+      if (nameZone) nameZone.textContent = text;
+      else zone.append(el('span', { class: 'file-drop-name small' }, text));
+      if (typeof onFile === 'function') onFile(multiple ? Array.from(files) : files[0]);
+    };
+    input.addEventListener('change', () => handle(input.files));
+    ['dragenter', 'dragover'].forEach((type) => zone.addEventListener(type, (e) => { e.preventDefault(); zone.classList.add('is-dragging'); }));
+    ['dragleave', 'drop'].forEach((type) => zone.addEventListener(type, (e) => { e.preventDefault(); zone.classList.remove('is-dragging'); }));
+    zone.addEventListener('drop', (e) => handle(e.dataTransfer.files));
+    return zone;
+  }
+
+  /* ------------------------------------------------------------------------
+     Timeline
+     ------------------------------------------------------------------------ */
+  function timeline(items = [], props = {}) {
+    const node = el('ol', { ...props, class: ['timeline', props.class].filter(Boolean).join(' ') });
+    for (const item of items) {
+      node.append(el('li', { class: `timeline-item${item.tone ? ` tone-${item.tone}` : ''}` },
+        el('span', { class: 'timeline-marker', 'aria-hidden': 'true' }),
+        el('div', { class: 'timeline-body' },
+          el('div', { class: 'timeline-head' },
+            el('strong', {}, item.title || ''),
+            item.meta ? el('span', { class: 'small muted' }, item.meta) : null,
+          ),
+          item.body ? el('div', { class: 'timeline-text small' }, item.body) : null,
+        ),
+      ));
+    }
+    return node;
+  }
+
+  /* ------------------------------------------------------------------------
+     Data table — sortable, searchable, paginated, column toggle, CSV export
+     ------------------------------------------------------------------------ */
+  function dataTable(props = {}) {
+    const {
+      columns = [],
+      rows = [],
+      pageSize = 10,
+      dense = false,
+      searchable = true,
+      exportName = null,
+      empty = 'No rows to display.',
+      ...rest
+    } = props;
+
+    let view = rows.slice();
+    let sortKey = null;
+    let sortDir = 1;
+    let page = 0;
+    let query = '';
+    let isDense = dense;
+    const hidden = new Set();
+
+    const root = el('div', { ...rest, class: ['data-table', props.class].filter(Boolean).join(' ') });
+    const toolbar = el('div', { class: 'dt-toolbar' });
+    const host = el('div', { class: 'table-wrap dt-host' });
+    const footer = el('div', { class: 'dt-footer' });
+
+    const search = el('input', {
+      class: 'input dt-search', type: 'search', placeholder: 'Search…', 'aria-label': 'Search rows',
+      oninput: (e) => { query = e.target.value.toLowerCase(); page = 0; render(); },
+    });
+
+    const densityBtn = button({ variant: 'ghost', size: 'sm', 'aria-label': 'Toggle row density', onclick: () => { isDense = !isDense; render(); } },
+      isDense ? 'Comfortable' : 'Compact');
+
+    const colPanel = el('details', { class: 'dt-columns' },
+      el('summary', { class: 'btn btn-ghost btn-sm' }, 'Columns'),
+      el('div', { class: 'dt-column-menu' }, ...columns.map((col) => {
+        const cb = el('input', { type: 'checkbox', checked: !hidden.has(col.key), onchange: (e) => {
+          if (e.target.checked) hidden.delete(col.key); else hidden.add(col.key);
+          render();
+        } });
+        return el('label', { class: 'dt-column-option' }, cb, col.label || col.key);
+      })),
+    );
+
+    const exportBtn = button({ variant: 'ghost', size: 'sm', onclick: () => {
+      const visible = columns.filter((c) => !hidden.has(c.key));
+      const cell = (row, c) => {
+        const v = row[c.key];
+        return v === null || v === undefined ? '' : String(v).replace(/"/g, '""');
+      };
+      const lines = [visible.map((c) => `"${c.label || c.key}"`).join(',')]
+        .concat(view.map((row) => visible.map((c) => `"${cell(row, c)}"`).join(',')));
+      if (typeof downloadFile === 'function') downloadFile(`${exportName || 'export'}.csv`, '\uFEFF' + lines.join('\r\n'), 'text/csv;charset=utf-8');
+    } }, iconEl('download'), 'CSV');
+
+    toolbar.append(
+      searchable ? search : el('span'),
+      el('div', { class: 'row', style: { gap: '6px' } }, colPanel, densityBtn, exportBtn),
+    );
+
+    function render() {
+      view = rows.filter((row) => !query || columns.some((c) => String(row[c.key] ?? '').toLowerCase().includes(query)));
+      if (sortKey) {
+        view.sort((a, b) => {
+          const av = a[sortKey], bv = b[sortKey];
+          const cmp = typeof av === 'number' && typeof bv === 'number'
+            ? av - bv
+            : String(av ?? '').localeCompare(String(bv ?? ''), undefined, { numeric: true });
+          return cmp * sortDir;
+        });
+      }
+      const visible = columns.filter((c) => !hidden.has(c.key));
+      const pageCount = Math.max(1, Math.ceil(view.length / pageSize));
+      page = Math.min(page, pageCount - 1);
+      const slice = view.slice(page * pageSize, (page + 1) * pageSize);
+
+      const head = el('thead', {}, el('tr', {}, ...visible.map((c) =>
+        el('th', { scope: 'col', class: c.sortable === false ? '' : 'is-sortable', style: c.width ? { width: c.width } : {} },
+          c.sortable === false
+            ? c.label || c.key
+            : el('button', { class: 'dt-sort', type: 'button', 'aria-label': `Sort by ${c.label || c.key}`, onclick: () => {
+                if (sortKey === c.key) sortDir *= -1; else { sortKey = c.key; sortDir = 1; }
+                render();
+              } },
+              c.label || c.key,
+              el('span', { class: 'dt-sort-icon', 'aria-hidden': 'true' }, sortKey === c.key ? (sortDir > 0 ? '↑' : '↓') : '↕'),
+            ),
+          ),
+      )));
+
+      const body = el('tbody', {}, ...(slice.length
+        ? slice.map((row) => el('tr', {}, ...visible.map((c) =>
+            el('td', { class: c.align ? `align-${c.align}` : '' }, typeof c.render === 'function' ? c.render(row) : (row[c.key] ?? '—')),
+          )))
+        : [el('tr', {}, el('td', { colspan: String(visible.length || 1), class: 'dt-empty' },
+            empty instanceof Node ? empty : el('span', { class: 'muted' }, empty)))]));
+
+      host.replaceChildren(el('table', { class: `data-table-table${isDense ? ' is-dense' : ''}` }, head, body));
+
+      footer.replaceChildren(
+        el('span', { class: 'small muted' }, `${view.length} ${view.length === 1 ? 'row' : 'rows'}`),
+        el('div', { class: 'row', style: { gap: '8px' } },
+          button({ variant: 'ghost', size: 'sm', disabled: page === 0, onclick: () => { page -= 1; render(); } }, 'Previous'),
+          el('span', { class: 'small muted' }, `Page ${page + 1} of ${pageCount}`),
+          button({ variant: 'ghost', size: 'sm', disabled: page >= pageCount - 1, onclick: () => { page += 1; render(); } }, 'Next'),
+        ),
+      );
+    }
+
+    render();
+    root.append(toolbar, host, footer);
+    return root;
+  }
+
   return {
     button, badge, dot, card, callout, field, emptyState, stat, progress,
     avatar, tabs, receiptCode, skeleton, sectionHeading,
+    breadcrumbs, stepper, fileDrop, timeline, dataTable,
   };
 })();
 
