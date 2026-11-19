@@ -1,9 +1,25 @@
 # Open Ballot — Future Roadmap
 
-> Status: living document · Last updated 2026-11-20
+> Status: **all feature waves complete** · Last updated 2026-11-20
 > Companion to `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md`
 
 This document plans the next waves of work. Everything already shipped (Phases 1–2, A, H, D, B, and the targeted C/E/F/G items) is considered the **baseline**. What follows is grouped by user value and technical dependency.
+
+---
+
+## Completion status (2026-11-20)
+
+| Wave | Status |
+|---|---|
+| 1 — Trust & transparency | ✅ Archive, receipt Merkle index, full audit-chain verifier, observer role, signed PDF |
+| 2 — Account & security | ✅ Sessions, login alerts, trusted devices, password policy, OAuth (GitHub/Google), recovery contact |
+| 3 — Election capabilities | ✅ Ranked-choice IRV, multi-choice, templates library, bulk voter import UI, email invitations, wizard-style creation form |
+| 4 — Platform & ops | ✅ Sentry, backups, status history, public API + keys, webhook delivery history, docker-compose |
+| 5 — Nice-to-haves | ✅ i18n (EN/ES), per-election branding, email digest, results party screen, command palette |
+| UI Waves A–D | ✅ Shared components, breadcrumbs, command palette, voter polish, admin polish, design tokens |
+| UI Wave E (visual refresh concepts) | ⏸ Optional — editorial hero, glass cards, page transitions, control-room layout |
+
+**Verification:** 38/38 smoke checks, zero console errors, all routes browser-verified.
 
 ---
 

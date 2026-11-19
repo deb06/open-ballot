@@ -97,6 +97,18 @@ Full guide: [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md).
 | Project report (DOCX) | `docs/Open_Ballot_Project_Report.docx` |
 | Project report (PDF) | `docs/Open_Ballot_Project_Report.pdf` |
 | Deployment guide | `docs/DEPLOY_RENDER.md` |
+| i18n (English + Español) | `public/js/i18n.js` + header switcher |
+| Per-election branding | `brand_color`, `logo_url` on elections; editor in election form |
+| Public API keys | `Admin → API keys` + `/api/public/*` |
+| Results party | `/party` |
+| Recovery contact | `Account → Recovery contact` |
+| Weekly digest | `Account → Weekly digest` + `/api/cron/digest` |
+| OAuth sign-in | `/api/auth/oauth/:provider` (GitHub/Google via env) |
+| Ranked-choice IRV | `ballot_type=ranked`, `/api/elections/:id/irv` |
+| Templates library | `Admin → Election → Templates` |
+| Email invitations | `Admin → Election → Voters → Send invitations` |
+| Observer role | `role=observer`, `/observer` |
+| Ops guide | `docs/OPS.md` |
 | Future roadmap (features + UI) | `docs/FUTURE_ROADMAP.md` |
 | OpenAPI specification | `public/openapi.json` |
 | Enhancement plan | `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` |
