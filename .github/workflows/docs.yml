@@ -1,0 +1,62 @@
+name: Docs & README
+
+# Regenerates the project report (DOCX + PDF) and README on every push to main.
+# The report is rebuilt from a pristine template + docs/report/updates.json, so
+# all academic formatting, tables and screenshots are preserved.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'data/**'
+      - 'tools/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    # Prevent an infinite loop from the docs commit this job creates.
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install python-docx reportlab
+
+      - name: Install LibreOffice (DOCX -> PDF converter)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libreoffice-writer
+
+      - name: Regenerate report and README
+        run: |
+          python scripts/generate_report.py
+          python scripts/generate_readme.py
+
+      - name: Report artifacts
+        run: ls -lh docs/Open_Ballot_Project_Report.docx docs/Open_Ballot_Project_Report.pdf README.md
+
+      - name: Commit generated files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/Open_Ballot_Project_Report.docx docs/Open_Ballot_Project_Report.pdf
+          if git diff --cached --quiet; then
+            echo "No documentation changes."
+          else
+            git commit -m "docs: regenerate report + README [skip ci]"
+            git push
+          fi

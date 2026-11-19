@@ -16,6 +16,9 @@
     "tunnel:named:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tunnel-named.ps1 stop",
     "live": "live.bat",
     "test": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test.ps1",
+    "docs": "python scripts\\generate_report.py && python scripts\\generate_readme.py",
+    "docs:report": "python scripts\\generate_report.py",
+    "docs:readme": "python scripts\\generate_readme.py",
     "db:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-start.ps1",
     "db:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-stop.ps1",
     "db:init": "tools\\php\\php.exe scripts\\init-db.php --verbose"

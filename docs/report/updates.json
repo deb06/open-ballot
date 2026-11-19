@@ -1,0 +1,88 @@
+{
+  "replace": [
+    {
+      "find": "Open Ballot is built with HTML5, CSS3 and vanilla JavaScript on the client, PHP 8.5 on the server and MariaDB 11.8 (MySQL-compatible) for storage. It includes an administrator dashboard for elections, candidates, schedules, result publication, the voter register and live turnout, along with automated setup, testing and public HTTPS deployment scripts. The result is a transparent, auditable and low-cost voting platform suitable for student councils, clubs and small organisations.",
+      "with": "Open Ballot is built with HTML5, CSS3 and a component-based vanilla JavaScript front end, PHP 8.5 on the server and PostgreSQL 16 in production (MariaDB 11.8 for local development). It includes a design system with dark and light themes, a PWA with offline support, an administrator dashboard for elections, candidates, schedules, result publication, the voter register and live turnout, receipt-verifiable ballots with Merkle proofs, passkey authentication, and automated deployment to Render with a permanent HTTPS address. The result is a transparent, auditable and low-cost voting platform suitable for student councils, clubs and small organisations."
+    },
+    {
+      "find": "Portable setup and lifecycle scripts, a 38-check automated test suite and Cloudflare HTTPS tunnels for public access (a temporary quick tunnel or a named tunnel with a permanent hostname).",
+      "with": "Portable setup and lifecycle scripts, a 38-check automated test suite, a Docker image, a Render Blueprint for free production hosting with a permanent HTTPS subdomain, a free Neon PostgreSQL database, and optional Cloudflare HTTPS tunnels for local demonstrations."
+    },
+    {
+      "find": "Hash-based routing, form handling, API calls, dialogs and live tally refresh.",
+      "with": "Hash-based routing, a reusable component library and design tokens, dark/light themes, a service worker for offline use, form handling, API calls, accessible dialogs and live tally refresh."
+    },
+    {
+      "find": "MariaDB 11.8 (MySQL-compatible)",
+      "with": "PostgreSQL 16 (production), MariaDB 11.8 (local)"
+    },
+    {
+      "find": "For a permanent production deployment, a small Linux VPS with 1 vCPU and 1 GB RAM is sufficient for a few thousand voters. The recommended server stack is nginx or Apache with PHP-FPM, a managed MySQL 8/MariaDB 10.6+ instance, TLS termination with a valid certificate, and nightly backups of both the database and data/secret.key. A lighter-weight permanent address is also supported: a named Cloudflare tunnel maps a hostname on a Cloudflare-managed domain to this machine without opening an inbound port. The application itself needs no code changes; only the DB_* environment variables and the web-server document root change.",
+      "with": "For permanent production hosting the project ships a Dockerfile and a Render Blueprint. Render runs the PHP application on its free web tier with a managed HTTPS subdomain, and Neon provides a free PostgreSQL database that does not expire. All secrets are supplied through environment variables (DB_DRIVER, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, ADMIN_EMAIL, ADMIN_PASSWORD and APP_URL). The schema and seed administrator are created automatically on first boot. A named Cloudflare tunnel remains available for local demonstrations, and the same PHP code can also be deployed on a small VPS behind nginx or Apache with PHP-FPM."
+    },
+    {
+      "find": "The system is organised into a presentation layer, an application layer and a data layer. The browser renders a hash-routed single-page application and communicates with the server only through JSON endpoints. The PHP front controller authenticates the session, validates the request and executes business rules before it reads or writes MariaDB. This separation keeps the security decisions on the server and makes the client replaceable.",
+      "with": "The system is organised into a presentation layer, an application layer and a data layer. The browser renders a hash-routed single-page application built from a reusable component library and communicates with the server only through JSON endpoints (also published as /api/v1 with an OpenAPI 3.1 specification). The PHP front controller authenticates the session, validates requests through a central validator, and executes business rules before reading or writing the database through a driver-aware PDO layer that supports both PostgreSQL and MariaDB. This separation keeps the security decisions on the server and makes the client replaceable."
+    },
+    {
+      "find": "All application data is stored in a relational MariaDB database. The schema uses InnoDB, the utf8mb4 character set and UTC DATETIME(3) timestamps so that the application, the database and the browser agree on time. Foreign keys protect the relationships between elections, candidates, votes and audit entries, and unique constraints enforce the rules that must not depend on the user interface.",
+      "with": "All application data is stored in a relational database: PostgreSQL in production and MariaDB for local development. The schema uses UTF-8 text and UTC millisecond timestamps so that the application, the database and the browser agree on time. Foreign keys protect the relationships between elections, candidates, votes and audit entries, unique constraints enforce the rules that must not depend on the user interface, and a parallel schema.pgsql file keeps the two drivers in sync."
+    },
+    {
+      "find": "MariaDB 11.8 (MySQL 8+ compatible)",
+      "with": "PostgreSQL 16 / MariaDB 11.8"
+    },
+    {
+      "find": "The database contains seven tables. The votes table deliberately has no foreign key to users and no timestamp: it stores the election, the candidate and a keyed receipt hash. A separate participation table records who voted and when, with a unique key that enforces one ballot per voter. The audit_log table stores the actor, the action, JSON details and the IP address.",
+      "with": "The database contains seventeen tables. The votes table deliberately has no foreign key to users and no timestamp: it stores the election, the candidate and a keyed receipt hash. A separate participation table records who voted and when, with a unique key that enforces one ballot per voter. The audit_log table stores the actor, the action, JSON details and the IP address. Additional tables support e-mail verification, password resets, TOTP challenges, rate limiting, one-time backup codes, WebAuthn passkeys and their challenges, webhooks, notifications, and Merkle roots for published ballots."
+    },
+    {
+      "find": "Identity proofing (partial). Registration can now be disabled (REGISTRATION_OPEN=0) and administrators can import voters from CSV, with e-mail verification supported. A full identity-proofing step (student-ID check) remains a future enhancement.",
+      "with": "Identity proofing (partial). Registration can be disabled (REGISTRATION_OPEN=0), administrators can import voters from CSV, and e-mail verification is supported. Authentication has been hardened with WebAuthn passkeys, ten single-use backup codes, TOTP MFA and a signed, append-only audit chain. A full identity-proofing step (student-ID or government-document check) remains a future enhancement."
+    },
+    {
+      "find": "Hosting depends on one computer. The site is hosted on the same computer that runs the demonstration. Even with the named tunnel and a permanent hostname, availability depends on this machine being powered on, online and signed in; there is no failover, load balancing or off-site backup.",
+      "with": "Free-tier hosting has trade-offs. The production site runs on Render's free web service with a Neon PostgreSQL database and is available 24/7, but the free web service sleeps after inactivity and Neon suspends after five minutes of idle time; a free uptime monitor keeps both awake. There is no failover or load balancing, and custom domains require a domain the institution owns."
+    },
+    {
+      "find": "Always-on hosting. The project already supports a named Cloudflare tunnel for a stable hostname. The next step is a Docker image with nginx, PHP-FPM and a managed MySQL instance, or the same stack on a small VPS, so the site stays online without a desktop PC.",
+      "with": "Always-on hosting (delivered). The project now ships a Dockerfile and Render Blueprint and runs continuously on Render with Neon PostgreSQL. A paid Render plan or a small VPS would remove the free-tier sleep behaviour; a custom domain can be added through Render's custom-domain settings."
+    },
+    {
+      "find": "Scalable security. Move rate limiting and sessions to a shared Redis store, add WebAuthn passkeys and require multi-factor authentication for administrators.",
+      "with": "Scalable security (partly delivered). WebAuthn passkeys, backup codes and TOTP MFA are implemented; the remaining work is a shared Redis store for rate limits and sessions, plus mandatory multi-factor authentication for administrators."
+    },
+    {
+      "find": "Open Ballot was developed as a complete, self-hosted online voting system rather than a single-feature demonstration. It covers the full election lifecycle: account creation, election setup, candidate management, secret ballot casting, receipt verification, live results, voter administration and an audit trail. The application runs on a portable PHP and MariaDB stack, can be started with one script and can be exposed over HTTPS with a single command, either as a temporary quick tunnel or as a named tunnel with a permanent hostname.",
+      "with": "Open Ballot was developed as a complete online voting system rather than a single-feature demonstration. It covers the full election lifecycle: account creation, election setup, candidate management, secret ballot casting, receipt verification, live results, voter administration and an audit trail. The application runs locally on a portable PHP and MariaDB stack started with one script, and in production as a Docker container on Render backed by Neon PostgreSQL with a permanent HTTPS address."
+    },
+    {
+      "find": "What has been developed. A responsive HTML, CSS and JavaScript client, a PHP 8.5 REST API and a seven-table MariaDB schema, with automated setup, lifecycle and test scripts.",
+      "with": "What has been developed. A responsive component-based client with dark/light themes and PWA support, a versioned PHP 8.5 REST API with OpenAPI documentation, a seventeen-table database portable across PostgreSQL and MariaDB, WebAuthn passkeys and backup codes, Merkle receipt proofs, a live schema diagram, election templates, CSV import, notifications, webhooks and HMAC-signed audit export, with automated setup, CI documentation generation and deployment scripts."
+    },
+    {
+      "find": "What has been learned. Practical experience in session security, CSRF and origin checks, password hashing, anonymous ballot separation, atomic transactions, prepared statements, database constraints, responsive interface design and deployment behind a TLS tunnel. The project also showed why security rules belong on the server and in the schema, not only in the browser.",
+      "with": "What has been learned. Practical experience in session security, CSRF and origin checks, password hashing, anonymous ballot separation, atomic transactions, prepared statements, database constraints, responsive interface design, cross-driver database migration, containerised deployment, and verifiable computation with Merkle trees. The project also showed why security rules belong on the server and in the schema, not only in the browser."
+    },
+    {
+      "find": "MariaDB Foundation. MariaDB Knowledge Base. https://mariadb.com/kb/en/documentation/",
+      "with": "MariaDB Foundation. MariaDB Knowledge Base. https://mariadb.com/kb/en/documentation/\nPostgreSQL Global Development Group. PostgreSQL 16 Documentation. https://www.postgresql.org/docs/16/\nRender. Deployment documentation. https://render.com/docs\nNeon. Serverless PostgreSQL documentation. https://neon.tech/docs\nWebAuthn / FIDO Alliance. Web Authentication specification. https://www.w3.org/TR/webauthn-3/"
+    }
+  ],
+  "insert": [
+    {
+      "after": "Portable setup and lifecycle scripts, a 38-check automated test suite, a Docker image, a Render Blueprint for free production hosting with a permanent HTTPS subdomain, a free Neon PostgreSQL database, and optional Cloudflare HTTPS tunnels for local demonstrations.",
+      "lines": [
+        "Enhancements delivered in the second phase are also in scope. The front end now has a token-based design system, a reusable component library, a light theme, a living style guide at #/design, and a service worker with an installable PWA manifest.",
+        "Account security includes WebAuthn passkeys, ten single-use backup codes, TOTP multi-factor authentication, signed audit export, and passwordless sign-in. Election administration gained a tabbed election manager, election cloning, CSV candidate import, turnout analytics, notifications and configurable webhooks.",
+        "Verifiability was extended with a SHA-256 Merkle tree of ballot receipt hashes, inclusion proofs returned by the verification endpoint, a public audit endpoint, and a live entity-relationship diagram generated from the database catalogue."
+      ]
+    },
+    {
+      "after": "The database contains seventeen tables. The votes table deliberately has no foreign key to users and no timestamp: it stores the election, the candidate and a keyed receipt hash. A separate participation table records who voted and when, with a unique key that enforces one ballot per voter. The audit_log table stores the actor, the action, JSON details and the IP address. Additional tables support e-mail verification, password resets, TOTP challenges, rate limiting, one-time backup codes, WebAuthn passkeys and their challenges, webhooks, notifications, and Merkle roots for published ballots.",
+      "lines": [
+        "Database portability is handled in src/php/db.php: DB_DRIVER selects the mysql or pgsql DSN, DB_SSLMODE controls TLS (required by Neon in production), and driver-specific helpers cover introspection, duplicate-key detection and SQL dialect differences. The connection is recreated after schema migrations so PostgreSQL discards cached query plans whose result types changed."
+      ]
+    }
+  ]
+}
