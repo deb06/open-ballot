@@ -4,12 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Open Ballot — Secure Online Voting</title>
-    <meta
-      name="description"
-      content="Open Ballot is a secure, anonymous and receipt-verifiable online voting platform for student and community elections. One person, one vote."
-    />
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#0b0e14" />
+    <link rel="canonical" href="https://open-ballot.onrender.com/" data-dynamic="canonical" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/icon-180.png" />
@@ -17,9 +14,30 @@
     <meta name="apple-mobile-web-app-title" content="Open Ballot" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Open Ballot" />
-    <meta property="og:title" content="Open Ballot — Secure Online Voting" />
-    <meta property="og:description" content="Secure, anonymous and receipt-verifiable online voting. One person, one vote." />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://open-ballot.onrender.com/" data-dynamic="og:url" />
+    <meta property="og:title" content="Open Ballot — Secure Online Voting" data-dynamic="og:title" />
+    <meta property="og:description" content="Secure, anonymous and receipt-verifiable online voting. One person, one vote." data-dynamic="og:description" />
+    <meta property="og:image" content="https://open-ballot.onrender.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Open Ballot — secure online voting" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@openballot" />
+    <meta name="twitter:title" content="Open Ballot — Secure Online Voting" data-dynamic="twitter:title" />
+    <meta name="twitter:description" content="Secure, anonymous and receipt-verifiable online voting. One person, one vote." data-dynamic="twitter:description" />
+    <meta name="twitter:image" content="https://open-ballot.onrender.com/og-image.png" />
+    <meta name="robots" content="index, follow" data-dynamic="robots" />
+    <script type="application/ld+json" id="site-jsonld">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "Organization", "name": "Open Ballot", "url": "https://open-ballot.onrender.com/", "description": "Secure, anonymous and receipt-verifiable online voting.", "contactPoint": { "@type": "ContactPoint", "contactType": "security", "email": "admin@openballot.local" } },
+    { "@type": "WebSite", "name": "Open Ballot", "url": "https://open-ballot.onrender.com/", "inLanguage": "en", "potentialAction": { "@type": "SearchAction", "target": "https://open-ballot.onrender.com/?q={search_term_string}", "query-input": "required name=search_term_string" } }
+    ]
+}
+    </script>
+    <meta name="description" content="Open Ballot is a secure, anonymous and receipt-verifiable online voting platform for student and community elections. One person, one vote." data-dynamic="description" />
     <link rel="stylesheet" href="/styles.css" />
     <script src="/js/theme.js"></script>
   </head>
@@ -28,7 +46,7 @@
 
     <header class="site-header">
       <div class="shell header-inner">
-        <a class="brand" href="#/" aria-label="Open Ballot home">
+        <a class="brand" href="/" aria-label="Open Ballot home">
           <span class="brand-mark" aria-hidden="true">
             <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 12.5 16 7l10 5.5v9L16 27 6 21.5v-9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
@@ -42,9 +60,9 @@
         </a>
 
         <nav class="primary-nav" id="primary-nav" aria-label="Primary">
-          <a href="#/" data-nav="elections">Elections</a>
-          <a href="#/verify" data-nav="verify">Verify ballot</a>
-          <a href="#/admin" data-nav="admin" hidden>Admin</a>
+          <a href="/" data-nav="elections">Elections</a>
+          <a href="/verify" data-nav="verify">Verify ballot</a>
+          <a href="/admin" data-nav="admin" hidden>Admin</a>
         </nav>
 
         <div class="header-actions" id="header-actions"></div>
@@ -81,6 +99,7 @@
     <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
     <div id="modal-root"></div>
 
+    <script src="/js/meta.js" defer></script>
     <script src="/js/core.js" defer></script>
     <script src="/js/components.js" defer></script>
     <script src="/js/public.js" defer></script>

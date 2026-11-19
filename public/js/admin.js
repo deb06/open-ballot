@@ -23,8 +23,8 @@ function adminOnly() {
         el(
           'div',
           { class: 'row', style: { justifyContent: 'center' } },
-          el('a', { class: 'btn btn-primary', href: '#/' }, 'Back to elections'),
-          el('a', { class: 'btn btn-ghost', href: '#/account' }, 'Your account'),
+          el('a', { class: 'btn btn-primary', href: '/' }, 'Back to elections'),
+          el('a', { class: 'btn btn-ghost', href: '/account' }, 'Your account'),
         ),
       ),
     );
@@ -38,11 +38,11 @@ function adminNav(active) {
   return el(
     'nav',
     { class: 'admin-nav', 'aria-label': 'Administration sections' },
-    link('#/admin', 'Overview', 'overview'),
-    link('#/admin/users', 'Voters', 'users'),
-    link('#/admin/audit', 'Audit log', 'audit'),
-    link('#/admin/webhooks', 'Webhooks', 'webhooks'),
-    link('#/admin/schema', 'Schema', 'schema'),
+    link('/admin', 'Overview', 'overview'),
+    link('/admin/users', 'Voters', 'users'),
+    link('/admin/audit', 'Audit log', 'audit'),
+    link('/admin/webhooks', 'Webhooks', 'webhooks'),
+    link('/admin/schema', 'Schema', 'schema'),
   );
 }
 
@@ -104,7 +104,7 @@ async function viewAdminOverview() {
           el(
             'td',
             {},
-            el('a', { class: 'cell-title', href: `#/admin/election/${election.id}` }, election.title),
+            el('a', { class: 'cell-title', href: `/admin/election/${election.id}` }, election.title),
             el('div', { class: 'cell-sub' }, `${election.candidateCount} ${plural(election.candidateCount, 'candidate')} · ${election.resultsVisibility.replace(/_/g, ' ')} results`),
           ),
           el('td', {}, statusPill(election.status)),
@@ -116,8 +116,8 @@ async function viewAdminOverview() {
             el(
               'div',
               { class: 'actions' },
-              el('a', { class: 'btn btn-sm btn-ghost', href: `#/election/${election.id}` }, 'View'),
-              el('a', { class: 'btn btn-sm btn-outline', href: `#/admin/election/${election.id}` }, 'Manage'),
+              el('a', { class: 'btn btn-sm btn-ghost', href: `/election/${election.id}` }, 'View'),
+              el('a', { class: 'btn btn-sm btn-outline', href: `/admin/election/${election.id}` }, 'Manage'),
               el('button', { class: 'btn btn-sm btn-ghost', type: 'button', title: 'Duplicate election', onclick: () => cloneElection(election) }, iconEl('copy')),
             ),
           ),
@@ -153,7 +153,7 @@ async function viewAdminOverview() {
       'div',
       { class: 'card-header' },
       el('div', {}, el('h2', { style: { margin: 0 } }, 'Recent activity'), el('p', { style: { margin: '4px 0 0' } }, 'Everything is written to the audit log.')),
-      el('a', { class: 'btn btn-ghost btn-sm', href: '#/admin/audit' }, 'Open audit log', iconEl('arrow')),
+      el('a', { class: 'btn btn-ghost btn-sm', href: '/admin/audit' }, 'Open audit log', iconEl('arrow')),
     ),
     overview.recentActivity.length
       ? el('div', { class: 'activity' }, overview.recentActivity.map(activityItem))
@@ -187,7 +187,7 @@ async function viewAdminOverview() {
                   'div',
                   { class: 'row', style: { gap: '8px' } },
                   statusPill(election.status),
-                  el('a', { class: 'btn btn-sm btn-outline', href: `#/admin/election/${election.id}` }, 'Manage'),
+                  el('a', { class: 'btn btn-sm btn-outline', href: `/admin/election/${election.id}` }, 'Manage'),
                 ),
               ),
               Components.progress({
@@ -337,9 +337,9 @@ async function viewAdminElection(rawId) {
   const breadcrumb = el(
     'nav',
     { class: 'breadcrumb', 'aria-label': 'Breadcrumb' },
-    el('a', { href: '#/admin' }, 'Admin'),
+    el('a', { href: '/admin' }, 'Admin'),
     el('span', { class: 'sep', 'aria-hidden': 'true' }, '›'),
-    el('a', { href: '#/admin' }, 'Elections'),
+    el('a', { href: '/admin' }, 'Elections'),
     el('span', { class: 'sep', 'aria-hidden': 'true' }, '›'),
     el('span', {}, election.title),
   );
@@ -356,7 +356,7 @@ async function viewAdminElection(rawId) {
         statusPill(election.status),
         el('span', { class: 'small muted' }, election.closesAt ? `Closes ${formatDateTime(election.closesAt)}` : 'No automatic closing time'),
       ),
-      el('a', { class: 'btn btn-sm btn-ghost', href: `#/election/${election.id}` }, iconEl('external'), 'Public page'),
+      el('a', { class: 'btn btn-sm btn-ghost', href: `/election/${election.id}` }, iconEl('external'), 'Public page'),
     ),
     el('h1', { class: 'election-hero-title' }, election.title),
     el(
@@ -402,7 +402,7 @@ async function viewAdminElection(rawId) {
 const ELECTION_TAB_IDS = ['settings', 'candidates', 'results', 'manage'];
 
 function readElectionTab() {
-  const match = /[?&]tab=([a-z]+)/.exec(location.hash);
+  const match = /[?&]tab=([a-z]+)/.exec(location.search);
   const id = match ? match[1] : '';
   return ELECTION_TAB_IDS.includes(id) ? id : 'settings';
 }
@@ -422,8 +422,8 @@ function electionTabView({ id, tabs, active }) {
     panels.forEach((panel, panelId) => {
       panel.hidden = panelId !== next;
     });
-    const url = `#/admin/election/${id}?tab=${next}`;
-    if (location.hash !== url) history.replaceState(null, '', url);
+    const url = `/admin/election/${id}?tab=${next}`;
+    if (location.pathname + location.search !== url) history.replaceState(null, '', url);
   };
 
   const tablist = el('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Election sections' });
@@ -1573,6 +1573,6 @@ async function viewAdminLogin() {
     title: 'Administrator sign in',
     subtitle: 'Sign in with an administrator account to manage elections.',
     form,
-    alt: el('span', {}, 'Voter? ', el('a', { href: '#/login' }, 'Sign in here')),
+    alt: el('span', {}, 'Voter? ', el('a', { href: '/login' }, 'Sign in here')),
   });
 }

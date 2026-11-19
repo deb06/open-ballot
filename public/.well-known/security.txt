@@ -2,4 +2,4 @@ Contact: mailto:admin@openballot.local
 Expires: 2027-11-20T00:00:00Z
 Preferred-Languages: en
 Canonical: https://open-ballot.onrender.com/.well-known/security.txt
-Policy: https://open-ballot.onrender.com/#/privacy
+Policy: https://open-ballot.onrender.com/privacy

@@ -40,6 +40,7 @@ const MIME_TYPES = [
     '.webp' => 'image/webp',
     '.ico' => 'image/x-icon',
     '.txt' => 'text/plain; charset=utf-8',
+    '.xml' => 'application/xml; charset=utf-8',
     '.webmanifest' => 'application/manifest+json',
 ];
 
@@ -58,7 +59,7 @@ function security_headers(): void
     header(
         'Content-Security-Policy: ' . implode('; ', [
             "default-src 'self'",
-            "script-src 'self'",
+            "script-src 'self' 'sha256-1vtGRdulwnqb8Ao0s4+BpbUIXEoo6+kouLUx5lAQyl8='",
             "style-src 'self'",
             "img-src 'self' data:",
             "font-src 'self'",
@@ -68,6 +69,52 @@ function security_headers(): void
             "frame-ancestors 'none'",
         ]),
     );
+}
+
+/**
+ * Serve the SPA shell for real app routes with a lightweight <noscript>
+ * content block so crawlers that do not run JavaScript still see meaning.
+ */
+function app_shell_ssr(string $pathname): string
+{
+    $path = trim($pathname, '/');
+    if ($path === '') {
+        return '<noscript><div style="max-width:760px;margin:40px auto;padding:24px;font-family:sans-serif">'
+            . '<h1>Open Ballot — Secure Online Voting</h1>'
+            . '<p>Open Ballot is a secure, anonymous and receipt-verifiable online voting platform for student and community elections. One person, one vote.</p>'
+            . '<p>Browse open elections, review candidates, cast a secret ballot and verify your receipt. JavaScript is required to use the application.</p>'
+            . '</div></noscript>';
+    }
+    if ($path === 'help') {
+        return '<noscript><div style="max-width:760px;margin:40px auto;padding:24px;font-family:sans-serif">'
+            . '<h1>Help & FAQ</h1><p>How do I vote? Register, browse open elections, review candidates and cast your ballot. A receipt proves your ballot was counted.</p>'
+            . '<p>How do I keep my account safe? Use a strong password, enable a passkey and save your one-time backup codes.</p></div></noscript>';
+    }
+    if ($path === 'privacy') {
+        return '<noscript><div style="max-width:760px;margin:40px auto;padding:24px;font-family:sans-serif">'
+            . '<h1>Privacy</h1><p>Open Ballot stores only the data needed to run an election. Ballots are anonymous: the record of who voted is separate from what was chosen. No advertising or third-party analytics.</p></div></noscript>';
+    }
+    if (preg_match('#^election/(\d+)$#', $path, $m) === 1) {
+        try {
+            db_ensure_ready();
+            $election = db_one(
+                'SELECT title, description, status FROM elections WHERE id = ? AND status != \'draft\'',
+                [(int) $m[1]],
+            );
+            if ($election !== null) {
+                return '<noscript><div style="max-width:760px;margin:40px auto;padding:24px;font-family:sans-serif">'
+                    . '<h1>' . htmlspecialchars((string) $election['title'], ENT_QUOTES, 'UTF-8') . '</h1>'
+                    . '<p>' . htmlspecialchars(mb_substr((string) $election['description'], 0, 500), ENT_QUOTES, 'UTF-8') . '</p>'
+                    . '<p>Status: ' . htmlspecialchars((string) $election['status'], ENT_QUOTES, 'UTF-8') . '. JavaScript is required to vote.</p>'
+                    . '</div></noscript>';
+            }
+        } catch (Throwable) {
+            // fall through to a generic snippet
+        }
+        return '<noscript><div style="max-width:760px;margin:40px auto;padding:24px;font-family:sans-serif">'
+            . '<h1>Open Ballot election</h1><p>Browse open elections and cast a secret, receipt-verifiable ballot.</p></div></noscript>';
+    }
+    return '';
 }
 
 function send_json(int $status, mixed $payload, array $extraHeaders = []): void

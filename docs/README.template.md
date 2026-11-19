@@ -111,7 +111,7 @@ python scripts\generate_readme.py
 
 ## Architecture
 
-The front end is a hash-routed SPA. Because the CSP forbids inline scripts and styles, all markup is built through `el()`/`svgEl()` helpers and all styling comes from the token and component stylesheets.
+The front end is an SPA with real path-based URLs (`/election/3`, `/admin/users`) using the History API, with server-side fallbacks for deep links and `<noscript>` content for crawlers. Because the CSP forbids inline scripts and styles, all markup is built through `el()`/`svgEl()` helpers and all styling comes from the token and component stylesheets.
 
 ```
 router.php                 front controller (API + static serving)

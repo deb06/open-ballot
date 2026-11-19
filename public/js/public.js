@@ -29,7 +29,7 @@ async function viewHome() {
         'div',
         { class: 'hero-actions' },
         el('a', { class: 'btn btn-primary btn-lg', href: '#elections' }, 'Browse elections', iconEl('arrow')),
-        el('a', { class: 'btn btn-outline btn-lg', href: '#/verify' }, 'Verify a receipt'),
+        el('a', { class: 'btn btn-outline btn-lg', href: '/verify' }, 'Verify a receipt'),
       ),
       el(
         'div',
@@ -226,7 +226,7 @@ function electionCard(election) {
   const closeText = election.closesAt ? `Closes ${formatDate(election.closesAt)}` : 'No closing date';
   return el(
     'a',
-    { class: 'election-card', href: `#/election/${election.id}` },
+    { class: 'election-card', href: `/election/${election.id}` },
     el(
       'div',
       { class: 'row-between' },
@@ -265,7 +265,7 @@ async function viewElection(rawId) {
   const breadcrumb = el(
     'nav',
     { class: 'breadcrumb', 'aria-label': 'Breadcrumb' },
-    el('a', { href: '#/' }, 'Elections'),
+    el('a', { href: '/' }, 'Elections'),
     el('span', { class: 'sep', 'aria-hidden': 'true' }, '›'),
     el('span', {}, election.title),
   );
@@ -356,7 +356,7 @@ async function viewElection(rawId) {
       el(
         'div',
         { class: 'row' },
-        el('a', { class: 'btn btn-outline btn-sm', href: '#/verify' }, iconEl('shield'), 'Verify a receipt'),
+        el('a', { class: 'btn btn-outline btn-sm', href: '/verify' }, iconEl('shield'), 'Verify a receipt'),
         receipt
           ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => downloadReceipt(receipt, election, null) }, iconEl('download'), 'Download receipt')
           : null,
@@ -477,7 +477,7 @@ async function viewElection(rawId) {
             { class: 'card-flat stack-sm' },
             el('h4', { style: { margin: 0 } }, 'Administrator'),
             el('p', { class: 'small muted', style: { margin: 0 } }, 'Manage candidates, dates and results for this election.'),
-            el('a', { class: 'btn btn-outline btn-sm', href: `#/admin/election/${election.id}` }, iconEl('edit'), 'Manage election'),
+            el('a', { class: 'btn btn-outline btn-sm', href: `/admin/election/${election.id}` }, iconEl('edit'), 'Manage election'),
           )
         : null,
     ),
@@ -724,7 +724,7 @@ function downloadReceipt(receipt, election, myVote) {
     `Receipt:   ${receipt.code}`,
     '',
     'Verify this receipt at:',
-    `${location.origin}/#/verify`,
+    `${location.origin}/verify`,
     '',
     'Keep this code private: anyone who has it can check the choice it is linked to.',
     '',
@@ -789,7 +789,7 @@ function viewLogin() {
             state.csrf = verify.csrf;
             renderHeader();
             toast(`Welcome back, ${verify.user.name.split(' ')[0]}.`, 'success');
-            const target = state.returnTo && state.returnTo.startsWith('#/') ? state.returnTo : '#/';
+            const target = state.returnTo && state.returnTo.startsWith('/') ? state.returnTo : '/';
             state.returnTo = null;
             go(target);
           } else {
@@ -838,7 +838,7 @@ function viewLogin() {
         state.csrf = data.csrf;
         renderHeader();
         toast(`Welcome back, ${data.user.name.split(' ')[0]}.`, 'success');
-        const target = state.returnTo && state.returnTo.startsWith('#/') ? state.returnTo : '#/';
+        const target = state.returnTo && state.returnTo.startsWith('/') ? state.returnTo : '/';
         state.returnTo = null;
         go(target);
       } else {
@@ -853,7 +853,7 @@ function viewLogin() {
           state.csrf = data.csrf;
           renderHeader();
           toast(`Welcome back, ${data.user.name.split(' ')[0]}.`, 'success');
-          const target = state.returnTo && state.returnTo.startsWith('#/') ? state.returnTo : '#/';
+          const target = state.returnTo && state.returnTo.startsWith('/') ? state.returnTo : '/';
           state.returnTo = null;
           go(target);
         }
@@ -869,7 +869,7 @@ function viewLogin() {
     title: 'Welcome back',
     subtitle: 'Sign in to cast your ballot or manage elections.',
     form,
-    alt: el('span', {}, 'New here? ', el('a', { href: '#/register' }, 'Create an account'), ' · ', el('a', { href: '#/forgot-password' }, 'Forgot password?')),
+    alt: el('span', {}, 'New here? ', el('a', { href: '/register' }, 'Create an account'), ' · ', el('a', { href: '/forgot-password' }, 'Forgot password?')),
   });
 }
 
@@ -933,7 +933,7 @@ function viewRegister() {
     title: 'Create your account',
     subtitle: 'One account, one ballot per election.',
     form,
-    alt: el('span', {}, 'Already registered? ', el('a', { href: '#/login' }, 'Sign in')),
+    alt: el('span', {}, 'Already registered? ', el('a', { href: '/login' }, 'Sign in')),
   });
 }
 
@@ -1046,7 +1046,7 @@ function verificationCard(data) {
       infoRow('Recorded choice', `${data.candidate.name}${data.candidate.party ? ` · ${data.candidate.party}` : ''}`),
       infoRow('Status', data.counted ? 'Counted in the tally' : 'Not counted'),
     ),
-    el('a', { class: 'btn btn-outline btn-sm', href: `#/election/${data.election.id}` }, 'View this election', iconEl('arrow')),
+    el('a', { class: 'btn btn-outline btn-sm', href: `/election/${data.election.id}` }, 'View this election', iconEl('arrow')),
   );
 }
 
@@ -1098,7 +1098,7 @@ async function viewAccount() {
               el(
                 'div',
                 {},
-                el('a', { href: `#/election/${ballot.electionId}`, style: { fontWeight: '600' } }, ballot.title),
+                el('a', { href: `/election/${ballot.electionId}`, style: { fontWeight: '600' } }, ballot.title),
                 el('div', { class: 'small muted', style: { marginTop: '3px' } }, `You voted on ${formatDateTime(ballot.votedAt)} · your choice is not stored with your account`),
               ),
               el('div', { class: 'row', style: { gap: '8px' } }, statusPill(ballot.status), receipt ? el('span', { class: 'badge badge-success' }, 'Receipt saved') : null),
@@ -1112,7 +1112,7 @@ async function viewAccount() {
                     'div',
                     { class: 'row', style: { gap: '6px' } },
                     el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => copyReceipt(receipt.code) }, iconEl('copy'), 'Copy'),
-                    el('a', { class: 'btn btn-ghost btn-sm', href: '#/verify' }, 'Verify'),
+                    el('a', { class: 'btn btn-ghost btn-sm', href: '/verify' }, 'Verify'),
                   ),
                 )
               : el('p', { class: 'small muted', style: { margin: '10px 0 0' } }, 'The receipt for this ballot is not stored on this device.'),
@@ -1123,7 +1123,7 @@ async function viewAccount() {
         icon: 'ballot',
         title: 'No ballots yet',
         message: 'When you vote in an election, your ballots and receipts will appear here.',
-        actions: el('a', { class: 'btn btn-primary', href: '#/' }, 'Browse elections'),
+        actions: el('a', { class: 'btn btn-primary', href: '/' }, 'Browse elections'),
       });
 
   /* Password form */
@@ -1200,7 +1200,7 @@ async function viewAccount() {
     el('div', { class: 'card-header' }, el('div', {}, el('h2', { style: { margin: 0 } }, 'Security'), el('p', { style: { margin: '4px 0 0' } }, 'Add a passkey or keep one-time backup codes for account recovery.'))),
     codesBox,
     el('div', { class: 'row', style: { gap: '10px', flexWrap: 'wrap' } },
-      el('a', { class: 'btn btn-outline btn-sm', href: '#/passkeys' }, iconEl('fingerprint'), 'Manage passkeys'),
+      el('a', { class: 'btn btn-outline btn-sm', href: '/passkeys' }, iconEl('fingerprint'), 'Manage passkeys'),
       generateCodes,
     ),
   );
@@ -1214,12 +1214,40 @@ async function viewAccount() {
    Not found
    -------------------------------------------------------------------------- */
 
+async function viewHelp() {
+  const faq = (q, a) => el('div', { class: 'card' }, el('h2', { style: { margin: '0 0 6px', fontSize: '1.1rem' } }, q), el('p', { class: 'muted', style: { margin: 0 } }, a));
+  return [
+    el('div', { class: 'stack-lg' },
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Support'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Help & FAQ')),
+      faq('How do I vote?', 'Register or sign in, browse open elections, review the candidates and cast your ballot. You will receive a receipt code you can verify publicly.'),
+      faq('What does a receipt prove?', 'It proves your ballot was recorded and counted in the election. It is a secret — never share it, because anyone holding it can see the choice linked to it.'),
+      faq('Can I change my vote?', 'No. One ballot per voter is enforced by the database. Review your choice carefully before confirming.'),
+      faq('How do I keep my account safe?', 'Use a strong password, enable a passkey in Account → Security, and save your one-time backup codes somewhere safe.'),
+      faq('Who can see my vote?', 'Nobody. The database records who voted in a separate table from what was chosen, with no link between them.'),
+    ),
+  ];
+}
+
+async function viewPrivacy() {
+  return [
+    el('div', { class: 'stack-lg' },
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Legal'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Privacy')),
+      el('div', { class: 'card stack' },
+        el('p', {}, 'Open Ballot stores only the data needed to run an election: your name and email, a hashed password, session records, and an audit trail of actions.'),
+        el('p', {}, 'Ballots are anonymous. The record of who voted is kept in a separate table that shares no key with the record of what was chosen.'),
+        el('p', {}, 'We do not sell data, show advertising, or use third-party analytics cookies. Receipt codes are random and are never sent to external services.'),
+        el('p', { class: 'small muted' }, 'For security enquiries, see /.well-known/security.txt.'),
+      ),
+    ),
+  ];
+}
+
 function viewNotFound() {
   return emptyState({
     icon: 'search',
     title: 'Page not found',
     message: 'That page does not exist. It may have been moved, or the link may be incomplete.',
-    actions: el('a', { class: 'btn btn-primary', href: '#/' }, 'Back to elections'),
+    actions: el('a', { class: 'btn btn-primary', href: '/' }, 'Back to elections'),
   });
 }
 function viewForgotPassword() {
@@ -1257,7 +1285,7 @@ function viewForgotPassword() {
     title: 'Forgot password',
     subtitle: 'Enter your e-mail to receive a reset link.',
     form,
-    alt: el('span', {}, 'Remembered it? ', el('a', { href: '#/login' }, 'Sign in')),
+    alt: el('span', {}, 'Remembered it? ', el('a', { href: '/login' }, 'Sign in')),
   });
 }
 
@@ -1299,7 +1327,7 @@ function viewResetPassword(token) {
     title: 'Reset password',
     subtitle: 'Choose a new password for your account.',
     form,
-    alt: el('span', {}, 'Back to ', el('a', { href: '#/login' }, 'sign in')),
+    alt: el('span', {}, 'Back to ', el('a', { href: '/login' }, 'sign in')),
   });
 }
 
@@ -1312,7 +1340,7 @@ function viewVerifyEmail(token) {
       await api('POST', '/api/auth/verify-email', { token });
       heading.textContent = 'E-mail verified';
       box.append(el('p', {}, 'Your e-mail address has been verified. You can now sign in.'));
-      box.append(el('a', { class: 'btn btn-primary', href: '#/login' }, 'Sign in'));
+      box.append(el('a', { class: 'btn btn-primary', href: '/login' }, 'Sign in'));
     } catch (error) {
       heading.textContent = 'Verification failed';
       box.append(el('p', {}, error.message));

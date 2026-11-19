@@ -605,8 +605,8 @@ function authPrompt(message = 'Sign in to continue.', returnTo = null) {
       el(
         'div',
         { class: 'row', style: { justifyContent: 'center' } },
-        el('a', { class: 'btn btn-primary', href: '#/login' }, 'Sign in'),
-        el('a', { class: 'btn btn-outline', href: '#/register' }, 'Create an account'),
+        el('a', { class: 'btn btn-primary', href: '/login' }, 'Sign in'),
+        el('a', { class: 'btn btn-outline', href: '/register' }, 'Create an account'),
       ),
     ),
   );
@@ -631,7 +631,7 @@ function errorView(error) {
         'div',
         { class: 'row', style: { justifyContent: 'center' } },
         el('button', { class: 'btn btn-primary', type: 'button', onclick: () => handleRoute() }, 'Try again'),
-        el('a', { class: 'btn btn-ghost', href: '#/' }, 'Back to elections'),
+        el('a', { class: 'btn btn-ghost', href: '/' }, 'Back to elections'),
       ),
     ),
   );
@@ -772,7 +772,7 @@ function renderHeader() {
       notificationBell(),
       el(
         'a',
-        { class: 'btn btn-ghost btn-sm', href: '#/account', title: state.user.email },
+        { class: 'btn btn-ghost btn-sm', href: '/account', title: state.user.email },
         el('span', { class: 'badge badge-accent' }, state.user.role === 'admin' ? 'Admin' : 'Voter'),
         state.user.name.split(' ')[0],
       ),
@@ -785,8 +785,8 @@ function renderHeader() {
     );
   } else {
     actions.append(
-      el('a', { class: 'btn btn-ghost btn-sm', href: '#/login' }, 'Sign in'),
-      el('a', { class: 'btn btn-primary btn-sm', href: '#/register' }, 'Create account'),
+      el('a', { class: 'btn btn-ghost btn-sm', href: '/login' }, 'Sign in'),
+      el('a', { class: 'btn btn-primary btn-sm', href: '/register' }, 'Create account'),
     );
   }
 
@@ -807,15 +807,29 @@ async function signOut() {
   go('#/');
 }
 
-function go(hash) {
-  if (location.hash === hash) handleRoute();
-  else location.hash = hash;
+function normalizePath(input) {
+  if (input === undefined || input === null) return '/';
+  let value = String(input);
+  if (value.startsWith('#')) value = value.slice(1);
+  if (value.startsWith('index.html')) value = value.slice('index.html'.length);
+  if (!value.startsWith('/')) value = '/' + value;
+  return value || '/';
+}
+
+function go(path) {
+  const next = normalizePath(path);
+  const current = location.pathname + location.search;
+  if (current === next) {
+    handleRoute();
+  } else {
+    history.pushState(null, '', next);
+    handleRoute();
+  }
 }
 
 function parseRoute() {
-  // Drop any query string so deep links like #/admin/elections/5?tab=results
-  // still resolve to the right view.
-  const raw = location.hash.replace(/^#\/?/, '').split('?')[0];
+  // Real pathname routing (with query strings carried in location.search).
+  const raw = location.pathname.replace(/^\/+/, '');
   return raw
     .split('/')
     .filter(Boolean)
@@ -891,6 +905,8 @@ async function viewFor(parts) {
   if (root === 'verify-email' && sub) return viewVerifyEmail(sub);
   if (root === 'register') return viewRegister();
   if (root === 'passkeys') return viewPasskeys();
+  if (root === 'help') return viewHelp();
+  if (root === 'privacy') return viewPrivacy();
   if (root === 'account') return viewAccount();
   if (root === 'design') return viewDesign();
   if (root === 'admin' && sub === 'login') return viewAdminLogin();
@@ -923,6 +939,7 @@ async function handleRoute() {
 
   const parts = parseRoute();
   markNav(parts);
+  if (window.OpenBallotMeta) window.OpenBallotMeta.apply(parts);
 
   const main = app();
   main.replaceChildren(loading());
@@ -938,13 +955,38 @@ async function handleRoute() {
   }
 }
 
+function setupLinkInterception() {
+  document.addEventListener('click', (event) => {
+    const anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+    if (!anchor || event.defaultPrevented) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const href = anchor.getAttribute('href');
+    if (!href || !href.startsWith('/') || href.startsWith('//')) return;
+    if (href.startsWith('/api/') || anchor.hasAttribute('download') || (anchor.target && anchor.target !== '_self')) return;
+    event.preventDefault();
+    go(href);
+  });
+}
+
 async function boot() {
   applyTheme();
   setupNav();
+  setupLinkInterception();
   renderHeader();
   await refreshMe();
-  window.addEventListener('hashchange', handleRoute);
-  if (!location.hash) history.replaceState(null, '', '#/');
+  window.addEventListener('popstate', handleRoute);
+  // Backwards compatibility: convert old #/bookmarks and links to real paths.
+  if (location.hash.startsWith('/')) {
+    const legacy = location.hash.slice(1);
+    history.replaceState(null, '', legacy);
+  }
+  window.addEventListener('hashchange', () => {
+    if (location.hash.startsWith('/')) {
+      const legacy = location.hash.slice(1);
+      history.replaceState(null, '', legacy);
+      handleRoute();
+    }
+  });
   handleRoute();
 }
 

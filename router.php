@@ -47,6 +47,25 @@ try {
         return true;
     }
 
+    // SPA fallback: real app routes (/election/1, /admin/users, …) are all
+    // served by the same shell. Requests with a file extension that did not
+    // match a real file stay 404 (avoids masking missing assets).
+    if (!str_contains(basename($pathname), '.')) {
+        $index = (string) config('public_dir') . DIRECTORY_SEPARATOR . 'index.html';
+        if (is_file($index)) {
+            $html = (string) file_get_contents($index);
+            $snippet = app_shell_ssr($pathname);
+            if ($snippet !== '') {
+                $html = str_replace('</body>', $snippet . "\n  </body>", $html);
+            }
+            http_response_code(200);
+            header('Content-Type: text/html; charset=utf-8');
+            header('Cache-Control: no-cache, must-revalidate');
+            echo $html;
+            return true;
+        }
+    }
+
     send_json(404, error_envelope(404, 'Not found.', 'not_found'));
 } catch (Throwable $error) {
     error_log(sprintf(

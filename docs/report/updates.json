@@ -10,7 +10,7 @@
     },
     {
       "find": "Hash-based routing, form handling, API calls, dialogs and live tally refresh.",
-      "with": "Hash-based routing, a reusable component library and design tokens, dark/light themes, a service worker for offline use, form handling, API calls, accessible dialogs and live tally refresh."
+      "with": "Real path-based routing using the History API, a reusable component library and design tokens, dark/light themes, a service worker for offline use, per-route SEO metadata, form handling, API calls, accessible dialogs and live tally refresh."
     },
     {
       "find": "MariaDB 11.8 (MySQL-compatible)",
@@ -22,7 +22,7 @@
     },
     {
       "find": "The system is organised into a presentation layer, an application layer and a data layer. The browser renders a hash-routed single-page application and communicates with the server only through JSON endpoints. The PHP front controller authenticates the session, validates the request and executes business rules before it reads or writes MariaDB. This separation keeps the security decisions on the server and makes the client replaceable.",
-      "with": "The system is organised into a presentation layer, an application layer and a data layer. The browser renders a hash-routed single-page application built from a reusable component library and communicates with the server only through JSON endpoints (also published as /api/v1 with an OpenAPI 3.1 specification). The PHP front controller authenticates the session, validates requests through a central validator, and executes business rules before reading or writing the database through a driver-aware PDO layer that supports both PostgreSQL and MariaDB. This separation keeps the security decisions on the server and makes the client replaceable."
+      "with": "The system is organised into a presentation layer, an application layer and a data layer. The browser renders a single-page application with real path-based URLs built from a reusable component library and communicates with the server only through JSON endpoints (also published as /api/v1 with an OpenAPI 3.1 specification). The server returns an HTML shell for deep links with noscript content for crawlers, while per-route metadata keeps titles, canonical URLs and social cards accurate. The PHP front controller authenticates the session, validates requests through a central validator, and executes business rules before reading or writing the database through a driver-aware PDO layer that supports both PostgreSQL and MariaDB. This separation keeps the security decisions on the server and makes the client replaceable."
     },
     {
       "find": "All application data is stored in a relational MariaDB database. The schema uses InnoDB, the utf8mb4 character set and UTC DATETIME(3) timestamps so that the application, the database and the browser agree on time. Foreign keys protect the relationships between elections, candidates, votes and audit entries, and unique constraints enforce the rules that must not depend on the user interface.",
