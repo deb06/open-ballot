@@ -630,6 +630,7 @@ function api_routes(): array
             'candidate' => $candidates[0] ?? ['name' => '', 'party' => ''],
             'candidates' => $candidates,
             'merkleRoot' => $merkleRoot,
+            'merkleLeaf' => $leaf,
             'merkleProof' => $proof,
         ]);
     });
@@ -691,6 +692,45 @@ function api_routes(): array
         }
         send_json(200, ['tables' => $result]);
     }, ['admin' => true]);
+
+    /* ------------------------------------------------------------------ */
+    /* Signed results                                                      */
+    /* ------------------------------------------------------------------ */
+
+    $add('GET', '/api/elections/:id/results/signed', static function (array $ctx): void {
+        $id = (int) $ctx['params']['id'];
+        send_json(200, signed_results_for($id));
+    });
+
+    $add('POST', '/api/elections/:id/results/verify', static function (array $ctx): void {
+        $payload = $ctx['body']['payload'] ?? null;
+        $signature = as_text($ctx['body']['signature'] ?? null);
+        if (!is_array($payload) || $signature === '') {
+            fail(400, 'A payload and signature are required.', 'invalid_submission');
+        }
+        $valid = verify_results_signature($payload, $signature);
+        send_json(200, ['valid' => $valid]);
+    });
+
+    /* ------------------------------------------------------------------ */
+    /* Public audit verification                                           */
+    /* ------------------------------------------------------------------ */
+
+    $add('GET', '/api/audit/verify', static function (array $ctx): void {
+        $rows = db_all('SELECT a.*, u.name AS actor_name FROM audit_log a LEFT JOIN users u ON u.id = a.actor_id ORDER BY a.id ASC');
+        $prev = str_repeat('0', 64);
+        foreach ($rows as $r) {
+            $details = safe_json($r['details']);
+            $entry = sprintf('%s|%s|%s|%s', $r['created_at'], $r['actor_name'] ?? 'system', $r['action'], is_string($details) ? $details : json_encode($details));
+            $prev = hash_hmac('sha256', $prev . $entry, (string) config('app_name'));
+        }
+        send_json(200, [
+            'entries' => count($rows),
+            'chainHead' => $prev,
+            'algorithm' => 'HMAC-SHA256',
+            'note' => 'Each entry is chained to the previous one; the head is published for transparency.',
+        ]);
+    });
 
     /* ------------------------------------------------------------------ */
     /* Notifications                                                       */
@@ -1628,7 +1668,8 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
         if ($mutating) {
             $exempt = $pathname === '/api/auth/login' || $pathname === '/api/auth/admin/login' || $pathname === '/api/auth/register'
                 || $pathname === '/api/auth/forgot-password' || $pathname === '/api/auth/reset-password'
-                || $pathname === '/api/auth/verify-email' || $pathname === '/api/auth/mfa/challenge';
+                || $pathname === '/api/auth/verify-email' || $pathname === '/api/auth/mfa/challenge'
+                || preg_match('#^/api/elections/\d+/results/verify$#', $pathname) === 1;
             if (!$exempt) {
                 if ($session === null) {
                     throw new HttpError(401, 'Sign in to continue.', 'auth_required');

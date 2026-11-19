@@ -21,6 +21,7 @@
     'verify-email': { title: 'Verify email', description: 'Verify your e-mail address to finish setting up your account.' },
     help: { title: 'Help & FAQ', description: 'Answers to common questions about voting, receipts and account security.' },
     privacy: { title: 'Privacy', description: 'How Open Ballot handles your data and keeps ballots anonymous.' },
+    audit: { title: 'Public audit chain', description: 'Inspect the published HMAC chain of election and administrative events.' },
   };
 
   // Routes that must never be indexed (privacy / authenticated surfaces).

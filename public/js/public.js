@@ -486,6 +486,43 @@ async function viewElection(rawId) {
   /* Results */
   if (election.resultsVisible) {
     resultsMount.append(resultsCard(election.results, { live: election.status === 'open' }));
+    const signedBox = el('div', { class: 'row', style: { gap: '8px', marginTop: '10px', flexWrap: 'wrap' } },
+      el('button', {
+        class: 'btn btn-ghost btn-sm', type: 'button',
+        onclick: async () => {
+          try {
+            const data = await api('GET', `/api/elections/${election.id}/results/signed`);
+            downloadFile(`open-ballot-results-${election.id}.json`, JSON.stringify(data, null, 2), 'application/json');
+            toast('Signed results downloaded.', 'success');
+          } catch (error) { toast(error.message, 'error'); }
+        },
+      }, iconEl('download'), 'Download signed results'),
+      el('button', {
+        class: 'btn btn-ghost btn-sm', type: 'button',
+        onclick: () => {
+          const err = el('div', { class: 'form-error', role: 'alert' });
+          const ta = el('textarea', { class: 'textarea mono', rows: '8', placeholder: 'Paste the contents of the downloaded JSON file…' });
+          ta.style.minHeight = '160px';
+          const body = el('div', { class: 'stack' }, err,
+            el('p', { class: 'small muted', style: { margin: 0 } }, 'Check that a signed results file has not been altered.'),
+            el('div', { class: 'field' }, el('label', {}, 'Signed results JSON'), ta));
+          const check = el('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
+            err.textContent = '';
+            try {
+              const parsed = JSON.parse(ta.value);
+              const res = await api('POST', `/api/elections/${election.id}/results/verify`, { payload: parsed.payload, signature: parsed.signature });
+              err.className = res.valid ? 'form-success' : 'form-error';
+              err.textContent = res.valid ? 'Signature valid — these results have not been altered.' : 'Signature invalid — the results may have been changed.';
+            } catch (error) {
+              err.className = 'form-error';
+              err.textContent = error.message;
+            }
+          } }, iconEl('shield'), 'Verify signature');
+          const dlg = openModal({ title: 'Verify signed results', body, actions: [check, el('button', { class: 'btn btn-ghost', type: 'button', onclick: () => dlg.close() }, 'Close')] });
+        },
+      }, iconEl('shield'), 'Verify a signature'),
+    );
+    resultsMount.append(signedBox);
     if (election.status === 'open') {
       addTimer(async () => {
         if (document.visibilityState !== 'visible') return;
@@ -1029,10 +1066,65 @@ function viewVerify() {
   return [el('div', { style: { maxWidth: '720px', margin: '0 auto' } }, form, result, explainer)];
 }
 
+async function sha256Hex(text) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function verifyMerkleProof(leaf, proof, root) {
+  let current = String(leaf).toLowerCase();
+  for (const step of proof) {
+    const sibling = String(step.hash).toLowerCase();
+    current = step.position === 'left'
+      ? await sha256Hex(sibling + current)
+      : await sha256Hex(current + sibling);
+  }
+  return current === String(root).toLowerCase();
+}
+
+function proofStatus(ok) {
+  return el('div', { class: `card ${ok ? 'badge-success' : 'badge-danger'}` },
+    el('div', { class: 'row', style: { gap: '10px', alignItems: 'center' } },
+      el('span', { class: 'sealed-icon', html: ok ? icons.check : icons.alert }),
+      el('div', {},
+        el('strong', {}, ok ? 'Inclusion proof verified' : 'Inclusion proof failed'),
+        el('div', { class: 'small muted' }, ok ? 'Your ballot is included in the election’s published Merkle root.' : 'The proof did not reproduce the published root.'),
+      ),
+    ),
+  );
+}
+
 function verificationCard(data) {
+  const proofBox = el('div', { class: 'merkle-proof' });
+  if (data.merkleRoot && data.merkleProof) {
+    const verifyBtn = el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
+      setBusy(verifyBtn, true, 'Verifying…');
+      try {
+        const ok = await verifyMerkleProof(data.merkleLeaf, data.merkleProof, data.merkleRoot);
+        setBusy(verifyBtn, false);
+        proofBox.replaceChildren(proofStatus(ok));
+        toast(ok ? 'Merkle proof verified — ballot is in the published root.' : 'Merkle proof did not match.', ok ? 'success' : 'error');
+      } catch (error) {
+        setBusy(verifyBtn, false);
+        toast(error.message, 'error');
+      }
+    } }, iconEl('shield'), 'Verify inclusion proof');
+    proofBox.append(
+      el('div', { class: 'row-between' },
+        el('div', {}, el('strong', {}, 'Merkle receipt'), el('div', { class: 'small muted' }, 'Your ballot is part of this election’s published hash tree.')),
+        verifyBtn,
+      ),
+      el('div', { class: 'mono small', style: { marginTop: '8px', wordBreak: 'break-all' } }, `Root: ${data.merkleRoot}`),
+      el('div', { class: 'tiny muted', style: { marginTop: '4px' } }, `${data.merkleProof.length} proof ${plural(data.merkleProof.length, 'step')}`),
+    );
+  }
+
   return el(
     'div',
-    { class: 'sealed' },
+    { class: 'stack-sm' },
+    el(
+      'div',
+      { class: 'sealed' },
     el(
       'div',
       { class: 'sealed-head' },
@@ -1047,6 +1139,8 @@ function verificationCard(data) {
       infoRow('Status', data.counted ? 'Counted in the tally' : 'Not counted'),
     ),
     el('a', { class: 'btn btn-outline btn-sm', href: `/election/${data.election.id}` }, 'View this election', iconEl('arrow')),
+    ),
+    proofBox,
   );
 }
 
@@ -1213,6 +1307,40 @@ async function viewAccount() {
 /* --------------------------------------------------------------------------
    Not found
    -------------------------------------------------------------------------- */
+
+async function viewAuditChain() {
+  const box = el('div', { class: 'card stack' }, el('p', { class: 'small muted' }, 'Loading the audit chain…'));
+  const load = async () => {
+    try {
+      const data = await api('GET', '/api/audit/verify');
+      box.replaceChildren(
+        el('h2', { style: { margin: 0 } }, 'Audit chain'),
+        el('p', { class: 'muted', style: { margin: 0 } }, 'Every administrative action and ballot event is appended to an HMAC-SHA256 chain. The head below is published so the log can be checked for tampering.'),
+        el('div', { class: 'row', style: { gap: '24px', flexWrap: 'wrap' } },
+          el('div', {}, el('strong', {}, formatNumber(data.entries)), el('span', { class: 'small muted' }, ' entries')),
+          el('div', {}, el('strong', {}, data.algorithm)),
+        ),
+        el('div', { class: 'field' },
+          el('label', {}, 'Current chain head'),
+          el('div', { class: 'mono small', style: { wordBreak: 'break-all', padding: '12px', borderRadius: '8px', background: 'var(--inset-bg, var(--surface-2))' } }, data.chainHead),
+        ),
+        el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: load }, iconEl('shield'), 'Refresh head'),
+        state.user && state.user.role === 'admin'
+          ? el('a', { class: 'btn btn-primary btn-sm', href: '/admin/audit' }, 'Open full audit log', iconEl('arrow'))
+          : null,
+      );
+    } catch (error) {
+      box.replaceChildren(el('p', { class: 'form-error' }, error.message));
+    }
+  };
+  load();
+  return [
+    el('div', { class: 'stack-lg' },
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Transparency'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Public audit chain')),
+      box,
+    ),
+  ];
+}
 
 async function viewHelp() {
   const faq = (q, a) => el('div', { class: 'card' }, el('h2', { style: { margin: '0 0 6px', fontSize: '1.1rem' } }, q), el('p', { class: 'muted', style: { margin: 0 } }, a));

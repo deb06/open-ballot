@@ -615,3 +615,74 @@ function fire_webhooks(string $event, array $payload): void
         db_exec('UPDATE webhooks SET last_sent_at = ? WHERE url = ?', [iso_to_sql(now_iso()), $hook['url']]);
     }
 }
+
+/* --------------------------------------------------------------------------
+   Signed results (HMAC-SHA256 with a dedicated key in DATA_DIR)
+   -------------------------------------------------------------------------- */
+
+function results_signing_key(): string
+{
+    $path = (string) config('data_dir') . DIRECTORY_SEPARATOR . 'results-signing.key';
+    if (!is_file($path)) {
+        $key = bin2hex(random_bytes(32));
+        file_put_contents($path, $key);
+        chmod($path, 0600);
+        return $key;
+    }
+    return trim((string) file_get_contents($path));
+}
+
+function sign_results_payload(array $payload): string
+{
+    $canonical = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    return hash_hmac('sha256', (string) $canonical, results_signing_key());
+}
+
+function verify_results_signature(array $payload, string $signature): bool
+{
+    return hash_equals(sign_results_payload($payload), $signature);
+}
+
+function signed_results_for(int $electionId): array
+{
+    $election = get_election($electionId);
+    if ($election === null) {
+        fail(404, 'Election not found.', 'not_found');
+    }
+    $rows = db_all(
+        'SELECT c.name AS name, c.party AS party, COUNT(vc.vote_id) AS votes
+         FROM candidates c
+         LEFT JOIN vote_choices vc ON vc.candidate_id = c.id
+         WHERE c.election_id = ?
+         GROUP BY c.id ORDER BY votes DESC, c.id ASC',
+        [$electionId],
+    );
+    $total = 0;
+    foreach ($rows as $r) {
+        $total += (int) $r['votes'];
+    }
+    $candidates = [];
+    foreach ($rows as $r) {
+        $candidates[] = [
+            'name' => (string) $r['name'],
+            'party' => (string) ($r['party'] ?? ''),
+            'votes' => (int) $r['votes'],
+            'share' => $total > 0 ? round(((int) $r['votes'] / $total) * 100, 2) : 0,
+        ];
+    }
+    $payload = [
+        'electionId' => $electionId,
+        'title' => (string) $election['title'],
+        'status' => (string) $election['status'],
+        'totalVotes' => $total,
+        'candidates' => $candidates,
+        'generatedAt' => now_iso(),
+    ];
+    $key = results_signing_key();
+    return [
+        'payload' => $payload,
+        'signature' => sign_results_payload($payload),
+        'algorithm' => 'HMAC-SHA256',
+        'keyFingerprint' => substr(hash('sha256', $key), 0, 16),
+    ];
+}
