@@ -240,3 +240,41 @@ CREATE TABLE IF NOT EXISTS webhooks (
   KEY idx_webhooks_user (user_id),
   CONSTRAINT fk_webhooks_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS health_snapshots (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  recorded_at DATETIME(3) NOT NULL,
+  status     VARCHAR(20) NOT NULL,
+  checks     TEXT NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_health_recorded (recorded_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS api_keys (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id    INT UNSIGNED NOT NULL,
+  name       VARCHAR(80) NOT NULL,
+  key_hash   CHAR(64) NOT NULL,
+  prefix     VARCHAR(12) NOT NULL,
+  last_used_at DATETIME(3) NULL DEFAULT NULL,
+  created_at DATETIME(3) NOT NULL,
+  revoked_at DATETIME(3) NULL DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_api_keys_hash (key_hash),
+  KEY idx_api_keys_user (user_id),
+  CONSTRAINT fk_api_keys_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS webhook_deliveries (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  webhook_id INT UNSIGNED NOT NULL,
+  event      VARCHAR(60) NOT NULL,
+  payload    TEXT NOT NULL,
+  response_code INT NULL DEFAULT NULL,
+  success    TINYINT(1) NOT NULL DEFAULT 0,
+  error      VARCHAR(300) NULL DEFAULT NULL,
+  created_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_deliveries_hook (webhook_id),
+  CONSTRAINT fk_deliveries_hook FOREIGN KEY (webhook_id) REFERENCES webhooks (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

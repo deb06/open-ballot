@@ -619,3 +619,9 @@
 }
 
 .schema-card.is-dimmed { opacity: 0.18; filter: grayscale(1); }
+
+/* Uptime history ----------------------------------------------------------- */
+.uptime-bars { display: flex; gap: 2px; flex-wrap: wrap; padding: 10px 0; }
+.uptime-bar { width: 8px; height: 24px; border-radius: 2px; display: inline-block; }
+.uptime-bar.is-ok { background: var(--success); }
+.uptime-bar.is-bad { background: var(--danger); }

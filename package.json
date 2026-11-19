@@ -21,7 +21,10 @@
     "docs:readme": "python scripts\\generate_readme.py",
     "db:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-start.ps1",
     "db:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-stop.ps1",
-    "db:init": "tools\\php\\php.exe scripts\\init-db.php --verbose"
+    "db:init": "tools\\php\\php.exe scripts\\init-db.php --verbose",
+    "db:backup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\backup-pg.ps1",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down"
   },
   "keywords": [
     "voting",

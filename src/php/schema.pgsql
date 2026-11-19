@@ -187,3 +187,35 @@ CREATE TABLE IF NOT EXISTS webhooks (
   created_at   TIMESTAMP(3) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_webhooks_user ON webhooks(user_id);
+
+CREATE TABLE IF NOT EXISTS health_snapshots (
+  id         SERIAL PRIMARY KEY,
+  recorded_at TIMESTAMP(3) NOT NULL,
+  status     VARCHAR(20) NOT NULL,
+  checks     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_health_recorded ON health_snapshots(recorded_at);
+
+CREATE TABLE IF NOT EXISTS api_keys (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name       VARCHAR(80) NOT NULL,
+  key_hash   CHAR(64) NOT NULL UNIQUE,
+  prefix     VARCHAR(12) NOT NULL,
+  last_used_at TIMESTAMP(3) NULL,
+  created_at TIMESTAMP(3) NOT NULL,
+  revoked_at TIMESTAMP(3) NULL
+);
+CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id);
+
+CREATE TABLE IF NOT EXISTS webhook_deliveries (
+  id         SERIAL PRIMARY KEY,
+  webhook_id INT NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+  event      VARCHAR(60) NOT NULL,
+  payload    TEXT NOT NULL,
+  response_code INT NULL,
+  success    SMALLINT NOT NULL DEFAULT 0,
+  error      VARCHAR(300) NULL,
+  created_at TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_deliveries_hook ON webhook_deliveries(webhook_id);

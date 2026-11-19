@@ -705,7 +705,7 @@ function consume_webauthn_challenge(string $challenge, string $type): bool
 
 function fire_webhooks(string $event, array $payload): void
 {
-    $hooks = db_all("SELECT url, secret, events FROM webhooks WHERE active = 1");
+    $hooks = db_all("SELECT id, url, secret, events FROM webhooks WHERE active = 1");
     foreach ($hooks as $hook) {
         $events = array_map('trim', explode(',', (string) $hook['events']));
         if (!in_array($event, $events, true) && !in_array('*', $events, true)) {
@@ -718,7 +718,7 @@ function fire_webhooks(string $event, array $payload): void
         ], JSON_UNESCAPED_SLASHES);
         $signature = hash_hmac('sha256', (string) $body, (string) $hook['secret']);
         // Non-blocking: short timeout, ignore failures so voting is never delayed.
-        @file_get_contents((string) $hook['url'], false, stream_context_create([
+        $response = @file_get_contents((string) $hook['url'], false, stream_context_create([
             'http' => [
                 'method' => 'POST',
                 'header' => "Content-Type: application/json\r\nX-Webhook-Signature: {$signature}\r\n",
@@ -727,6 +727,17 @@ function fire_webhooks(string $event, array $payload): void
                 'ignore_errors' => true,
             ],
         ]));
+        $code = null;
+        $error = null;
+        $lastHeaders = function_exists('http_get_last_response_headers') ? http_get_last_response_headers() : null;
+        if (is_array($lastHeaders) && isset($lastHeaders[0]) && preg_match('/\s(\d{3})\s/', $lastHeaders[0], $m) === 1) {
+            $code = (int) $m[1];
+        }
+        $success = $response !== false && $code !== null && $code >= 200 && $code < 300;
+        if (!$success) {
+            $error = $response === false ? 'Connection failed' : 'HTTP ' . ($code ?? 'unknown');
+        }
+        log_webhook_delivery((int) $hook['id'], $event, (string) $body, $code, $success, $error);
         db_exec('UPDATE webhooks SET last_sent_at = ? WHERE url = ?', [iso_to_sql(now_iso()), $hook['url']]);
     }
 }
@@ -824,4 +835,84 @@ function apply_scheduled_election_statuses(): void
     } catch (Throwable) {
         /* best effort */
     }
+}
+
+/* --------------------------------------------------------------------------
+   Platform ops: API keys, health snapshots, error reporting
+   -------------------------------------------------------------------------- */
+
+function api_key_issue(int $userId, string $name): array
+{
+    $key = 'obk_' . bin2hex(random_bytes(24));
+    $prefix = substr($key, 0, 12);
+    db_exec(
+        'INSERT INTO api_keys (user_id, name, key_hash, prefix, created_at) VALUES (?, ?, ?, ?, ?)',
+        [$userId, $name, sha256($key), $prefix, iso_to_sql(now_iso())],
+    );
+    return ['key' => $key, 'prefix' => $prefix];
+}
+
+function api_key_authenticate(): bool
+{
+    $header = $_SERVER['HTTP_X_API_KEY'] ?? null;
+    if (!is_string($header) || !str_starts_with($header, 'obk_')) {
+        return false;
+    }
+    $row = db_one(
+        'SELECT id, user_id FROM api_keys WHERE key_hash = ? AND revoked_at IS NULL',
+        [sha256($header)],
+    );
+    if ($row === null) {
+        return false;
+    }
+    db_exec('UPDATE api_keys SET last_used_at = ? WHERE id = ?', [iso_to_sql(now_iso()), (int) $row['id']]);
+    return true;
+}
+
+function record_health_snapshot(string $status, array $checks): void
+{
+    try {
+        $last = db_one('SELECT recorded_at FROM health_snapshots ORDER BY recorded_at DESC LIMIT 1');
+        if ($last !== null && sql_timestamp($last['recorded_at']) + 3600 > time()) {
+            return;
+        }
+        db_exec(
+            'INSERT INTO health_snapshots (recorded_at, status, checks) VALUES (?, ?, ?)',
+            [iso_to_sql(now_iso()), $status, json_encode($checks)],
+        );
+    } catch (Throwable) { /* health history is best-effort */ }
+}
+
+function report_error(string $message, array $context = []): void
+{
+    $dsn = env_value('SENTRY_DSN');
+    if ($dsn === null || $dsn === '') {
+        return;
+    }
+    $payload = json_encode([
+        'message' => $message,
+        'timestamp' => gmdate('c'),
+        'environment' => env_value('APP_ENV', 'production'),
+        'extra' => $context,
+    ]);
+    $contextStream = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => "Content-Type: application/json\r\n",
+            'content' => $payload,
+            'timeout' => 1,
+            'ignore_errors' => true,
+        ],
+    ]);
+    @file_get_contents($dsn, false, $contextStream);
+}
+
+function log_webhook_delivery(int $webhookId, string $event, string $payload, ?int $code, bool $success, ?string $error): void
+{
+    try {
+        db_exec(
+            'INSERT INTO webhook_deliveries (webhook_id, event, payload, response_code, success, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [$webhookId, $event, mb_substr($payload, 0, 4000), $code, $success ? 1 : 0, $error === null ? null : mb_substr($error, 0, 300), iso_to_sql(now_iso())],
+        );
+    } catch (Throwable) { /* delivery log is best-effort */ }
 }

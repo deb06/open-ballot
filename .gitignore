@@ -9,6 +9,7 @@ data/
 node_modules/
 .DS_Store
 .env
+backups/
 
 
 # Python caches

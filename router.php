@@ -76,6 +76,7 @@ try {
         $error->getFile(),
         $error->getLine(),
     ));
+    report_error($error->getMessage(), ['method' => $method, 'path' => $pathname, 'file' => $error->getFile(), 'line' => $error->getLine()]);
     if (!headers_sent()) {
         send_json(500, error_envelope(500, 'Something went wrong on our end. Please try again.', 'error'));
     }

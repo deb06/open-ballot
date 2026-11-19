@@ -1376,6 +1376,29 @@ async function viewAdminWebhooks() {
   const secretBox = el('div', { class: 'callout callout-info', hidden: true });
   const tableHost = el('div', {}, el('p', { class: 'small muted' }, 'Loading webhooks…'));
 
+  const deliveriesHost = el('div', {}, el('p', { class: 'small muted' }, 'Select a webhook to see recent deliveries.'));
+
+  const loadDeliveries = async (id) => {
+    deliveriesHost.replaceChildren(el('p', { class: 'small muted' }, 'Loading deliveries…'));
+    try {
+      const data = await api('GET', `/api/admin/webhooks/${id}/deliveries`);
+      deliveriesHost.replaceChildren(data.deliveries.length
+        ? Components.dataTable({
+            columns: [
+              { key: 'event', label: 'Event' },
+              { key: 'response_code', label: 'HTTP', render: (d) => d.response_code ?? '—' },
+              { key: 'success', label: 'Result', render: (d) => d.success ? el('span', { class: 'badge badge-success' }, 'Success') : el('span', { class: 'badge badge-danger' }, d.error || 'Failed') },
+              { key: 'created_at', label: 'Time', render: (d) => formatDateTime(d.created_at) },
+            ],
+            rows: data.deliveries,
+            exportName: `webhook-${id}-deliveries`,
+            pageSize: 10,
+            empty: 'No deliveries recorded yet.',
+          })
+        : el('p', { class: 'small muted' }, 'No deliveries recorded yet.'));
+    } catch (error) { deliveriesHost.replaceChildren(el('p', { class: 'form-error' }, error.message)); }
+  };
+
   const load = async () => {
     try {
       const data = await api('GET', '/api/admin/webhooks');
@@ -1385,12 +1408,15 @@ async function viewAdminWebhooks() {
           { key: 'events', label: 'Events' },
           { key: 'active', label: 'Status', render: (h) => h.active ? el('span', { class: 'badge badge-success' }, 'Active') : el('span', { class: 'badge' }, 'Inactive') },
           { key: 'last_sent_at', label: 'Last sent', render: (h) => h.last_sent_at ? formatDateTime(h.last_sent_at) : 'Never' },
-          { key: 'actions', label: 'Actions', sortable: false, render: (h) => el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
+          { key: 'actions', label: 'Actions', sortable: false, render: (h) => el('div', { class: 'row', style: { gap: '6px' } },
+            el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => loadDeliveries(h.id) }, 'Deliveries'),
+            el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
               const ok = await confirmDialog({ title: 'Delete webhook?', message: 'This endpoint will stop receiving events.', confirmLabel: 'Delete' });
               if (!ok) return;
               try { await api('DELETE', `/api/admin/webhooks/${h.id}`); toast('Webhook deleted.', 'success'); load(); }
               catch (error) { toast(error.message, 'error'); }
-            } }, iconEl('trash'), 'Remove') },
+            } }, iconEl('trash'), 'Remove'),
+          ) },
         ],
         rows: data.webhooks,
         exportName: 'webhooks',
@@ -1441,6 +1467,74 @@ async function viewAdminWebhooks() {
           el('h2', { style: { margin: '0 0 12px' } }, 'Configured webhooks'),
           tableHost,
         ),
+        el('div', { class: 'card' },
+          el('h2', { style: { margin: '0 0 12px' } }, 'Recent deliveries'),
+          deliveriesHost,
+        ),
+      ),
+    ),
+  ];
+}
+
+async function viewAdminApiKeys() {
+  const guard = adminOnly();
+  if (guard) return guard;
+
+  const errorBox = el('div', { class: 'form-error', role: 'alert' });
+  const secretBox = el('div', { class: 'callout callout-info', hidden: true });
+  const tableHost = el('div', {}, el('p', { class: 'small muted' }, 'Loading API keys…'));
+
+  const load = async () => {
+    try {
+      const data = await api('GET', '/api/admin/api-keys');
+      tableHost.replaceChildren(Components.dataTable({
+        columns: [
+          { key: 'name', label: 'Name' },
+          { key: 'prefix', label: 'Key', render: (k) => el('code', {}, k.prefix + '…') },
+          { key: 'last_used_at', label: 'Last used', render: (k) => k.last_used_at ? formatDateTime(k.last_used_at) : 'Never' },
+          { key: 'revoked_at', label: 'Status', render: (k) => k.revoked_at ? el('span', { class: 'badge' }, 'Revoked') : el('span', { class: 'badge badge-success' }, 'Active') },
+          { key: 'actions', label: 'Actions', sortable: false, render: (k) => k.revoked_at ? null : el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
+              const ok = await confirmDialog({ title: 'Revoke this key?', message: `${k.name} will stop working immediately.`, confirmLabel: 'Revoke' });
+              if (!ok) return;
+              try { await api('DELETE', `/api/admin/api-keys/${k.id}`); toast('API key revoked.', 'success'); load(); }
+              catch (error) { toast(error.message, 'error'); }
+            } }, 'Revoke') },
+        ],
+        rows: data.keys,
+        exportName: 'api-keys',
+        pageSize: 10,
+        empty: 'No API keys yet.',
+      }));
+    } catch (error) { errorBox.textContent = error.message; }
+  };
+
+  const name = el('input', { class: 'input', placeholder: 'e.g. Research dashboard', 'aria-label': 'Key name' });
+  const create = el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: async () => {
+    errorBox.textContent = '';
+    if (!name.value.trim()) { errorBox.textContent = 'Give the key a name.'; return; }
+    try {
+      const data = await api('POST', '/api/admin/api-keys', { name: name.value.trim() });
+      secretBox.replaceChildren(
+        el('strong', {}, 'New API key (shown once): '), el('code', {}, data.key),
+        el('div', { class: 'small muted' }, 'Send it in the X-API-Key header to /api/public/* endpoints.'),
+      );
+      secretBox.hidden = false;
+      name.value = '';
+      load();
+    } catch (error) { errorBox.textContent = error.message; }
+  } }, iconEl('plus'), 'Create key');
+
+  load();
+  return [
+    el('div', { class: 'admin-shell' },
+      adminHeader('API keys', 'Manage read-only access to published election data.'),
+      adminNav('api-keys'),
+      el('div', { class: 'stack' },
+        el('div', { class: 'card stack' }, el('h2', { style: { margin: 0 } }, 'Create a key'), errorBox, secretBox,
+          el('div', { class: 'row' }, name, create),
+          el('p', { class: 'small muted' }, 'Public endpoints: /api/public/elections and /api/public/results/:id. Keys are hashed at rest.'),
+        ),
+        el('div', { class: 'card' }, el('h2', { style: { margin: '0 0 12px' } }, 'Existing keys'), tableHost),
       ),
     ),
   ];

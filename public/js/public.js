@@ -1630,10 +1630,31 @@ async function viewStatus() {
       box.replaceChildren(el('p', { class: 'form-error' }, error.message));
     }
   };
+  const historyBox = el('div', { class: 'card stack' }, el('p', { class: 'small muted' }, 'Loading uptime history…'));
+  (async () => {
+    try {
+      const data = await api('GET', '/api/status/history');
+      const snapshots = data.snapshots || [];
+      if (!snapshots.length) {
+        historyBox.replaceChildren(el('h3', { style: { margin: 0 } }, '90-day uptime'), el('p', { class: 'small muted' }, 'History will appear after the first hourly check.'));
+        return;
+      }
+      const operational = snapshots.filter((s) => s.status === 'operational').length;
+      const pct = Math.round((operational / snapshots.length) * 1000) / 10;
+      historyBox.replaceChildren(
+        el('div', { class: 'row-between' }, el('h3', { style: { margin: 0 } }, '90-day uptime'), el('strong', {}, `${pct}%`),),
+        el('div', { class: 'uptime-bars' }, ...snapshots.map((s) =>
+          el('span', { class: `uptime-bar ${s.status === 'operational' ? 'is-ok' : 'is-bad'}`, title: `${formatDateTime(s.recorded_at)} · ${s.status}` }),
+        )),
+        el('p', { class: 'tiny muted' }, `${snapshots.length} hourly snapshots · green = operational`),
+      );
+    } catch { historyBox.replaceChildren(el('p', { class: 'small muted' }, 'Uptime history unavailable.')); }
+  })();
   load();
   return [el('div', { class: 'stack-lg' },
     el('div', {}, el('p', { class: 'eyebrow' }, 'Service health'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Status')),
     box,
+    historyBox,
   )];
 }
 

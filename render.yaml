@@ -40,6 +40,10 @@ services:
         generateValue: true
       - key: REGISTRATION_OPEN
         value: "1"
+      - key: APP_ENV
+        value: production
+      - key: SENTRY_DSN
+        sync: false
 
 databases:
   - name: open-ballot-db

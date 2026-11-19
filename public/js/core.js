@@ -930,6 +930,7 @@ async function viewFor(parts) {
     if (sub === 'users') return viewAdminUsers();
     if (sub === 'audit') return viewAdminAudit();
   if (sub === 'webhooks') return viewAdminWebhooks();
+  if (sub === 'api-keys') return viewAdminApiKeys();
   if (sub === 'schema') return viewAdminSchema();
   }
   return viewNotFound();
@@ -1103,6 +1104,19 @@ function setupCommandPalette() {
   });
 }
 
+function setupErrorReporting() {
+  window.addEventListener('error', (event) => {
+    if (!event.message) return;
+    api('POST', '/api/client-error', { message: event.message, url: location.href }).catch(() => {});
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    const message = reason && reason.message ? reason.message : String(reason || 'Unhandled rejection');
+    if (!message || message === 'undefined') return;
+    api('POST', '/api/client-error', { message, url: location.href }).catch(() => {});
+  });
+}
+
 function setupLinkInterception() {
   document.addEventListener('click', (event) => {
     const anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
@@ -1120,6 +1134,7 @@ async function boot() {
   applyTheme();
   setupNav();
   setupCommandPalette();
+  setupErrorReporting();
   setupLinkInterception();
   renderHeader();
   await refreshMe();

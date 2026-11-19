@@ -60,8 +60,10 @@ function api_routes(): array
             $checks[] = ['name' => 'Election service', 'ok' => false];
         }
         $checks[] = ['name' => 'Application', 'ok' => true];
+        $status = array_filter($checks, static fn (array $c): bool => !$c['ok']) === [] ? 'operational' : 'degraded';
+        record_health_snapshot($status, $checks);
         send_json(200, [
-            'status' => array_filter($checks, static fn (array $c): bool => !$c['ok']) === [] ? 'operational' : 'degraded',
+            'status' => $status,
             'checks' => $checks,
             'time' => now_iso(),
         ]);
@@ -830,6 +832,84 @@ function api_routes(): array
         }
         $valid = verify_results_signature($payload, $signature);
         send_json(200, ['valid' => $valid]);
+    });
+
+    /* ------------------------------------------------------------------ */
+    /* Platform ops                                                        */
+    /* ------------------------------------------------------------------ */
+
+    $add('POST', '/api/client-error', static function (array $ctx): void {
+        $message = as_text($ctx['body']['message'] ?? null);
+        if ($message !== '' && strlen($message) < 500) {
+            report_error('[client] ' . $message, ['url' => as_text($ctx['body']['url'] ?? null)]);
+        }
+        send_json(200, ['ok' => true]);
+    });
+
+    $add('GET', '/api/status/history', static function (array $ctx): void {
+        $rows = db_all(
+            'SELECT recorded_at, status, checks FROM health_snapshots
+             WHERE recorded_at > ? ORDER BY recorded_at ASC',
+            [iso_to_sql(now_iso_at(time() - 90 * 86400))],
+        );
+        send_json(200, ['snapshots' => $rows]);
+    });
+
+    $admin('GET', '/api/admin/api-keys', static function (array $ctx): void {
+        $rows = db_all(
+            'SELECT id, name, prefix, last_used_at, created_at, revoked_at FROM api_keys
+             WHERE user_id = ? ORDER BY created_at DESC',
+            [(int) $ctx['user']['id']],
+        );
+        send_json(200, ['keys' => $rows]);
+    });
+
+    $admin('POST', '/api/admin/api-keys', static function (array $ctx): void {
+        $name = require_text($ctx['body']['name'] ?? null, 2, 80, 'Name');
+        $issued = api_key_issue((int) $ctx['user']['id'], $name);
+        audit((int) $ctx['user']['id'], 'api_key.created', ['name' => $name], $ctx['ip']);
+        send_json(201, $issued);
+    });
+
+    $admin('DELETE', '/api/admin/api-keys/:id', static function (array $ctx): void {
+        $id = (int) $ctx['params']['id'];
+        db_exec('UPDATE api_keys SET revoked_at = ? WHERE id = ? AND user_id = ?', [iso_to_sql(now_iso()), $id, (int) $ctx['user']['id']]);
+        audit((int) $ctx['user']['id'], 'api_key.revoked', ['id' => $id], $ctx['ip']);
+        send_json(200, ['ok' => true]);
+    });
+
+    $add('GET', '/api/public/elections', static function (array $ctx): void {
+        if (!api_key_authenticate()) {
+            fail(401, 'A valid API key is required (X-API-Key).', 'invalid_api_key');
+        }
+        $rows = db_all("SELECT id, title, status, created_at FROM elections WHERE status != 'draft' ORDER BY created_at DESC LIMIT 100");
+        foreach ($rows as &$row) {
+            $row['id'] = (int) $row['id'];
+            $row['ballots'] = count_votes((int) $row['id']);
+        }
+        send_json(200, ['elections' => $rows]);
+    });
+
+    $add('GET', '/api/public/results/:id', static function (array $ctx): void {
+        if (!api_key_authenticate()) {
+            fail(401, 'A valid API key is required (X-API-Key).', 'invalid_api_key');
+        }
+        $id = (int) $ctx['params']['id'];
+        $election = get_election($id);
+        if ($election === null || $election['status'] !== 'closed') {
+            fail(404, 'Published results not found.', 'not_found');
+        }
+        send_json(200, signed_results_for($id));
+    });
+
+    $admin('GET', '/api/admin/webhooks/:id/deliveries', static function (array $ctx): void {
+        $id = (int) $ctx['params']['id'];
+        $rows = db_all(
+            'SELECT id, event, response_code, success, error, created_at FROM webhook_deliveries
+             WHERE webhook_id = ? ORDER BY created_at DESC LIMIT 50',
+            [$id],
+        );
+        send_json(200, ['deliveries' => $rows]);
     });
 
     /* ------------------------------------------------------------------ */
@@ -1924,6 +2004,7 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
             $error->getFile(),
             $error->getLine(),
         ));
+        report_error($error->getMessage(), ['method' => $method, 'path' => $pathname, 'file' => $error->getFile(), 'line' => $error->getLine()]);
         send_json(500, error_envelope(500, 'Something went wrong on our end. Please try again.', 'error'));
     }
 }
