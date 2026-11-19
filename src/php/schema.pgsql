@@ -123,3 +123,12 @@ CREATE TABLE IF NOT EXISTS mfa_challenges (
   expires_at TIMESTAMP(3) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_mfa_challenges_user ON mfa_challenges(user_id);
+
+CREATE TABLE IF NOT EXISTS backup_codes (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  code_hash  CHAR(64) NOT NULL,
+  used_at    TIMESTAMP(3) NULL,
+  created_at TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_backup_codes_user ON backup_codes(user_id);

@@ -310,6 +310,22 @@ function api_routes(): array
         send_json(200, ['ok' => true]);
     }, ['auth' => true]);
 
+    $add('POST', '/api/auth/backup-codes/generate', static function (array $ctx): void {
+        $user = $ctx['user'];
+        db_exec('DELETE FROM backup_codes WHERE user_id = ?', [(int) $user['id']]);
+        $codes = [];
+        for ($i = 0; $i < 10; $i++) {
+            $code = strtoupper(bin2hex(random_bytes(4)));
+            $codes[] = $code;
+            db_insert(
+                'INSERT INTO backup_codes (user_id, code_hash, created_at) VALUES (?, ?, ?)',
+                [(int) $user['id'], sha256($code), iso_to_sql(now_iso())],
+            );
+        }
+        audit((int) $user['id'], 'auth.backup_codes_generated', [], $ctx['ip']);
+        send_json(200, ['codes' => $codes]);
+    }, ['auth' => true]);
+
     $add('POST', '/api/auth/mfa/challenge', static function (array $ctx): void {
         $body = $ctx['body'];
         $challenge = as_text($body['challenge'] ?? null);
@@ -324,8 +340,23 @@ function api_routes(): array
             fail(401, 'Invalid or expired challenge.', 'invalid_challenge');
         }
         if (empty($row['mfa_secret']) || !totp_verify((string) $row['mfa_secret'], $code)) {
-            audit((int) $row['id'], 'auth.mfa_failed', [], $ctx['ip']);
-            fail(401, 'Invalid authentication code.', 'invalid_code');
+            // Allow a one-time backup code as an alternative.
+            $backupOk = false;
+            if (strlen($code) >= 8) {
+                $codeHash = sha256(strtoupper($code));
+                $backup = db_one(
+                    'SELECT id FROM backup_codes WHERE user_id = ? AND code_hash = ? AND used_at IS NULL',
+                    [(int) $row['user_id'], $codeHash],
+                );
+                if ($backup !== null) {
+                    db_exec('UPDATE backup_codes SET used_at = ? WHERE id = ?', [iso_to_sql(now_iso()), (int) $backup['id']]);
+                    $backupOk = true;
+                }
+            }
+            if (!$backupOk) {
+                audit((int) $row['id'], 'auth.mfa_failed', [], $ctx['ip']);
+                fail(401, 'Invalid authentication code.', 'invalid_code');
+            }
         }
         db_exec('DELETE FROM mfa_challenges WHERE id = ?', [(int) $row['id']]);
         $now = now_iso();
