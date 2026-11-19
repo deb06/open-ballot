@@ -617,3 +617,5 @@
   .verify-layout { grid-template-columns: 1fr; }
   .detail-subnav { overflow-x: auto; flex-wrap: nowrap; }
 }
+
+.schema-card.is-dimmed { opacity: 0.18; filter: grayscale(1); }

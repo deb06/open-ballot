@@ -897,6 +897,7 @@ function api_routes(): array
             $prev = hash_hmac('sha256', $prev . $entry, (string) config('app_name'));
         }
         send_json(200, [
+            'status' => 'operational',
             'entries' => count($rows),
             'chainHead' => $prev,
             'algorithm' => 'HMAC-SHA256',
@@ -939,6 +940,20 @@ function api_routes(): array
     /* ------------------------------------------------------------------ */
     /* Election analytics + audit export                                   */
     /* ------------------------------------------------------------------ */
+
+    $admin('GET', '/api/admin/elections/:id/voters', static function (array $ctx): void {
+        $id = (int) $ctx['params']['id'];
+        if (get_election($id) === null) {
+            fail(404, 'Election not found.', 'not_found');
+        }
+        $rows = db_all(
+            'SELECT u.id, u.name, u.email, u.active, p.voted_at
+             FROM participation p JOIN users u ON u.id = p.voter_id
+             WHERE p.election_id = ? ORDER BY p.voted_at DESC',
+            [$id],
+        );
+        send_json(200, ['voters' => $rows]);
+    });
 
     $admin('GET', '/api/admin/elections/:id/analytics', static function (array $ctx): void {
         $id = (int) $ctx['params']['id'];

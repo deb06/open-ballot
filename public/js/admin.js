@@ -202,13 +202,72 @@ async function viewAdminOverview() {
       )
     : null;
 
+  const attention = [];
+  const soon = Date.now() + 48 * 3600 * 1000;
+  for (const election of elections) {
+    if (election.status === 'open' && election.closesAt && Date.parse(election.closesAt) <= soon) {
+      attention.push({ title: `${election.title} closes soon`, detail: `Closes ${formatDateTime(election.closesAt)}`, href: `/admin/election/${election.id}` });
+    }
+    if (election.status === 'open' && Number(election.candidateCount) < 2) {
+      attention.push({ title: `${election.title} needs candidates`, detail: 'At least two candidates are required.', href: `/admin/election/${election.id}` });
+    }
+    const tr = Number(election.totalVotes || 0) / Math.max(1, Number(overview.users.active) || 1);
+    if (election.status === 'open' && tr < 0.2) {
+      attention.push({ title: `Low turnout: ${election.title}`, detail: `${Math.round(tr * 100)}% of the register has voted.`, href: `/admin/election/${election.id}` });
+    }
+  }
+  const attentionCard = attention.length
+    ? el('div', { class: 'card' },
+        el('div', { class: 'card-header' }, el('div', {}, el('h2', { style: { margin: 0 } }, 'Needs attention'), el('p', { style: { margin: '4px 0 0' } }, `${attention.length} ${plural(attention.length, 'item')} worth a look.`))),
+        el('div', { class: 'stack-sm' }, ...attention.slice(0, 6).map((item) =>
+          el('a', { class: 'card-flat row-between', href: item.href, style: { padding: '10px 14px' } },
+            el('div', {}, el('strong', {}, item.title), el('div', { class: 'small muted' }, item.detail)),
+            el('span', { class: 'inline-icon', html: icons.arrow }),
+          ),
+        )),
+      )
+    : null;
+
+  const updatedLabel = el('span', { class: 'small muted' }, 'Updated just now');
+  const refreshBtn = el('button', {
+    class: 'btn btn-ghost btn-sm', type: 'button',
+    onclick: async () => {
+      setBusy(refreshBtn, true, 'Refreshing…');
+      try {
+        const fresh = await api('GET', '/api/admin/overview');
+        stats.replaceChildren(
+          adminStat(fresh.users.active, 'Registered voters', 'users'),
+          adminStat(fresh.elections.open, 'Voting open now', 'ballot'),
+          adminStat(fresh.ballots.total, 'Ballots recorded', 'check'),
+          adminStat(fresh.ballots.today, 'Ballots today', 'chart'),
+        );
+        updatedLabel.textContent = `Updated ${formatDateTime(new Date().toISOString())}`;
+      } catch (error) { toast(error.message, 'error'); }
+      finally { setBusy(refreshBtn, false); }
+    },
+  }, iconEl('shield'), 'Refresh');
+  addTimer(async () => {
+    if (document.visibilityState !== 'visible') return;
+    try {
+      const fresh = await api('GET', '/api/admin/overview');
+      stats.replaceChildren(
+        adminStat(fresh.users.active, 'Registered voters', 'users'),
+        adminStat(fresh.elections.open, 'Voting open now', 'ballot'),
+        adminStat(fresh.ballots.total, 'Ballots recorded', 'check'),
+        adminStat(fresh.ballots.today, 'Ballots today', 'chart'),
+      );
+      updatedLabel.textContent = `Updated ${formatDateTime(new Date().toISOString())}`;
+    } catch { /* keep last known values */ }
+  }, 30000);
+
   return [
     el(
       'div',
       { class: 'admin-shell' },
-      adminHeader('Dashboard', 'Run elections, watch turnout and keep the register up to date.', el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: () => openElectionForm() }, iconEl('plus'), 'New election')),
+      adminHeader('Dashboard', 'Run elections, watch turnout and keep the register up to date.', el('div', { class: 'row', style: { gap: '8px' } }, updatedLabel, refreshBtn, el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: () => openElectionForm() }, iconEl('plus'), 'New election'))),
       adminNav('overview'),
       stats,
+      attentionCard,
       activeCard,
       electionsCard,
       activityCard,
@@ -389,6 +448,8 @@ async function viewAdminElection(rawId) {
     { id: 'settings', label: 'Settings', panel: settings },
     { id: 'candidates', label: 'Candidates', count: candidates.length, panel: candidateCard },
     { id: 'results', label: 'Results', count: election.totalVotes, panel: results },
+    { id: 'voters', label: 'Voters', panel: electionVotersPanel(id) },
+    { id: 'audit', label: 'Audit', panel: electionAuditPanel(id) },
     { id: 'manage', label: 'Manage', panel: danger },
   ];
 
@@ -399,7 +460,56 @@ async function viewAdminElection(rawId) {
 
 /* Tabbed manager ---------------------------------------------------------- */
 
-const ELECTION_TAB_IDS = ['settings', 'candidates', 'results', 'manage'];
+const ELECTION_TAB_IDS = ['settings', 'candidates', 'results', 'voters', 'audit', 'manage'];
+
+function electionVotersPanel(electionId) {
+  const host = el('div', { class: 'stack' }, el('p', { class: 'small muted' }, 'Loading voters…'));
+  (async () => {
+    try {
+      const data = await api('GET', `/api/admin/elections/${electionId}/voters`);
+      host.replaceChildren(
+        data.voters.length
+          ? Components.dataTable({
+              columns: [
+                { key: 'name', label: 'Voter' },
+                { key: 'email', label: 'Email' },
+                { key: 'votedAt', label: 'Voted at', render: (r) => formatDateTime(r.voted_at) },
+                { key: 'active', label: 'Status', render: (r) => r.active ? el('span', { class: 'badge badge-success' }, 'Active') : el('span', { class: 'badge' }, 'Inactive') },
+              ],
+              rows: data.voters,
+              exportName: `election-${electionId}-voters`,
+              pageSize: 10,
+              empty: 'No voters have cast a ballot yet.',
+            })
+          : emptyState({ icon: 'users', title: 'No voters yet', message: 'Voters appear here once they cast a ballot.' }),
+      );
+    } catch (error) { host.replaceChildren(el('p', { class: 'form-error' }, error.message)); }
+  })();
+  return host;
+}
+
+function electionAuditPanel(electionId) {
+  const host = el('div', { class: 'stack' }, el('p', { class: 'small muted' }, 'Loading audit events…'));
+  (async () => {
+    try {
+      const data = await api('GET', '/api/admin/audit?limit=200');
+      const events = data.entries.filter((entry) => {
+        const details = typeof entry.details === 'string' ? (() => { try { return JSON.parse(entry.details); } catch { return {}; } })() : (entry.details || {});
+        return String(details.electionId || '') === String(electionId);
+      });
+      host.replaceChildren(
+        events.length
+          ? Components.timeline(events.slice(0, 30).map((e) => ({
+              title: actionLabel(e.action),
+              meta: formatDateTime(e.created_at),
+              body: `${e.actor_name || 'System'} · ${auditSummary(e) || '—'}`,
+            })))
+          : emptyState({ icon: 'shield', title: 'No audit events', message: 'No audit entries are linked to this election.' }),
+      );
+    } catch (error) { host.replaceChildren(el('p', { class: 'form-error' }, error.message)); }
+  })();
+  return host;
+}
 
 function readElectionTab() {
   const match = /[?&]tab=([a-z]+)/.exec(location.search);
@@ -992,134 +1102,71 @@ async function viewAdminUsers() {
   const guard = adminOnly();
   if (guard) return guard;
 
-  const tbody = el('tbody');
-  const countLabel = el('span', { class: 'small muted' }, '');
-  const search = el('input', { class: 'input', type: 'search', placeholder: 'Search by name or email…', 'aria-label': 'Search voters' });
-  let currentQuery = '';
+  const errorBox = el('div', { class: 'form-error', role: 'alert' });
+  const tableHost = el('div', {}, el('p', { class: 'small muted' }, 'Loading voters…'));
 
-  const load = async (query) => {
-    currentQuery = query;
-    const data = await api('GET', `/api/admin/users?q=${encodeURIComponent(query)}`);
-    countLabel.textContent = `${data.users.length} ${plural(data.users.length, 'account')}`;
-    tbody.replaceChildren(
-      ...(data.users.length
-        ? data.users.map((user) => userRow(user))
-        : [el('tr', {}, el('td', { colspan: '6', class: 'muted' }, 'No accounts match that search.'))]),
-    );
-  };
-
-  const userRow = (user) => {
+  const makeRoleSelect = (user, reload) => {
     const self = state.user.id === user.id;
-    const roleSelect = el(
-      'select',
-      { class: 'select', style: { padding: '6px 30px 6px 10px', fontSize: '0.82rem', width: '110px' }, 'aria-label': `Role for ${user.name}`, disabled: self },
+    const select = el('select', { class: 'select', style: { padding: '6px 30px 6px 10px', fontSize: '0.82rem', width: '110px' }, 'aria-label': `Role for ${user.name}`, disabled: self },
       el('option', { value: 'voter', selected: user.role === 'voter' }, 'Voter'),
       el('option', { value: 'admin', selected: user.role === 'admin' }, 'Admin'),
     );
-    roleSelect.addEventListener('change', async () => {
-      const newRole = roleSelect.value;
-      const ok = await confirmDialog({
-        title: 'Change this user’s role?',
-        message: `${user.name} will become ${newRole === 'admin' ? 'an administrator' : 'a voter'}.`,
-        confirmLabel: 'Change role',
-      });
-      if (!ok) {
-        roleSelect.value = user.role;
-        return;
-      }
-      try {
-        await api('PATCH', `/api/admin/users/${user.id}`, { role: newRole });
-        toast('Role updated.', 'success');
-        load(currentQuery);
-      } catch (error) {
-        toast(error.message, 'error');
-        roleSelect.value = user.role;
-      }
+    select.addEventListener('change', async () => {
+      const next = select.value;
+      const ok = await confirmDialog({ title: 'Change role?', message: `${user.name} will become ${next === 'admin' ? 'an administrator' : 'a voter'}.`, confirmLabel: 'Change role' });
+      if (!ok) { select.value = user.role; return; }
+      try { await api('PATCH', `/api/admin/users/${user.id}`, { role: next }); toast('Role updated.', 'success'); reload(); }
+      catch (error) { toast(error.message, 'error'); select.value = user.role; }
     });
-
-    const statusButton = el(
-      'button',
-      {
-        class: `btn btn-sm ${user.active ? 'btn-success' : 'btn-danger'}`,
-        type: 'button',
-        disabled: self,
-        title: self ? 'You cannot deactivate your own account.' : user.active ? 'Deactivate account' : 'Reactivate account',
-        onclick: async () => {
-          const ok = await confirmDialog({
-            title: user.active ? 'Deactivate this account?' : 'Reactivate this account?',
-            message: user.active
-              ? `${user.name} will be signed out and unable to vote until reactivated.`
-              : `${user.name} will be able to sign in and vote again.`,
-            confirmLabel: user.active ? 'Deactivate' : 'Reactivate',
-            danger: user.active,
-          });
-          if (!ok) return;
-          try {
-            await api('PATCH', `/api/admin/users/${user.id}`, { active: !user.active });
-            toast('Account updated.', 'success');
-            load(currentQuery);
-          } catch (error) {
-            toast(error.message, 'error');
-          }
-        },
-      },
-      user.active ? 'Active' : 'Inactive',
-    );
-
-    return el(
-      'tr',
-      {},
-      el(
-        'td',
-        {},
-        el('div', { class: 'cell-title' }, user.name, self ? el('span', { class: 'badge', style: { marginLeft: '8px' } }, 'You') : null),
-        el('div', { class: 'cell-sub' }, user.email),
-      ),
-      el('td', {}, roleSelect),
-      el('td', {}, statusButton),
-      el('td', {}, formatNumber(user.ballotsCast)),
-      el('td', { class: 'small muted' }, formatDate(user.createdAt)),
-      el('td', { class: 'small muted', title: user.lastLoginAt ? formatDateTime(user.lastLoginAt) : '' }, user.lastLoginAt ? timeAgo(user.lastLoginAt) : 'Never'),
-    );
+    return select;
   };
 
-  let searchTimer = null;
-  search.addEventListener('input', () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(async () => {
-      try {
-        await load(search.value.trim());
-      } catch (error) {
-        toast(error.message, 'error');
-      }
-    }, 300);
-  });
+  const makeStatusButton = (user, reload) => {
+    const self = state.user.id === user.id;
+    const btn = el('button', {
+      class: `btn btn-sm ${user.active ? 'btn-success' : 'btn-danger'}`, type: 'button', disabled: self,
+      title: self ? 'You cannot deactivate your own account.' : user.active ? 'Deactivate account' : 'Reactivate account',
+      onclick: async () => {
+        const ok = await confirmDialog({
+          title: user.active ? 'Deactivate this account?' : 'Reactivate this account?',
+          message: user.active ? `${user.name} will be signed out and unable to vote until reactivated.` : `${user.name} will be able to sign in and vote again.`,
+          confirmLabel: user.active ? 'Deactivate' : 'Reactivate', danger: user.active,
+        });
+        if (!ok) return;
+        try { await api('PATCH', `/api/admin/users/${user.id}`, { active: !user.active }); toast('Account updated.', 'success'); reload(); }
+        catch (error) { toast(error.message, 'error'); }
+      },
+    }, user.active ? 'Active' : 'Inactive');
+    return btn;
+  };
 
-  await load('');
+  const load = async () => {
+    try {
+      const data = await api('GET', '/api/admin/users');
+      tableHost.replaceChildren(Components.dataTable({
+        columns: [
+          { key: 'name', label: 'Account', render: (u) => el('div', {}, el('div', { class: 'cell-title' }, u.name, state.user.id === u.id ? el('span', { class: 'badge', style: { marginLeft: '8px' } }, 'You') : null), el('div', { class: 'cell-sub' }, u.email)) },
+          { key: 'role', label: 'Role', render: (u) => makeRoleSelect(u, load) },
+          { key: 'active', label: 'Status', render: (u) => makeStatusButton(u, load) },
+          { key: 'ballotsCast', label: 'Ballots', align: 'right', render: (u) => formatNumber(u.ballotsCast) },
+          { key: 'createdAt', label: 'Joined', render: (u) => formatDate(u.createdAt) },
+          { key: 'lastLoginAt', label: 'Last sign-in', render: (u) => u.lastLoginAt ? timeAgo(u.lastLoginAt) : 'Never' },
+        ],
+        rows: data.users,
+        exportName: 'voters',
+        pageSize: 10,
+        empty: 'No accounts match your search.',
+      }));
+    } catch (error) { errorBox.textContent = error.message; }
+  };
 
-  const table = el(
-    'div',
-    { class: 'table-wrap' },
-    el(
-      'table',
-      { class: 'data-table' },
-      el('thead', {}, el('tr', {}, el('th', {}, 'Account'), el('th', {}, 'Role'), el('th', {}, 'Status'), el('th', {}, 'Ballots'), el('th', {}, 'Joined'), el('th', {}, 'Last sign-in'))),
-      tbody,
-    ),
-  );
+  await load();
 
   return [
-    el(
-      'div',
-      { class: 'admin-shell' },
+    el('div', { class: 'admin-shell' },
       adminHeader('Voters', 'Manage who can vote and who can administer the platform.', el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: () => openUserForm(load) }, iconEl('plus'), 'Add account')),
       adminNav('users'),
-      el(
-        'div',
-        { class: 'card' },
-        el('div', { class: 'toolbar' }, el('div', { class: 'row', style: { flex: '1 1 240px' } }, search), countLabel),
-        table,
-      ),
+      el('div', { class: 'card stack' }, errorBox, tableHost),
     ),
   ];
 }
@@ -1175,9 +1222,16 @@ async function viewAdminAudit() {
   const tbody = el('tbody');
   const totalLabel = el('span', { class: 'small muted' }, '');
   const moreWrap = el('div', { class: 'row', style: { justifyContent: 'center', marginTop: '16px' } });
+  const listHost = el('div', { class: 'table-wrap' }, el('table', { class: 'data-table' },
+    el('thead', {}, el('tr', {}, el('th', {}, 'Time'), el('th', {}, 'Actor'), el('th', {}, 'Action'), el('th', {}, 'Details'), el('th', {}, 'IP'))),
+    tbody,
+  ));
+  const timelineHost = el('div', { class: 'card-flat', style: { padding: '18px', display: 'none' } });
+  const contentHost = el('div', {}, listHost, timelineHost);
+  const params = new URLSearchParams(location.search);
   const filter = el(
     'select',
-    { class: 'select', style: { width: 'auto' }, 'aria-label': 'Filter audit log' },
+    { class: 'select', style: { width: 'auto' }, 'aria-label': 'Filter audit log', value: params.get('action') || '' },
     el('option', { value: '' }, 'All activity'),
     el('option', { value: 'auth' }, 'Authentication'),
     el('option', { value: 'election' }, 'Elections'),
@@ -1185,10 +1239,36 @@ async function viewAdminAudit() {
     el('option', { value: 'vote' }, 'Ballots'),
     el('option', { value: 'user' }, 'Users'),
   );
+  const listBtn = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'List');
+  const timelineBtn = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Timeline');
+  const integrityBadge = el('span', { class: 'badge' }, 'Checking chain…');
+  let viewMode = params.get('view') === 'timeline' ? 'timeline' : 'list';
+
+  const setView = (mode) => {
+    viewMode = mode;
+    listHost.style.display = mode === 'list' ? '' : 'none';
+    timelineHost.style.display = mode === 'timeline' ? '' : 'none';
+    listBtn.className = `btn btn-sm ${mode === 'list' ? 'btn-primary' : 'btn-ghost'}`;
+    timelineBtn.className = `btn btn-sm ${mode === 'timeline' ? 'btn-primary' : 'btn-ghost'}`;
+    const query = new URLSearchParams(location.search);
+    query.set('view', mode);
+    history.replaceState(null, '', `${location.pathname}?${query.toString()}`);
+    render();
+  };
+  listBtn.addEventListener('click', () => setView('list'));
+  timelineBtn.addEventListener('click', () => setView('timeline'));
+
+  (async () => {
+    try {
+      const data = await api('GET', '/api/audit/verify');
+      integrityBadge.className = `badge ${data.status === 'operational' ? 'badge-success' : 'badge-danger'}`;
+      integrityBadge.textContent = data.status === 'operational' ? 'Chain intact' : 'Chain issue';
+    } catch { integrityBadge.textContent = 'Chain unknown'; }
+  })();
 
   let entries = [];
   let total = 0;
-  let activeFilter = '';
+  let activeFilter = params.get('action') || '';
 
   const load = async (reset) => {
     if (reset) entries = [];
@@ -1207,9 +1287,7 @@ async function viewAdminAudit() {
     tbody.replaceChildren(
       ...(entries.length
         ? entries.map((entry) =>
-            el(
-              'tr',
-              {},
+            el('tr', {},
               el('td', { class: 'small', title: entry.created_at }, formatDateTime(entry.created_at)),
               el('td', { class: 'small' }, entry.actor_name || 'System'),
               el('td', {}, el('span', { class: 'badge' }, actionLabel(entry.action))),
@@ -1219,6 +1297,15 @@ async function viewAdminAudit() {
           )
         : [el('tr', {}, el('td', { colspan: '5', class: 'muted' }, 'No activity matches this filter.'))]),
     );
+    timelineHost.replaceChildren(entries.length
+      ? Components.timeline(entries.map((entry) => ({
+          title: actionLabel(entry.action),
+          meta: formatDateTime(entry.created_at),
+          body: `${entry.actor_name || 'System'} · ${auditSummary(entry) || '—'}${entry.ip ? ` · ${entry.ip}` : ''}`,
+        })))
+      : el('p', { class: 'muted' }, 'No activity matches this filter.'));
+    listHost.style.display = viewMode === 'list' ? '' : 'none';
+    timelineHost.style.display = viewMode === 'timeline' ? '' : 'none';
     moreWrap.replaceChildren(
       entries.length < total
         ? el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: async () => { try { await load(false); } catch (error) { toast(error.message, 'error'); } } }, 'Load more')
@@ -1228,6 +1315,9 @@ async function viewAdminAudit() {
 
   filter.addEventListener('change', async () => {
     activeFilter = filter.value;
+    const query = new URLSearchParams(location.search);
+    if (activeFilter) query.set('action', activeFilter); else query.delete('action');
+    history.replaceState(null, '', `${location.pathname}?${query.toString()}`);
     try {
       await load(true);
     } catch (error) {
@@ -1271,8 +1361,8 @@ async function viewAdminAudit() {
       el(
         'div',
         { class: 'card' },
-        el('div', { class: 'toolbar' }, filter, totalLabel),
-        table,
+        el('div', { class: 'toolbar' }, el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } }, filter, listBtn, timelineBtn, integrityBadge), totalLabel),
+        contentHost,
         moreWrap,
       ),
     ),
@@ -1284,8 +1374,31 @@ async function viewAdminWebhooks() {
 
   const errorBox = el('div', { class: 'form-error', role: 'alert' });
   const secretBox = el('div', { class: 'callout callout-info', hidden: true });
-  const tbody = el('tbody');
+  const tableHost = el('div', {}, el('p', { class: 'small muted' }, 'Loading webhooks…'));
 
+  const load = async () => {
+    try {
+      const data = await api('GET', '/api/admin/webhooks');
+      tableHost.replaceChildren(Components.dataTable({
+        columns: [
+          { key: 'url', label: 'Endpoint URL' },
+          { key: 'events', label: 'Events' },
+          { key: 'active', label: 'Status', render: (h) => h.active ? el('span', { class: 'badge badge-success' }, 'Active') : el('span', { class: 'badge' }, 'Inactive') },
+          { key: 'last_sent_at', label: 'Last sent', render: (h) => h.last_sent_at ? formatDateTime(h.last_sent_at) : 'Never' },
+          { key: 'actions', label: 'Actions', sortable: false, render: (h) => el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
+              const ok = await confirmDialog({ title: 'Delete webhook?', message: 'This endpoint will stop receiving events.', confirmLabel: 'Delete' });
+              if (!ok) return;
+              try { await api('DELETE', `/api/admin/webhooks/${h.id}`); toast('Webhook deleted.', 'success'); load(); }
+              catch (error) { toast(error.message, 'error'); }
+            } }, iconEl('trash'), 'Remove') },
+        ],
+        rows: data.webhooks,
+        exportName: 'webhooks',
+        pageSize: 10,
+        empty: 'No webhooks configured.',
+      }));
+    } catch (error) { errorBox.textContent = error.message; }
+  };
   const urlInput = el('input', { class: 'input', type: 'url', placeholder: 'https://example.com/hooks/open-ballot', 'aria-label': 'Webhook URL' });
   const eventsInput = el('input', { class: 'input', type: 'text', value: 'vote.cast', placeholder: 'vote.cast, election.close', 'aria-label': 'Events (comma separated)' });
   const addBtn = el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: async () => {
@@ -1306,27 +1419,6 @@ async function viewAdminWebhooks() {
     finally { setBusy(addBtn, false); }
   } }, iconEl('plus'), 'Add webhook');
 
-  const load = async () => {
-    try {
-      const data = await api('GET', '/api/admin/webhooks');
-      tbody.replaceChildren(
-        ...(data.webhooks.length
-          ? data.webhooks.map((h) => el('tr', {},
-              el('td', { class: 'small mono' }, h.url),
-              el('td', { class: 'small' }, h.events),
-              el('td', {}, h.active ? el('span', { class: 'badge badge-success' }, 'Active') : el('span', { class: 'badge' }, 'Inactive')),
-              el('td', { class: 'small muted' }, h.last_sent_at ? formatDateTime(h.last_sent_at) : 'Never'),
-              el('td', {}, el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
-                const ok = await confirmDialog({ title: 'Delete webhook?', message: 'This endpoint will stop receiving events.', confirmLabel: 'Delete' });
-                if (!ok) return;
-                try { await api('DELETE', `/api/admin/webhooks/${h.id}`); toast('Webhook deleted.', 'success'); load(); }
-                catch (error) { toast(error.message, 'error'); }
-              } }, iconEl('trash'), 'Remove')),
-            ))
-          : [el('tr', {}, el('td', { colspan: '5', class: 'muted' }, 'No webhooks configured.'))]),
-      );
-    } catch (error) { errorBox.textContent = error.message; }
-  };
   load();
 
   return [
@@ -1347,10 +1439,7 @@ async function viewAdminWebhooks() {
         ),
         el('div', { class: 'card' },
           el('h2', { style: { margin: '0 0 12px' } }, 'Configured webhooks'),
-          el('div', { class: 'table-wrap' }, el('table', { class: 'data-table' },
-            el('thead', {}, el('tr', {}, el('th', {}, 'URL'), el('th', {}, 'Events'), el('th', {}, 'Status'), el('th', {}, 'Last sent'), el('th', {}, 'Actions'))),
-            tbody,
-          )),
+          tableHost,
         ),
       ),
     ),
@@ -1422,6 +1511,8 @@ async function viewAdminSchema() {
 
   const container = el('div', { class: 'schema-diagram-wrap' });
   const canvas = el('div', { class: 'schema-canvas', style: { width: totalW + 'px', height: totalH + 'px' } });
+  const linePaths = [];
+  const arrowPolys = [];
 
   // SVG layer behind the cards — solid card backgrounds hide lines passing beneath.
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -1476,6 +1567,7 @@ async function viewAdminSchema() {
     track.setAttribute('d', d);
     track.setAttribute('class', 'schema-track');
     svg.append(track);
+    linePaths.push(d);
 
     // Animated worm: one short glowing segment that flows along the whole path.
     const worm = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -1494,6 +1586,7 @@ async function viewAdminSchema() {
     else arrow.setAttribute('points', `${x2},${y2} ${x2 - 5},${y2 - 9} ${x2 + 5},${y2 - 9}`);
     arrow.setAttribute('class', 'schema-arrow');
     svg.append(arrow);
+    arrowPolys.push(arrow.getAttribute('points'));
   }
 
   for (const t of tables) {
@@ -1521,11 +1614,67 @@ async function viewAdminSchema() {
     el('span', {}, el('span', { class: 'schema-fk' }, 'FK'), ' foreign key column'),
   );
 
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const schemaSvgString = () => {
+    let out = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">`;
+    out += `<rect width="100%" height="100%" fill="#0b0e17"/>`;
+    out += `<text x="20" y="28" fill="#8b96ad" font-family="sans-serif" font-size="13">Open Ballot — Database Schema (${tables.length} tables)</text>`;
+    for (const d of linePaths) out += `<path d="${d}" fill="none" stroke="#8b7bff" stroke-width="1.6" opacity="0.55"/>`;
+    for (const points of arrowPolys) out += `<polygon points="${points}" fill="#22d3ee" opacity="0.85"/>`;
+    for (const t of tables) {
+      const p = positions[t.table];
+      out += `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="12" fill="#11172a" stroke="#2a3350"/>`;
+      out += `<text x="${p.x + 13}" y="${p.y + 24}" fill="#e9edf7" font-family="sans-serif" font-size="14" font-weight="bold">${esc(t.table)}</text>`;
+      let y = p.y + HEADER_H + 16;
+      for (const c of t.columns) {
+        out += `<text x="${p.x + 13}" y="${y}" fill="#b6c0d4" font-family="monospace" font-size="11">${esc(c.column_name)}</text>`;
+        out += `<text x="${p.x + p.w - 13}" y="${y}" fill="#667085" font-family="monospace" font-size="10" text-anchor="end">${esc(shortType(c.data_type))}</text>`;
+        y += ROW_H;
+      }
+    }
+    out += '</svg>';
+    return out;
+  };
+  const download = (href, filename, revoke = false) => {
+    const a = el('a', { href, download: filename });
+    document.body.append(a); a.click(); a.remove();
+    if (revoke) setTimeout(() => URL.revokeObjectURL(href), 1000);
+  };
+  const exportSvg = () => download('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(schemaSvgString()), 'open-ballot-schema.svg');
+  const exportPng = () => {
+    const svgText = schemaSvgString();
+    const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = totalW; c.height = totalH;
+      c.getContext('2d').drawImage(img, 0, 0);
+      c.toBlob((blob) => { if (blob) download(URL.createObjectURL(blob), 'open-ballot-schema.png', true); }, 'image/png');
+    };
+    img.src = url;
+  };
+
+  const search = el('input', { class: 'input', type: 'search', placeholder: 'Highlight a table…', 'aria-label': 'Highlight a table', style: { maxWidth: '260px' } });
+  search.addEventListener('input', () => {
+    const q = search.value.trim().toLowerCase();
+    canvas.querySelectorAll('.schema-card').forEach((node) => {
+      node.classList.toggle('is-dimmed', !!q && !node.textContent.toLowerCase().includes(q));
+    });
+    canvas.querySelectorAll('.schema-track, .schema-worm, .schema-arrow').forEach((node) => {
+      node.style.opacity = q ? '0.08' : '';
+    });
+  });
+  const toolbar = el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', marginBottom: '12px' } },
+    search,
+    el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: exportSvg }, iconEl('download'), 'SVG'),
+    el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: exportPng }, iconEl('download'), 'PNG'),
+  );
+
   return [
     el('div', { class: 'admin-shell' },
       adminHeader('Schema', 'Entity-relationship diagram of the live database.'),
       adminNav('schema'),
-      el('div', { class: 'card' }, container, legend),
+      el('div', { class: 'card stack' }, toolbar, container, legend),
     ),
   ];
 }
