@@ -97,6 +97,7 @@ Full guide: [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md).
 | Project report (DOCX) | `docs/Open_Ballot_Project_Report.docx` |
 | Project report (PDF) | `docs/Open_Ballot_Project_Report.pdf` |
 | Deployment guide | `docs/DEPLOY_RENDER.md` |
+| Future roadmap (features + UI) | `docs/FUTURE_ROADMAP.md` |
 | OpenAPI specification | `public/openapi.json` |
 | Enhancement plan | `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` |
 
