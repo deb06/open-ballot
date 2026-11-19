@@ -1,0 +1,32 @@
+{
+  "name": "open-ballot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Open Ballot — an online voting system with an HTML/CSS/JavaScript frontend and a PHP + MySQL/MariaDB backend.",
+  "scripts": {
+    "setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1",
+    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start.ps1",
+    "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop.ps1",
+    "tunnel": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tunnel-start.ps1",
+    "tunnel:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tunnel-stop.ps1",
+    "tunnel:named": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tunnel-named.ps1 start",
+    "tunnel:named:login": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tunnel-named.ps1 login",
+    "tunnel:named:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tunnel-named.ps1 setup",
+    "tunnel:named:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tunnel-named.ps1 status",
+    "tunnel:named:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tunnel-named.ps1 stop",
+    "live": "live.bat",
+    "test": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test.ps1",
+    "db:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-start.ps1",
+    "db:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-stop.ps1",
+    "db:init": "tools\\php\\php.exe scripts\\init-db.php --verbose"
+  },
+  "keywords": [
+    "voting",
+    "elections",
+    "php",
+    "mysql",
+    "mariadb",
+    "javascript"
+  ],
+  "license": "MIT"
+}

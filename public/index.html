@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Open Ballot — Secure Online Voting</title>
+    <meta
+      name="description"
+      content="Open Ballot is a secure, anonymous and receipt-verifiable online voting platform for student and community elections. One person, one vote."
+    />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0b0e14" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Open Ballot" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Open Ballot" />
+    <meta property="og:title" content="Open Ballot — Secure Online Voting" />
+    <meta property="og:description" content="Secure, anonymous and receipt-verifiable online voting. One person, one vote." />
+    <meta name="twitter:card" content="summary" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/js/theme.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand" href="#/" aria-label="Open Ballot home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 12.5 16 7l10 5.5v9L16 27 6 21.5v-9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+              <path d="m11 15 3.5 3.5L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span class="brand-text">
+            <span class="brand-name">Open<span>Ballot</span></span>
+            <span class="brand-sub">Secure online voting</span>
+          </span>
+        </a>
+
+        <nav class="primary-nav" id="primary-nav" aria-label="Primary">
+          <a href="#/" data-nav="elections">Elections</a>
+          <a href="#/verify" data-nav="verify">Verify ballot</a>
+          <a href="#/admin" data-nav="admin" hidden>Admin</a>
+        </nav>
+
+        <div class="header-actions" id="header-actions"></div>
+
+        <button
+          class="nav-toggle"
+          id="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="primary-nav"
+          aria-label="Toggle navigation"
+        >
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main" class="shell" tabindex="-1">
+      <noscript>
+        <div class="empty-state">
+          <h1>JavaScript is required</h1>
+          <p>Open Ballot needs JavaScript enabled to cast and verify ballots securely.</p>
+        </div>
+      </noscript>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-inner">
+        <p class="footer-brand"><strong>Open Ballot</strong> — decisions made together.</p>
+        <p class="footer-note">Secret ballots · One person, one vote · Receipt-verifiable</p>
+      </div>
+    </footer>
+
+    <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+    <div id="modal-root"></div>
+
+    <script src="/js/core.js" defer></script>
+    <script src="/js/components.js" defer></script>
+    <script src="/js/public.js" defer></script>
+    <script src="/js/admin.js" defer></script>
+    <script src="/js/design.js" defer></script>
+  </body>
+</html>

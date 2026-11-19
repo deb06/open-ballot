@@ -1,0 +1,124 @@
+-- Open Ballot schema for PostgreSQL 14+.
+-- Timestamps stored as UTC TIMESTAMP(3).
+
+CREATE TABLE IF NOT EXISTS users (
+  id            SERIAL PRIMARY KEY,
+  name          VARCHAR(80) NOT NULL,
+  email         VARCHAR(160) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role          VARCHAR(10) NOT NULL DEFAULT 'voter' CHECK (role IN ('voter','admin')),
+  active            SMALLINT NOT NULL DEFAULT 1,
+  student_id        VARCHAR(40) NULL,
+  email_verified_at TIMESTAMP(3) NULL,
+  mfa_secret        VARCHAR(64) NULL,
+  mfa_enabled       SMALLINT NOT NULL DEFAULT 0,
+  created_at        TIMESTAMP(3) NOT NULL,
+  last_login_at     TIMESTAMP(3) NULL
+);
+
+CREATE TABLE IF NOT EXISTS elections (
+  id                 SERIAL PRIMARY KEY,
+  title              VARCHAR(120) NOT NULL,
+  description        TEXT NOT NULL,
+  status             VARCHAR(10) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','open','closed')),
+  results_visibility VARCHAR(12) NOT NULL DEFAULT 'after_close' CHECK (results_visibility IN ('always','after_vote','after_close','hidden')),
+  max_choices        SMALLINT NOT NULL DEFAULT 1,
+  opens_at           TIMESTAMP(3) NULL,
+  closes_at          TIMESTAMP(3) NULL,
+  created_by         INT NULL REFERENCES users(id) ON DELETE SET NULL,
+  created_at         TIMESTAMP(3) NOT NULL,
+  updated_at         TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_elections_status ON elections(status);
+CREATE INDEX IF NOT EXISTS idx_elections_created ON elections(created_at);
+
+CREATE TABLE IF NOT EXISTS candidates (
+  id          SERIAL PRIMARY KEY,
+  election_id INT NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
+  name        VARCHAR(80) NOT NULL,
+  party       VARCHAR(60) NOT NULL DEFAULT '',
+  bio         VARCHAR(300) NOT NULL DEFAULT '',
+  created_at  TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_candidates_election ON candidates(election_id);
+
+CREATE TABLE IF NOT EXISTS votes (
+  id           CHAR(32) NOT NULL PRIMARY KEY,
+  election_id  INT NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
+  candidate_id INT NULL REFERENCES candidates(id) ON DELETE SET NULL,
+  receipt_hash CHAR(64) NOT NULL UNIQUE
+);
+CREATE INDEX IF NOT EXISTS idx_votes_election ON votes(election_id);
+
+CREATE TABLE IF NOT EXISTS vote_choices (
+  vote_id      CHAR(32) NOT NULL REFERENCES votes(id) ON DELETE CASCADE,
+  candidate_id INT NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+  PRIMARY KEY (vote_id, candidate_id)
+);
+CREATE INDEX IF NOT EXISTS idx_vote_choices_candidate ON vote_choices(candidate_id);
+
+CREATE TABLE IF NOT EXISTS participation (
+  id          SERIAL PRIMARY KEY,
+  election_id INT NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
+  voter_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  voted_at    TIMESTAMP(3) NOT NULL,
+  UNIQUE (election_id, voter_id)
+);
+CREATE INDEX IF NOT EXISTS idx_participation_election ON participation(election_id);
+CREATE INDEX IF NOT EXISTS idx_participation_voter ON participation(voter_id);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id         CHAR(64) NOT NULL PRIMARY KEY,
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  csrf       VARCHAR(64) NOT NULL,
+  created_at TIMESTAMP(3) NOT NULL,
+  expires_at TIMESTAMP(3) NOT NULL,
+  ip         VARCHAR(45) NULL,
+  user_agent VARCHAR(300) NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id         SERIAL PRIMARY KEY,
+  actor_id   INT NULL REFERENCES users(id) ON DELETE SET NULL,
+  action     VARCHAR(60) NOT NULL,
+  details    TEXT NOT NULL,
+  ip         VARCHAR(45) NULL,
+  created_at TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action);
+
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  expires_at TIMESTAMP(3) NOT NULL,
+  used_at    TIMESTAMP(3) NULL,
+  created_at TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
+
+CREATE TABLE IF NOT EXISTS email_verifications (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  expires_at TIMESTAMP(3) NOT NULL,
+  used_at    TIMESTAMP(3) NULL,
+  created_at TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_user ON email_verifications(user_id);
+
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key          VARCHAR(120) NOT NULL PRIMARY KEY,
+  window_start TIMESTAMP(3) NOT NULL,
+  count        INT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS mfa_challenges (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  expires_at TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_mfa_challenges_user ON mfa_challenges(user_id);

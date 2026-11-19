@@ -1,0 +1,109 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Open Ballot API",
+    "version": "1.0.0",
+    "description": "Secure, anonymous and receipt-verifiable online voting. All endpoints are available under both /api (legacy) and /api/v1. Mutating requests require a CSRF token in the X-CSRF-Token header and an Origin matching the host.",
+    "contact": { "name": "Open Ballot" }
+  },
+  "servers": [
+    { "url": "http://127.0.0.1:3000/api/v1", "description": "Local development" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": { "type": "apiKey", "in": "cookie", "name": "openballot_session" },
+      "csrfToken": { "type": "apiKey", "in": "header", "name": "X-CSRF-Token" }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "message": { "type": "string" },
+              "code": { "type": "string" }
+            },
+            "required": ["message", "code"]
+          }
+        }
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "time": { "type": "string", "format": "date-time" },
+          "app": { "type": "string" }
+        }
+      },
+      "Stats": {
+        "type": "object",
+        "properties": {
+          "appName": { "type": "string" },
+          "openElections": { "type": "integer" },
+          "scheduledElections": { "type": "integer" },
+          "completedElections": { "type": "integer" },
+          "ballotsCast": { "type": "integer" },
+          "registeredVoters": { "type": "integer" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Health" } } } }
+        }
+      }
+    },
+    "/stats": {
+      "get": {
+        "summary": "Public platform statistics",
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Stats" } } } }
+        }
+      }
+    },
+    "/elections": {
+      "get": {
+        "summary": "List public elections",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/elections/{id}": {
+      "get": {
+        "summary": "Get a single election with its candidates",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
+      }
+    },
+    "/verify/{code}": {
+      "get": {
+        "summary": "Verify a ballot receipt code",
+        "parameters": [{ "name": "code", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Sign in",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "email": { "type": "string" }, "password": { "type": "string" } }, "required": ["email", "password"] } } } },
+        "responses": { "200": { "description": "OK" }, "401": { "description": "Invalid credentials" } }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Create an account",
+        "responses": { "201": { "description": "Created" }, "409": { "description": "Email taken" } }
+      }
+    },
+    "/auth/logout": {
+      "post": { "summary": "Sign out", "security": [{ "sessionCookie": [] }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/me": {
+      "get": { "summary": "Current user", "security": [{ "sessionCookie": [] }], "responses": { "200": { "description": "OK" }, "401": { "description": "Unauthenticated" } } }
+    }
+  }
+}

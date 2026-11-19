@@ -1,0 +1,11 @@
+# Portable runtime binaries and downloads (created by scripts/setup.ps1)
+tools/
+
+# Local database, secret key, PID files and logs
+data/
+*.log
+*.pid
+
+node_modules/
+.DS_Store
+.env

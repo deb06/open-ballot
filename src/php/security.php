@@ -1,0 +1,232 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Password hashing, anonymous voter identifiers, tokens and rate limiting.
+ */
+
+function random_token(int $bytes = 32): string
+{
+    return bin2hex(random_bytes($bytes));
+}
+
+function sha256(string $value): string
+{
+    return hash('sha256', $value);
+}
+
+function app_secret(): string
+{
+    static $secret = null;
+    if (is_string($secret)) {
+        return $secret;
+    }
+
+    $file = config('data_dir') . DIRECTORY_SEPARATOR . 'secret.key';
+    if (is_file($file)) {
+        $stored = trim((string) file_get_contents($file));
+        if ($stored !== '') {
+            return $secret = $stored;
+        }
+    }
+
+    $secret = random_token(32);
+    file_put_contents($file, $secret . "\n", LOCK_EX);
+    @chmod($file, 0600);
+    return $secret;
+}
+
+/**
+ * Keyed hash used to store receipts without keeping the printed code. The key
+ * also protects old, non-anonymous voter hashes during a schema upgrade.
+ */
+function hmac(string $value): string
+{
+    return hash_hmac('sha256', $value, app_secret());
+}
+
+/** Constant-time comparison that works for strings of any length. */
+function safe_equal(string $a, string $b): bool
+{
+    return hash_equals(sha256($a), sha256($b));
+}
+
+function hash_password(string $password): string
+{
+    return password_hash($password, PASSWORD_DEFAULT);
+}
+
+function verify_password(string $password, string $stored): bool
+{
+    if ($stored === '') {
+        return false;
+    }
+    return password_verify($password, $stored);
+}
+
+/**
+ * Pre-computed hash so failed logins for unknown accounts take roughly the
+ * same time as failed logins for real accounts.
+ */
+function dummy_hash(): string
+{
+    static $hash = null;
+    if (!is_string($hash)) {
+        $hash = hash_password(random_token(16));
+    }
+    return $hash;
+}
+
+/** Fixed-window, in-process rate limiter. */
+function rate_limit(string $key, int $max, int $windowSeconds): array
+{
+    // Shared, database-backed fixed-window limiter so that the limit survives
+    // across PHP processes (and, with a shared database, across servers).
+    $now = time();
+    $cfg = config('db');
+    $isPg = ($cfg['driver'] ?? 'mysql') === 'pgsql';
+    $keyCol = $isPg ? '"key"' : '`key`';
+    $row = db_one("SELECT window_start, count FROM rate_limits WHERE $keyCol = ?", [$key]);
+    $windowStart = $now;
+    $count = 0;
+    if ($row !== null) {
+        $existingStart = strtotime((string) $row['window_start']);
+        if ($existingStart !== false && $existingStart + $windowSeconds > $now) {
+            $windowStart = $existingStart;
+            $count = (int) $row['count'];
+        }
+    }
+    $count += 1;
+    if ($count > $max) {
+        return ['ok' => false, 'retryAfter' => max(1, ($windowStart + $windowSeconds) - $now)];
+    }
+    $cfg = config('db');
+    $isPg = ($cfg['driver'] ?? 'mysql') === 'pgsql';
+    $keyCol = $isPg ? '"key"' : '`key`';
+    $upsert = $isPg
+        ? "INSERT INTO rate_limits ($keyCol, window_start, count) VALUES (?, ?, ?) ON CONFLICT ($keyCol) DO UPDATE SET window_start = EXCLUDED.window_start, count = EXCLUDED.count"
+        : "INSERT INTO rate_limits ($keyCol, window_start, count) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE window_start = VALUES(window_start), count = VALUES(count)";
+    try {
+        db_exec($upsert, [$key, iso_to_sql(now_iso_at($windowStart)), $count]);
+    } catch (Throwable) {
+        // Fall back to a best-effort in-memory bucket if the database is unavailable.
+        static $buckets = [];
+        $buckets[$key] = ['count' => $count, 'reset' => $windowStart + $windowSeconds];
+    }
+    return ['ok' => true, 'retryAfter' => 0];
+}
+
+const RECEIPT_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const TOTP_BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function base32_encode(string $data): string
+{
+    $bits = '';
+    for ($i = 0; $i < strlen($data); $i++) {
+        $bits .= str_pad(decbin(ord($data[$i])), 8, '0', STR_PAD_LEFT);
+    }
+    $out = '';
+    foreach (str_split($bits, 5) as $chunk) {
+        if (strlen($chunk) < 5) {
+            $chunk = str_pad($chunk, 5, '0', STR_PAD_RIGHT);
+        }
+        $out .= TOTP_BASE32[bindec($chunk)];
+    }
+    return $out;
+}
+
+function base32_decode(string $data): string
+{
+    $data = strtoupper(preg_replace('/[^A-Z2-7]/', '', $data) ?? '');
+    $bits = '';
+    for ($i = 0; $i < strlen($data); $i++) {
+        $val = strpos(TOTP_BASE32, $data[$i]);
+        if ($val === false) {
+            continue;
+        }
+        $bits .= str_pad(decbin($val), 5, '0', STR_PAD_LEFT);
+    }
+    $out = '';
+    foreach (str_split($bits, 8) as $byte) {
+        if (strlen($byte) === 8) {
+            $out .= chr(bindec($byte));
+        }
+    }
+    return $out;
+}
+
+function totp_code(string $secret, ?int $timestamp = null): string
+{
+    $timestamp = $timestamp ?? time();
+    $counter = intdiv($timestamp, 30);
+    $key = base32_decode($secret);
+    $binary = pack('N*', 0) . pack('N*', $counter);
+    $binary = str_pad($binary, 8, "\0", STR_PAD_LEFT);
+    $hash = hash_hmac('sha1', $binary, $key, true);
+    $offset = ord(substr($hash, -1)) & 0x0F;
+    $code = (
+        ((ord($hash[$offset]) & 0x7F) << 24) |
+        ((ord($hash[$offset + 1]) & 0xFF) << 16) |
+        ((ord($hash[$offset + 2]) & 0xFF) << 8) |
+        (ord($hash[$offset + 3]) & 0xFF)
+    ) % 1000000;
+    return str_pad((string) $code, 6, '0', STR_PAD_LEFT);
+}
+
+function totp_verify(string $secret, string $code, int $window = 1): bool
+{
+    $now = time();
+    for ($i = -$window; $i <= $window; $i++) {
+        if (hash_equals(totp_code($secret, $now + ($i * 30)), $code)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function send_mail(string $to, string $subject, string $body): bool
+{
+    $from = (string) (config('mail.from') ?? 'no-reply@openballot.local');
+    $headers = "From: {$from}\r\nContent-Type: text/plain; charset=UTF-8\r\n";
+    $ok = @mail($to, $subject, $body, $headers);
+    if (!$ok) {
+        $log = (string) (config('data_dir') . DIRECTORY_SEPARATOR . 'mail.log');
+        @file_put_contents($log, sprintf("[%s] TO=%s SUBJECT=%s\n%s\n\n", gmdate('c'), $to, $subject, $body), FILE_APPEND | LOCK_EX);
+    }
+    return (bool) $ok;
+}
+
+/** Human-friendly, unguessable receipt code: OB-XXXX-XXXX-XXXX-XXXX */
+function new_receipt_code(): string
+{
+    $body = '';
+    $length = strlen(RECEIPT_ALPHABET);
+    for ($i = 0; $i < 16; $i += 1) {
+        $body .= RECEIPT_ALPHABET[random_int(0, $length - 1)];
+    }
+    return sprintf(
+        'OB-%s-%s-%s-%s',
+        substr($body, 0, 4),
+        substr($body, 4, 4),
+        substr($body, 8, 4),
+        substr($body, 12, 4),
+    );
+}
+
+function normalize_receipt(?string $code): string
+{
+    return preg_replace('/[^A-Z0-9]/', '', strtoupper((string) $code)) ?? '';
+}
+
+/** Store only a keyed hash of the one-time receipt code. */
+function receipt_hash(string $code): string
+{
+    return hmac('receipt:' . normalize_receipt($code));
+}
+
+/** Receipts issued before the anonymous-ballot upgrade used a plain hash. */
+function legacy_receipt_hash(string $code): string
+{
+    return sha256(normalize_receipt($code));
+}

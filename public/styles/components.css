@@ -1,0 +1,295 @@
+/* ==========================================================================
+   Open Ballot — component styles
+   ==========================================================================
+   Styles for the component library in js/components.js.
+   Loaded after tokens.css and styles.css.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Button — size / state additions
+   -------------------------------------------------------------------------- */
+.btn-md { padding: 11px 20px; font-size: 0.93rem; border-radius: var(--radius-sm); }
+.btn-xl { padding: 16px 32px; font-size: 1.05rem; border-radius: 14px; }
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: spin 0.7s linear infinite;
+  flex: none;
+}
+.btn.is-loading { pointer-events: none; opacity: 0.75; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --------------------------------------------------------------------------
+   Badge — extra variants
+   -------------------------------------------------------------------------- */
+.badge-neutral { background: var(--panel-strong); border-color: var(--line); color: var(--text-secondary); }
+.badge-info { background: var(--info-soft); border-color: rgba(34, 211, 238, 0.3); color: var(--cyan-400); }
+.badge-brand { background: var(--accent-soft); border-color: rgba(139, 123, 255, 0.3); color: var(--accent-bright); }
+.badge-lg { padding: 5px 12px; font-size: 0.8rem; border-radius: 9px; }
+
+/* status dot */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex: none;
+  display: inline-block;
+}
+.status-dot-success { background: var(--success); box-shadow: 0 0 0 3px var(--success-soft); }
+.status-dot-warning { background: var(--warning); box-shadow: 0 0 0 3px var(--warning-soft); }
+.status-dot-danger { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+.status-dot-info { background: var(--info); box-shadow: 0 0 0 3px var(--info-soft); }
+.status-dot-brand { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* --------------------------------------------------------------------------
+   Card variants
+   -------------------------------------------------------------------------- */
+.card-default { background: var(--surface-gradient); }
+.card-elevated { background: var(--surface-2); box-shadow: var(--shadow); border-color: var(--line-strong); }
+.card-bordered { background: transparent; border: 1px solid var(--line-strong); box-shadow: none; }
+.card-padded { padding: clamp(20px, 3vw, 28px); }
+.card-flush { padding: 0; overflow: hidden; }
+
+/* --------------------------------------------------------------------------
+   Callout
+   -------------------------------------------------------------------------- */
+.callout {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+.callout-icon { flex: none; width: 20px; height: 20px; color: var(--text-muted); margin-top: 2px; }
+.callout-icon svg { width: 20px; height: 20px; }
+.callout-body > :last-child { margin-bottom: 0; }
+.callout-success { background: var(--success-soft); border-color: rgba(52, 211, 153, 0.28); }
+.callout-success .callout-icon { color: var(--success); }
+.callout-warning { background: var(--warning-soft); border-color: rgba(251, 191, 36, 0.28); }
+.callout-warning .callout-icon { color: var(--warning); }
+.callout-danger { background: var(--danger-soft); border-color: rgba(248, 113, 113, 0.28); }
+.callout-danger .callout-icon { color: var(--danger); }
+.callout-info { background: var(--info-soft); border-color: rgba(34, 211, 238, 0.28); }
+.callout-info .callout-icon { color: var(--info); }
+
+/* --------------------------------------------------------------------------
+   Field — additions
+   -------------------------------------------------------------------------- */
+.field-label { font-size: 0.83rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.015em; }
+.field-label .req { color: var(--danger); margin-left: 2px; }
+.field-hint { font-size: 0.78rem; color: var(--text-faint); margin: 0; }
+.field-error-text { font-size: 0.78rem; color: var(--danger); margin: 0; }
+.field-error .input,
+.field-error .select,
+.field-error .textarea { border-color: var(--danger); }
+
+/* --------------------------------------------------------------------------
+   Empty state
+   -------------------------------------------------------------------------- */
+.empty-state {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: clamp(40px, 7vw, 72px) 24px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.empty-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--accent-soft);
+  color: var(--accent-bright);
+  margin: 0 auto 8px;
+}
+.empty-icon svg { width: 28px; height: 28px; }
+.empty-title { margin: 0; font-size: 1.15rem; }
+.empty-message { margin: 0; max-width: 46ch; color: var(--text-muted); }
+.empty-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+
+/* --------------------------------------------------------------------------
+   Metric card
+   -------------------------------------------------------------------------- */
+.metric {
+  display: grid;
+  gap: 6px;
+  padding: 18px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface-gradient);
+  box-shadow: var(--shadow-sm);
+}
+.metric-top { display: flex; align-items: center; gap: 8px; }
+.metric-icon { width: 18px; height: 18px; color: var(--accent-bright); }
+.metric-icon svg { width: 18px; height: 18px; }
+.metric-label { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.metric-value { font-size: clamp(1.6rem, 3vw, 2.1rem); font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.metric-delta { font-size: 0.78rem; font-weight: 600; }
+.metric-delta-success { color: var(--success); }
+.metric-delta-danger { color: var(--danger); }
+.metric-delta-warning { color: var(--warning); }
+.metric-delta-neutral { color: var(--text-muted); }
+
+/* --------------------------------------------------------------------------
+   Progress
+   -------------------------------------------------------------------------- */
+.progress { display: grid; gap: 6px; }
+.progress-track { height: 8px; border-radius: var(--radius-pill); background: var(--panel-strong); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width var(--duration-slow) var(--ease-out); }
+.progress-success .progress-fill { background: linear-gradient(90deg, var(--success-strong), var(--success)); }
+.progress-warning .progress-fill { background: linear-gradient(90deg, var(--warning-strong), var(--warning)); }
+.progress-danger .progress-fill { background: linear-gradient(90deg, var(--danger-strong), var(--danger)); }
+.progress-label { font-size: 0.78rem; color: var(--text-muted); }
+
+/* --------------------------------------------------------------------------
+   Avatar
+   -------------------------------------------------------------------------- */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+  color: var(--on-brand);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex: none;
+}
+.avatar-sm { width: 28px; height: 28px; font-size: 0.7rem; }
+.avatar-lg { width: 52px; height: 52px; font-size: 1.05rem; }
+
+/* --------------------------------------------------------------------------
+   Tabs
+   -------------------------------------------------------------------------- */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tab {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 11px 16px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+}
+.tab:hover { color: var(--text); }
+.tab.is-active { color: var(--accent-bright); border-bottom-color: var(--accent); }
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.tab.is-active .tab-count { background: var(--accent-soft); color: var(--accent-bright); }
+
+.tab-panels { margin-top: 22px; }
+.tab-panel { outline: none; }
+.tab-panel[hidden] { display: none; }
+.tab-panel:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 10px; border-radius: var(--radius); }
+
+/* --------------------------------------------------------------------------
+   Receipt code
+   -------------------------------------------------------------------------- */
+.receipt-copy { margin-left: auto; }
+
+/* --------------------------------------------------------------------------
+   Skeleton
+   -------------------------------------------------------------------------- */
+.skeleton { display: grid; gap: 10px; }
+.skeleton-line {
+  height: 14px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--panel) 25%, var(--panel-strong) 37%, var(--panel) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+.skeleton-line:nth-child(2) { width: 88%; }
+.skeleton-line:nth-child(3) { width: 64%; }
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+
+/* --------------------------------------------------------------------------
+   Page loading skeleton
+   -------------------------------------------------------------------------- */
+.page-loading { display: grid; gap: 16px; padding: 6px 0 48px; }
+.page-skeleton { display: grid; gap: 16px; }
+.page-skeleton .skeleton-line { height: 16px; }
+.page-skeleton .skeleton-title { height: 42px; width: min(420px, 55%); border-radius: 12px; }
+.page-skeleton .skeleton-line:nth-child(2) { width: 92%; }
+.page-skeleton .skeleton-line:nth-child(3) { width: 86%; }
+.page-skeleton .skeleton-line:nth-child(4) { width: 70%; }
+.page-skeleton .skeleton-line:nth-child(5) { width: 78%; }
+
+/* --------------------------------------------------------------------------
+   Section heading
+   -------------------------------------------------------------------------- */.section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.section-heading-text { display: grid; gap: 4px; }
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+}
+.section-title { margin: 0; font-size: clamp(1.4rem, 2.4vw, 1.9rem); }
+.section-subtitle { margin: 0; color: var(--text-muted); max-width: 62ch; }
+.section-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* --------------------------------------------------------------------------
+   Component showcase grid
+   -------------------------------------------------------------------------- */
+.showcase {
+  display: grid;
+  gap: 28px;
+  padding: 28px 0 60px;
+}
+.showcase-section {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.showcase-section > h3 { margin: 0; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+.showcase-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.showcase-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-spinner, .skeleton-line { animation: none; }
+}
