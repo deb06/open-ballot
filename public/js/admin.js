@@ -1175,28 +1175,31 @@ async function viewAdminSchema() {
   if (guard) return guard;
 
   const data = await api('GET', '/api/admin/schema');
-  const cards = data.tables.map((table) =>
-    el(
+  const cards = data.tables.map((table) => {
+    const pk = (name) => name === 'id' || name.endsWith('_id') === false && name === 'id';
+    return el(
       'div',
-      { class: 'card' },
-      el('h2', { style: { margin: '0 0 10px', fontSize: '1.1rem' } }, table.table, el('span', { class: 'small muted', style: { marginLeft: '8px' } }, `${table.columns.length} columns`)),
+      { class: 'schema-table' },
+      el('div', { class: 'schema-table-header' }, el('span', { class: 'schema-table-name' }, table.table), el('span', { class: 'schema-table-count' }, `${table.columns.length} cols`)),
       el(
         'div',
-        { class: 'table-wrap' },
-        el(
-          'table',
-          { class: 'data-table' },
-          el('thead', {}, el('tr', {}, el('th', {}, 'Column'), el('th', {}, 'Type'), el('th', {}, 'Nullable'), el('th', {}, 'Default'))),
-          el('tbody', {}, ...table.columns.map((c) =>
-            el('tr', {}, el('td', { class: 'mono small' }, c.column_name), el('td', { class: 'small' }, c.data_type), el('td', { class: 'small' }, c.is_nullable), el('td', { class: 'small muted mono' }, c.column_default ?? '—')),
-          )),
-        ),
+        { class: 'schema-columns' },
+        ...table.columns.map((c) => {
+          const isPk = c.column_name === 'id';
+          return el(
+            'div',
+            { class: `schema-column${isPk ? ' is-pk' : ''}` },
+            el('span', { class: 'schema-col-name' }, c.column_name, isPk ? el('span', { class: 'schema-pk' }, 'PK') : null),
+            el('span', { class: `schema-col-type schema-type-${c.data_type}` }, c.data_type),
+            el('span', { class: 'schema-col-null' }, c.is_nullable === 'YES' || c.is_nullable === 'yes' ? 'nullable' : 'not null'),
+          );
+        }),
       ),
-    ),
-  );
+    );
+  });
 
   return [
-    el('div', { class: 'admin-shell' }, adminHeader('Schema', 'Database tables and columns in the live store.'), adminNav('schema'), el('div', { class: 'stack' }, ...cards)),
+    el('div', { class: 'admin-shell' }, adminHeader('Schema', 'Tables, columns and types in the live database.'), adminNav('schema'), el('div', { class: 'schema-grid' }, ...cards)),
   ];
 }
 

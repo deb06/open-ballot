@@ -1077,6 +1077,62 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .admin-shell { display: grid; gap: 26px; }
 
+/* Schema visualization (Supabase-style cards) ---------------------------- */
+
+.schema-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+.schema-table {
+  background: var(--surface-gradient);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.schema-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+.schema-table-name { font-weight: 700; font-size: 0.95rem; color: var(--text); }
+.schema-table-count { font-size: 0.75rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.schema-columns { padding: 6px 0; }
+.schema-column {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--line-soft, var(--line));
+}
+.schema-column:last-child { border-bottom: 0; }
+.schema-col-name { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 0.82rem; color: var(--text); }
+.schema-pk {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-bright);
+  letter-spacing: 0.04em;
+}
+.schema-col-type {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-muted);
+  text-transform: lowercase;
+}
+.schema-col-null { font-size: 0.7rem; color: var(--text-faint); }
+
 /* Election header card ---------------------------------------------------- */
 
 .election-hero {
