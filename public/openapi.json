@@ -3,15 +3,16 @@
   "info": {
     "title": "Open Ballot API",
     "version": "1.0.0",
-    "description": "Secure, anonymous and receipt-verifiable online voting. All endpoints are available under both /api (legacy) and /api/v1. Mutating requests require a CSRF token in the X-CSRF-Token header and an Origin matching the host.",
+    "description": "Secure, anonymous and receipt-verifiable online voting. All endpoints are available under both /api (legacy) and /api/v1. Mutating requests require a CSRF token in the X-CSRF-Token header and an Origin matching the host. Errors use the envelope { error: { code, message, timestamp, details? } }.",
     "contact": { "name": "Open Ballot" }
   },
   "servers": [
-    { "url": "http://127.0.0.1:3000/api/v1", "description": "Local development" }
+    { "url": "http://127.0.0.1:3000/api/v1", "description": "Local development" },
+    { "url": "https://open-ballot.onrender.com/api/v1", "description": "Production" }
   ],
   "components": {
     "securitySchemes": {
-      "sessionCookie": { "type": "apiKey", "in": "cookie", "name": "openballot_session" },
+      "sessionCookie": { "type": "apiKey", "in": "cookie", "name": "ob_session" },
       "csrfToken": { "type": "apiKey", "in": "header", "name": "X-CSRF-Token" }
     },
     "schemas": {
@@ -22,9 +23,11 @@
             "type": "object",
             "properties": {
               "message": { "type": "string" },
-              "code": { "type": "string" }
+              "code": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" },
+              "details": { "type": "object", "additionalProperties": { "type": "string" } }
             },
-            "required": ["message", "code"]
+            "required": ["message", "code", "timestamp"]
           }
         }
       },
@@ -53,34 +56,28 @@
     "/health": {
       "get": {
         "summary": "Health check",
-        "responses": {
-          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Health" } } } }
-        }
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Health" } } } } }
       }
     },
     "/stats": {
       "get": {
         "summary": "Public platform statistics",
-        "responses": {
-          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Stats" } } } }
-        }
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Stats" } } } } }
       }
     },
     "/elections": {
+      "get": { "summary": "List public elections", "responses": { "200": { "description": "OK" } } }
+    },
+    "/elections/{id}": {
       "get": {
-        "summary": "List public elections",
-        "responses": { "200": { "description": "OK" } }
+        "summary": "Get a single election with its candidates",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
       }
     },
     "/elections/{id}/audit": {
       "get": {
         "summary": "Merkle audit proof for an election's ballots",
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
-        "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
-      }
-    },
-      "get": {
-        "summary": "Get a single election with its candidates",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
         "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
       }
@@ -100,17 +97,38 @@
       }
     },
     "/auth/register": {
-      "post": {
-        "summary": "Create an account",
-        "responses": { "201": { "description": "Created" }, "409": { "description": "Email taken" } }
-      }
+      "post": { "summary": "Create an account", "responses": { "201": { "description": "Created" }, "409": { "description": "Email taken" } } }
     },
     "/auth/logout": {
       "post": { "summary": "Sign out", "security": [{ "sessionCookie": [] }], "responses": { "200": { "description": "OK" } } }
     },
+    "/auth/passkeys/register/options": {
+      "post": { "summary": "Begin passkey registration", "security": [{ "sessionCookie": [] }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/auth/passkeys/register/verify": {
+      "post": { "summary": "Complete passkey registration", "security": [{ "sessionCookie": [] }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/auth/passkeys/login/options": {
+      "post": { "summary": "Begin passkey login", "responses": { "200": { "description": "OK" } } }
+    },
+    "/auth/passkeys/login/verify": {
+      "post": { "summary": "Complete passkey login", "responses": { "200": { "description": "OK" } } }
+    },
+    "/auth/passkeys": {
+      "get": { "summary": "List my passkeys", "security": [{ "sessionCookie": [] }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/auth/passkeys/{id}": {
+      "delete": { "summary": "Revoke a passkey", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/auth/backup-codes/generate": {
+      "post": { "summary": "Generate 10 one-time backup codes", "security": [{ "sessionCookie": [] }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/admin/schema": {
+      "get": { "summary": "Live database schema for ERD", "security": [{ "sessionCookie": [] }], "responses": { "200": { "description": "OK" } } }
+    },
     "/admin/webhooks": {
       "get": { "summary": "List webhooks", "security": [{ "sessionCookie": [] }], "responses": { "200": { "description": "OK" } } },
-      "post": { "summary": "Create a webhook", "security": [{ "sessionCookie": [] }, { "csrfToken": [] }], "responses": { "201": { "description": "Created" } } }
+      "post": { "summary": "Create a webhook", "security": [{ "sessionCookie": [] }], "responses": { "201": { "description": "Created" } } }
     },
     "/admin/webhooks/{id}": {
       "delete": { "summary": "Delete a webhook", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "OK" } } }
