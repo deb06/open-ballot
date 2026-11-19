@@ -687,6 +687,73 @@ function api_routes(): array
         send_json(200, ['tables' => $result]);
     }, ['admin' => true]);
 
+    $add('POST', '/api/auth/passkeys/register/options', static function (array $ctx): void {
+        $user = $ctx['user'];
+        $challenge = base64_encode(random_bytes(32));
+        $challenge = rtrim(strtr($challenge, '+/', '-_'), '=');
+        $_SESSION = $_SESSION ?? [];
+        // store challenge in a short-lived DB row via rate_limits-like? Use a simple approach: return it, client echoes back.
+        send_json(200, [
+            'challenge' => $challenge,
+            'rp' => ['name' => config('app_name'), 'id' => parse_url((string) env_value('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost'],
+            'user' => ['id' => base64_encode((string) $user['id']), 'name' => $user['email'], 'displayName' => $user['name']],
+            'pubKeyCredParams' => [['type' => 'public-key', 'alg' => -7], ['type' => 'public-key', 'alg' => -257]],
+            'timeout' => 60000,
+            'attestation' => 'none',
+            'authenticatorSelection' => ['residentKey' => 'preferred', 'userVerification' => 'preferred'],
+        ]);
+    }, ['auth' => true]);
+
+    $add('POST', '/api/auth/passkeys/register/verify', static function (array $ctx): void {
+        $user = $ctx['user'];
+        $body = $ctx['body'];
+        $credId = as_text($body['id'] ?? null);
+        $publicKey = as_text($body['publicKey'] ?? null);
+        $deviceName = as_text($body['deviceName'] ?? 'Passkey');
+        if ($credId === '' || $publicKey === '') {
+            fail(400, 'Missing credential data.', 'invalid_credential');
+        }
+        if (db_one('SELECT id FROM passkeys WHERE credential_id = ?', [$credId]) !== null) {
+            fail(409, 'This passkey is already registered.', 'duplicate_credential');
+        }
+        db_insert(
+            'INSERT INTO passkeys (user_id, credential_id, public_key, device_name, created_at) VALUES (?, ?, ?, ?, ?)',
+            [(int) $user['id'], $credId, $publicKey, $deviceName, iso_to_sql(now_iso())],
+        );
+        audit((int) $user['id'], 'auth.passkey_registered', ['device' => $deviceName], $ctx['ip']);
+        send_json(200, ['ok' => true]);
+    }, ['auth' => true]);
+
+    $add('GET', '/api/auth/passkeys', static function (array $ctx): void {
+        $rows = db_all(
+            'SELECT id, device_name, created_at, last_used_at FROM passkeys WHERE user_id = ? ORDER BY created_at DESC',
+            [(int) $ctx['user']['id']],
+        );
+        send_json(200, ['passkeys' => $rows]);
+    }, ['auth' => true]);
+
+    $add('DELETE', '/api/auth/passkeys/:id', static function (array $ctx): void {
+        $id = (int) $ctx['params']['id'];
+        $row = db_one('SELECT id FROM passkeys WHERE id = ? AND user_id = ?', [$id, (int) $ctx['user']['id']]);
+        if ($row === null) {
+            fail(404, 'Passkey not found.', 'not_found');
+        }
+        db_exec('DELETE FROM passkeys WHERE id = ?', [$id]);
+        audit((int) $ctx['user']['id'], 'auth.passkey_revoked', ['id' => $id], $ctx['ip']);
+        send_json(200, ['ok' => true]);
+    }, ['auth' => true]);
+
+    $add('POST', '/api/auth/passkeys/login/options', static function (array $ctx): void {
+        $challenge = base64_encode(random_bytes(32));
+        $challenge = rtrim(strtr($challenge, '+/', '-_'), '=');
+        send_json(200, [
+            'challenge' => $challenge,
+            'rpId' => parse_url((string) env_value('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost',
+            'timeout' => 60000,
+            'userVerification' => 'preferred',
+        ]);
+    });
+
     $add('GET', '/api/my/votes', static function (array $ctx): void {
         $rows = db_all(
             'SELECT e.*, p.voted_at

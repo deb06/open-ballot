@@ -132,3 +132,15 @@ CREATE TABLE IF NOT EXISTS backup_codes (
   created_at TIMESTAMP(3) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_backup_codes_user ON backup_codes(user_id);
+
+CREATE TABLE IF NOT EXISTS passkeys (
+  id           SERIAL PRIMARY KEY,
+  user_id      INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  credential_id VARCHAR(255) NOT NULL UNIQUE,
+  public_key   TEXT NOT NULL,
+  sign_count   INT NOT NULL DEFAULT 0,
+  device_name  VARCHAR(80) NULL,
+  created_at   TIMESTAMP(3) NOT NULL,
+  last_used_at TIMESTAMP(3) NULL
+);
+CREATE INDEX IF NOT EXISTS idx_passkeys_user ON passkeys(user_id);

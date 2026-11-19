@@ -172,3 +172,18 @@ CREATE TABLE IF NOT EXISTS backup_codes (
   KEY idx_backup_codes_user (user_id),
   CONSTRAINT fk_backup_codes_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS passkeys (
+  id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id     INT UNSIGNED NOT NULL,
+  credential_id VARCHAR(255) NOT NULL,
+  public_key  TEXT NOT NULL,
+  sign_count  INT UNSIGNED NOT NULL DEFAULT 0,
+  device_name VARCHAR(80) NULL DEFAULT NULL,
+  created_at  DATETIME(3) NOT NULL,
+  last_used_at DATETIME(3) NULL DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_passkeys_cred (credential_id),
+  KEY idx_passkeys_user (user_id),
+  CONSTRAINT fk_passkeys_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
