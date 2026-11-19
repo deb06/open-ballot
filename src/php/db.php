@@ -316,6 +316,16 @@ function db_migrate_multi_choice(): void
     $pdo->exec('INSERT IGNORE INTO vote_choices (vote_id, candidate_id) SELECT id, candidate_id FROM votes WHERE candidate_id IS NOT NULL');
 }
 
+function db_schema_installed(): bool
+{
+    try {
+        db()->query('SELECT 1 FROM users LIMIT 1');
+        return true;
+    } catch (PDOException) {
+        return false;
+    }
+}
+
 function db_migrate_merkle(): void
 {
     $pdo = db();

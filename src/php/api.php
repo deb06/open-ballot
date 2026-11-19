@@ -619,7 +619,42 @@ function api_routes(): array
         ]);
     });
 
-    $add('GET', '/api/my/votes', static function (array $ctx): void {
+    $add('GET', '/api/admin/schema', static function (array $ctx): void {
+        $cfg = config('db');
+        $isPg = ($cfg['driver'] ?? 'mysql') === 'pgsql';
+        if ($isPg) {
+            $tables = db_all(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() ORDER BY table_name",
+            );
+            $result = [];
+            foreach ($tables as $t) {
+                $name = (string) $t['table_name'];
+                $cols = db_all(
+                    "SELECT column_name, data_type, is_nullable, column_default
+                     FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ?
+                     ORDER BY ordinal_position",
+                    [$name],
+                );
+                $result[] = ['table' => $name, 'columns' => $cols];
+            }
+        } else {
+            $tables = db_all(
+                "SELECT TABLE_NAME AS table_name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME",
+            );
+            $result = [];
+            foreach ($tables as $t) {
+                $name = (string) $t['table_name'];
+                $cols = db_all(
+                    "SELECT COLUMN_NAME AS column_name, DATA_TYPE AS data_type, IS_NULLABLE AS is_nullable, COLUMN_DEFAULT AS column_default
+                     FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+                     ORDER BY ORDINAL_POSITION",
+                    [$name],
+                );
+                $result[] = ['table' => $name, 'columns' => $cols];
+            }
+        }
+        send_json(200, ['tables' => $result]);
+    }, ['admin' => true]);
         $rows = db_all(
             'SELECT e.*, p.voted_at
              FROM participation p
