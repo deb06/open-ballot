@@ -45,6 +45,28 @@ function api_routes(): array
     /* Public: stats                                                   */
     /* -------------------------------------------------------------- */
 
+    $add('GET', '/api/status', static function (array $ctx): void {
+        $checks = [];
+        try {
+            db_scalar('SELECT 1');
+            $checks[] = ['name' => 'Database', 'ok' => true];
+        } catch (Throwable) {
+            $checks[] = ['name' => 'Database', 'ok' => false];
+        }
+        try {
+            $open = (int) db_scalar("SELECT COUNT(*) FROM elections WHERE status = 'open'");
+            $checks[] = ['name' => 'Election service', 'ok' => true, 'info' => "$open open"];
+        } catch (Throwable) {
+            $checks[] = ['name' => 'Election service', 'ok' => false];
+        }
+        $checks[] = ['name' => 'Application', 'ok' => true];
+        send_json(200, [
+            'status' => array_filter($checks, static fn (array $c): bool => !$c['ok']) === [] ? 'operational' : 'degraded',
+            'checks' => $checks,
+            'time' => now_iso(),
+        ]);
+    });
+
     $add('GET', '/api/health', static function (array $ctx): void {
         send_json(200, ['ok' => true, 'time' => now_iso(), 'app' => config('app_name')]);
     });
@@ -1611,6 +1633,7 @@ function api_routes(): array
  */
 function handle_api(string $pathname, string $method, string $version = 'v0'): void
 {
+    apply_scheduled_election_statuses();
     header('X-API-Version: ' . $version);
     $ip = client_ip();
     $session = get_session();

@@ -1,0 +1,29 @@
+name: Smoke tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install portable PHP + MariaDB
+        shell: pwsh
+        run: .\scripts\setup.ps1
+
+      - name: Run 38-check smoke suite
+        shell: pwsh
+        run: .\scripts\test.ps1

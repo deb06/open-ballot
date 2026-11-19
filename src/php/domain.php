@@ -686,3 +686,27 @@ function signed_results_for(int $electionId): array
         'keyFingerprint' => substr(hash('sha256', $key), 0, 16),
     ];
 }
+
+/* --------------------------------------------------------------------------
+   Scheduled election status transitions
+   -------------------------------------------------------------------------- */
+
+function apply_scheduled_election_statuses(): void
+{
+    $now = iso_to_sql(now_iso());
+    try {
+        db_exec(
+            "UPDATE elections SET status = 'open', updated_at = ?
+             WHERE status = 'draft' AND opens_at IS NOT NULL AND opens_at <= ?
+               AND (SELECT COUNT(*) FROM candidates c WHERE c.election_id = elections.id) >= 2",
+            [$now, $now],
+        );
+        db_exec(
+            "UPDATE elections SET status = 'closed', updated_at = ?
+             WHERE status = 'open' AND closes_at IS NOT NULL AND closes_at <= ?",
+            [$now, $now],
+        );
+    } catch (Throwable) {
+        /* best effort */
+    }
+}

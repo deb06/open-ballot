@@ -940,6 +940,30 @@ function viewLogin() {
   });
 }
 
+function passwordStrength(value) {
+  let score = 0;
+  if (value.length >= 8) score += 1;
+  if (value.length >= 12) score += 1;
+  if (/[A-Z]/.test(value) && /[a-z]/.test(value)) score += 1;
+  if (/\d/.test(value)) score += 1;
+  if (/[^A-Za-z0-9]/.test(value)) score += 1;
+  const labels = ['Very weak', 'Weak', 'Fair', 'Good', 'Strong', 'Excellent'];
+  return { score: Math.min(5, score), label: labels[Math.min(5, score)] };
+}
+
+function strengthMeter(input) {
+  const bar = el('div', { class: 'strength-bar' });
+  const label = el('span', { class: 'tiny muted' }, '');
+  const update = () => {
+    const s = passwordStrength(input.value);
+    bar.dataset.score = String(s.score);
+    label.textContent = input.value ? s.label : '';
+  };
+  input.addEventListener('input', update);
+  update();
+  return el('div', { class: 'strength-wrap' }, bar, label);
+}
+
 function viewRegister() {
   const errorBox = el('div', { class: 'form-error', role: 'alert' });
   const name = el('input', { class: 'input', type: 'text', id: nextId('name'), required: true, autocomplete: 'name', placeholder: 'Alex Rivera', maxlength: '80' });
@@ -954,7 +978,7 @@ function viewRegister() {
     errorBox,
     el('div', { class: 'field' }, el('label', { for: name.id }, 'Full name'), name),
     el('div', { class: 'field' }, el('label', { for: email.id }, 'Email'), email),
-    el('div', { class: 'field' }, el('label', { for: password.id }, 'Password'), password, el('p', { class: 'hint' }, 'Use at least 8 characters. Stored as a salted scrypt hash.')),
+    el('div', { class: 'field' }, el('label', { for: password.id }, 'Password'), password, strengthMeter(password), el('p', { class: 'hint' }, 'Use at least 12 characters. Stored as a salted scrypt hash.')),
     el('div', { class: 'field' }, el('label', { for: confirm.id }, 'Confirm password'), confirm),
     submit,
   );
@@ -1343,6 +1367,33 @@ async function viewAccount() {
 /* --------------------------------------------------------------------------
    Not found
    -------------------------------------------------------------------------- */
+
+async function viewStatus() {
+  const box = el('div', { class: 'card stack' }, el('p', { class: 'small muted' }, 'Checking services…'));
+  const load = async () => {
+    try {
+      const data = await api('GET', '/api/status');
+      box.replaceChildren(
+        el('div', { class: 'row', style: { gap: '10px', alignItems: 'center' } },
+          el('span', { class: `badge ${data.status === 'operational' ? 'badge-success' : 'badge-danger'}` }, data.status === 'operational' ? 'All systems operational' : 'Degraded performance'),
+          el('span', { class: 'small muted' }, `Checked ${formatDateTime(data.time)}`),
+        ),
+        ...data.checks.map((c) => el('div', { class: 'row-between', style: { padding: '10px 0', borderBottom: '1px solid var(--line)' } },
+          el('span', {}, c.name),
+          el('span', { class: 'row', style: { gap: '10px' } }, c.info ? el('span', { class: 'small muted' }, c.info) : null, el('span', { class: `badge ${c.ok ? 'badge-success' : 'badge-danger'}` }, c.ok ? 'OK' : 'Down')),
+        )),
+        el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: load }, iconEl('shield'), 'Refresh'),
+      );
+    } catch (error) {
+      box.replaceChildren(el('p', { class: 'form-error' }, error.message));
+    }
+  };
+  load();
+  return [el('div', { class: 'stack-lg' },
+    el('div', {}, el('p', { class: 'eyebrow' }, 'Service health'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Status')),
+    box,
+  )];
+}
 
 async function viewAuditChain() {
   const box = el('div', { class: 'card stack' }, el('p', { class: 'small muted' }, 'Loading the audit chain…'));

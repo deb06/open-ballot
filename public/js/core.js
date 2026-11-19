@@ -908,6 +908,7 @@ async function viewFor(parts) {
   if (root === 'help') return viewHelp();
   if (root === 'privacy') return viewPrivacy();
   if (root === 'audit') return viewAuditChain();
+  if (root === 'status') return viewStatus();
   if (root === 'account') return viewAccount();
   if (root === 'design') return viewDesign();
   if (root === 'admin' && sub === 'login') return viewAdminLogin();
