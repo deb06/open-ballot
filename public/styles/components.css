@@ -636,3 +636,95 @@
 .rank-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--inset-bg); }
 .rank-num { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font-weight: 700; flex: none; }
 .lang-label { font-size: var(--text-xs); font-weight: 700; }
+
+/* Mini sparkline ----------------------------------------------------------- */
+.mini-spark { width: 100%; height: 64px; display: block; }
+.mini-spark .spark-area { fill: var(--accent-soft); stroke: none; }
+.mini-spark .spark-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.spark-wrap { margin-top: 12px; }
+
+/* Bulk selection bar ------------------------------------------------------- */
+.dt-bulk { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; margin-bottom: 8px; border-radius: var(--radius-sm); background: var(--accent-soft); border: 1px solid var(--accent); }
+.dt-bulk[hidden] { display: none; }
+
+/* Responsive tables -> cards ---------------------------------------------- */
+@media (max-width: 768px) {
+  .data-table-table thead { display: none; }
+  .data-table-table, .data-table-table tbody, .data-table-table tr, .data-table-table td { display: block; width: 100%; }
+  .data-table-table tr { border: 1px solid var(--line); border-radius: var(--radius-sm); margin-bottom: 10px; padding: 6px; background: var(--surface-1); }
+  .data-table-table td { border: 0; border-bottom: 1px solid var(--line); padding: 8px 10px; white-space: normal; text-align: left !important; display: flex; justify-content: space-between; gap: 12px; }
+  .data-table-table td:last-child { border-bottom: 0; }
+  .data-table-table td::before { content: attr(data-label); color: var(--text-muted); font-size: var(--text-xs); font-weight: var(--weight-semibold); flex: none; }
+  .dt-toolbar { align-items: stretch; }
+  .dt-search { max-width: none; }
+}
+
+/* Filter chips ------------------------------------------------------------- */
+.filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { appearance: none; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text-muted); border-radius: var(--radius-pill); padding: 5px 12px; font: inherit; font-size: var(--text-xs); font-weight: var(--weight-medium); cursor: pointer; transition: all var(--duration) var(--ease); }
+.chip:hover { color: var(--text); border-color: var(--accent); }
+.chip.is-active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+
+/* Mobile admin drawer ------------------------------------------------------ */
+.admin-menu-btn { display: none; }
+@media (max-width: 1023px) {
+  .admin-menu-btn { display: inline-flex; margin-left: 6px; }
+  .admin-shell .admin-nav { display: none; }
+  .admin-shell.nav-open .admin-nav {
+    display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+    position: fixed; top: var(--header-h); left: 0; bottom: 0; width: min(280px, 82vw);
+    z-index: var(--z-drawer); background: var(--nav-bg); border-right: 1px solid var(--line-strong);
+    padding: var(--space-4); overflow-y: auto; box-shadow: var(--shadow-lg);
+  }
+  .admin-shell.nav-open .admin-nav a { text-align: left; }
+}
+
+/* ==========================================================================
+   UI Wave E — visual refresh (editorial hero, glass cards, motion, control room)
+   ========================================================================== */
+
+/* E1 — editorial hero mosaic ---------------------------------------------- */
+.hero-mosaic { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 20px 0 16px; max-width: 520px; }
+.mosaic-item {
+  display: flex; flex-direction: column; gap: 4px; padding: 12px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--panel); backdrop-filter: blur(8px);
+}
+.mosaic-icon { color: var(--accent-bright); }
+.mosaic-icon svg { width: 20px; height: 20px; }
+
+/* E2 — refined glass cards with subtle gradient borders ------------------- */
+.card {
+  background-image: var(--surface-gradient);
+  border-color: var(--line-strong);
+}
+.card::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  padding: 1px; background: linear-gradient(140deg, rgba(255,255,255,0.14), transparent 45%, rgba(139,123,255,0.08));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0.5;
+}
+[data-theme="light"] .card::after {
+  background: linear-gradient(140deg, rgba(255,255,255,0.9), transparent 45%, rgba(122,102,242,0.06));
+}
+
+/* E3 — motion system ------------------------------------------------------ */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+main > * { animation: page-enter var(--duration-slow) var(--ease-out) both; }
+.tab-panel { animation: page-enter var(--duration) var(--ease-out) both; }
+@keyframes chart-rise {
+  from { opacity: 0; transform: scaleY(0.2); transform-origin: bottom; }
+  to { opacity: 1; transform: scaleY(1); transform-origin: bottom; }
+}
+.bar-fill, .progress-fill, .turnout-fill, .uptime-bar { animation: chart-rise var(--duration-slow) var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) {
+  main > *, .tab-panel, .bar-fill, .progress-fill, .turnout-fill, .uptime-bar { animation: none !important; }
+}
+
+/* E4 — control-room dashboard --------------------------------------------- */
+body[data-area="admin"] .stat-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+body[data-area="admin"] .admin-head h1 { letter-spacing: -0.02em; }

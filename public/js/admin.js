@@ -57,10 +57,20 @@ function formError(box, error) {
 }
 
 function adminHeader(title, subtitle, actions = null) {
+  const menuBtn = el('button', {
+    class: 'btn btn-ghost btn-sm admin-menu-btn', type: 'button',
+    'aria-label': 'Toggle admin navigation', 'aria-expanded': 'false',
+    onclick: () => {
+      const shell = document.querySelector('.admin-shell');
+      if (!shell) return;
+      const open = shell.classList.toggle('nav-open');
+      menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    },
+  }, '☰');
   return el(
     'div',
-    { class: 'row-between' },
-    el('div', {}, el('p', { class: 'eyebrow' }, 'Administration'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, title), el('p', { style: { margin: '6px 0 0' } }, subtitle)),
+    { class: 'row-between admin-head' },
+    el('div', {}, el('p', { class: 'eyebrow' }, 'Administration'), menuBtn, el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, title), el('p', { style: { margin: '6px 0 0' } }, subtitle)),
     actions,
   );
 }
@@ -85,6 +95,19 @@ async function cloneElection(election) {
   } catch (error) {
     toast(error.message, 'error');
   }
+}
+
+function miniSparkline(points, width = 220, height = 52) {
+  const values = points.map((p) => Number(p.votes) || 0);
+  const max = Math.max(...values, 1);
+  const step = values.length > 1 ? width / (values.length - 1) : 0;
+  const coords = values.map((v, i) => [values.length > 1 ? i * step : width / 2, height - 4 - (v / max) * (height - 10)]);
+  const path = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+  const svg = svgEl('svg', { viewBox: `0 0 ${width} ${height}`, class: 'mini-spark', 'aria-hidden': 'true', preserveAspectRatio: 'none' }, [
+    svgEl('path', { d: `${path} L ${width} ${height} L 0 ${height} Z`, class: 'spark-area' }),
+    svgEl('path', { d: path, class: 'spark-line' }),
+  ]);
+  return svg;
 }
 
 async function viewAdminOverview() {
@@ -212,6 +235,29 @@ async function viewAdminOverview() {
       )
     : null;
 
+  const sparkHost = el('div', { class: 'card stack' });
+  let sparkDays = 7;
+  const loadSpark = async () => {
+    try {
+      const data = await api('GET', `/api/admin/stats/history?days=${sparkDays}`);
+      const total = data.series.reduce((sum, p) => sum + p.votes, 0);
+      sparkHost.replaceChildren(
+        el('div', { class: 'row-between' },
+          el('div', {}, el('h2', { style: { margin: 0 } }, 'Ballots over time'), el('p', { class: 'small muted', style: { margin: '4px 0 0' } }, `${total} ballots in the last ${sparkDays} days`)),
+          el('div', { class: 'row', style: { gap: '4px' } }, ...[7, 30, 90].map((d) =>
+            el('button', { class: `btn btn-sm ${sparkDays === d ? 'btn-primary' : 'btn-ghost'}`, type: 'button', onclick: () => { sparkDays = d; loadSpark(); } }, `${d}d`),
+          )),
+        ),
+        data.series.length
+          ? el('div', { class: 'spark-wrap' }, miniSparkline(data.series),
+              el('div', { class: 'row-between tiny muted' }, el('span', {}, formatDate(data.series[0].day)), el('span', {}, formatDate(data.series[data.series.length - 1].day))),
+            )
+          : el('p', { class: 'small muted' }, 'No ballots recorded in this period.'),
+      );
+    } catch { sparkHost.replaceChildren(el('p', { class: 'small muted' }, 'Chart unavailable.')); }
+  };
+  loadSpark();
+
   const attention = [];
   const soon = Date.now() + 48 * 3600 * 1000;
   for (const election of elections) {
@@ -277,6 +323,7 @@ async function viewAdminOverview() {
       adminHeader('Dashboard', 'Run elections, watch turnout and keep the register up to date.', el('div', { class: 'row', style: { gap: '8px' } }, updatedLabel, refreshBtn, el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: () => openElectionForm() }, iconEl('plus'), 'New election'))),
       adminNav('overview'),
       stats,
+      sparkHost,
       attentionCard,
       activeCard,
       electionsCard,
@@ -1217,6 +1264,22 @@ async function viewAdminUsers() {
         exportName: 'voters',
         pageSize: 10,
         empty: 'No accounts match your search.',
+        selectable: true,
+        bulkActions: [
+          { label: 'Deactivate', variant: 'ghost', onClick: async (chosen) => {
+            const ok = await confirmDialog({ title: `Deactivate ${chosen.length} account(s)?`, message: 'They will be signed out and unable to vote until reactivated.', confirmLabel: 'Deactivate' });
+            if (!ok) return false;
+            try {
+              for (const user of chosen) {
+                if (state.user.id === user.id) continue;
+                await api('PATCH', `/api/admin/users/${user.id}`, { active: false });
+              }
+              toast(`${chosen.length} account(s) deactivated.`, 'success');
+              load();
+              return true;
+            } catch (error) { toast(error.message, 'error'); return false; }
+          } },
+        ],
       }));
     } catch (error) { formError(errorBox, error); }
   };
@@ -1290,16 +1353,25 @@ async function viewAdminAudit() {
   const timelineHost = el('div', { class: 'card-flat', style: { padding: '18px', display: 'none' } });
   const contentHost = el('div', {}, listHost, timelineHost);
   const params = new URLSearchParams(location.search);
-  const filter = el(
-    'select',
-    { class: 'select', style: { width: 'auto' }, 'aria-label': 'Filter audit log', value: params.get('action') || '' },
-    el('option', { value: '' }, 'All activity'),
-    el('option', { value: 'auth' }, 'Authentication'),
-    el('option', { value: 'election' }, 'Elections'),
-    el('option', { value: 'candidate' }, 'Candidates'),
-    el('option', { value: 'vote' }, 'Ballots'),
-    el('option', { value: 'user' }, 'Users'),
-  );
+  let activeFilter = params.get('action') || '';
+  const FILTERS = [['', 'All'], ['auth', 'Authentication'], ['election', 'Elections'], ['candidate', 'Candidates'], ['vote', 'Ballots'], ['user', 'Users']];
+  const filterChips = el('div', { class: 'filter-chips', role: 'group', 'aria-label': 'Filter audit log' });
+  const paintChips = (active) => {
+    filterChips.replaceChildren(...FILTERS.map(([value, label]) =>
+      el('button', {
+        class: `chip${active === value ? ' is-active' : ''}`, type: 'button',
+        'aria-pressed': active === value ? 'true' : 'false',
+        onclick: () => {
+          activeFilter = value;
+          const query = new URLSearchParams(location.search);
+          if (value) query.set('action', value); else query.delete('action');
+          history.replaceState(null, '', `${location.pathname}?${query.toString()}`);
+          paintChips(value);
+          load(true).catch((error) => toast(error.message, 'error'));
+        },
+      }, label),
+    ));
+  };
   const listBtn = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'List');
   const timelineBtn = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Timeline');
   const integrityBadge = el('span', { class: 'badge' }, 'Checking chain…');
@@ -1329,7 +1401,7 @@ async function viewAdminAudit() {
 
   let entries = [];
   let total = 0;
-  let activeFilter = params.get('action') || '';
+  paintChips(activeFilter);
 
   const load = async (reset) => {
     if (reset) entries = [];
@@ -1374,18 +1446,6 @@ async function viewAdminAudit() {
     );
   };
 
-  filter.addEventListener('change', async () => {
-    activeFilter = filter.value;
-    const query = new URLSearchParams(location.search);
-    if (activeFilter) query.set('action', activeFilter); else query.delete('action');
-    history.replaceState(null, '', `${location.pathname}?${query.toString()}`);
-    try {
-      await load(true);
-    } catch (error) {
-      toast(error.message, 'error');
-    }
-  });
-
   await load(true);
 
   const table = el(
@@ -1422,7 +1482,7 @@ async function viewAdminAudit() {
       el(
         'div',
         { class: 'card' },
-        el('div', { class: 'toolbar' }, el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } }, filter, listBtn, timelineBtn, integrityBadge), totalLabel),
+        el('div', { class: 'toolbar' }, el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } }, filterChips, listBtn, timelineBtn, integrityBadge), totalLabel),
         contentHost,
         moreWrap,
       ),
@@ -1664,7 +1724,7 @@ async function viewAdminSchema() {
   const totalH = Math.max(...colHeights);
   const totalW = COLS * (CARD_W + CARD_GAP) - CARD_GAP;
 
-  const container = el('div', { class: 'schema-diagram-wrap' });
+  const container = el('div', { class: 'schema-diagram-wrap', tabindex: '0', role: 'region', 'aria-label': 'Database schema diagram (scrollable)' });
   const canvas = el('div', { class: 'schema-canvas', style: { width: totalW + 'px', height: totalH + 'px' } });
   const linePaths = [];
   const arrowPolys = [];

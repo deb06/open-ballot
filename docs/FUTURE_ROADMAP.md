@@ -17,9 +17,10 @@ This document plans the next waves of work. Everything already shipped (Phases 1
 | 4 — Platform & ops | ✅ Sentry, backups, status history, public API + keys, webhook delivery history, docker-compose |
 | 5 — Nice-to-haves | ✅ i18n (EN/ES), per-election branding, email digest, results party screen, command palette |
 | UI Waves A–D | ✅ Shared components, breadcrumbs, command palette, voter polish, admin polish, design tokens |
-| UI Wave E (visual refresh concepts) | ⏸ Optional — editorial hero, glass cards, page transitions, control-room layout |
+| UI Wave E (visual refresh concepts) | ✅ Editorial hero mosaic, glass-card borders, motion system (reduced-motion aware), control-room dashboard |
+| Accessibility | ✅ axe-core sweep: 0 WCAG 2.0/2.1 A+AA violations on all 12 audited routes |
 
-**Verification:** 38/38 smoke checks, zero console errors, all routes browser-verified.
+**Verification:** 38/38 smoke checks, zero console errors, zero axe violations, all routes browser-verified.
 
 ---
 

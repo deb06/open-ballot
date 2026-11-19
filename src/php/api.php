@@ -1537,6 +1537,21 @@ function api_routes(): array
         $add($method, $pattern, $handler, ['auth' => true, 'admin' => true]);
     };
 
+    $admin('GET', '/api/admin/stats/history', static function (array $ctx): void {
+        $days = (int) ($ctx['query']['days'] ?? 7);
+        $days = in_array($days, [7, 30, 90], true) ? $days : 7;
+        $rows = db_all(
+            'SELECT DATE(voted_at) AS day, COUNT(*) AS votes
+             FROM participation WHERE voted_at > ? GROUP BY DATE(voted_at) ORDER BY day ASC',
+            [iso_to_sql(now_iso_at(time() - $days * 86400))],
+        );
+        $series = [];
+        foreach ($rows as $r) {
+            $series[] = ['day' => (string) $r['day'], 'votes' => (int) $r['votes']];
+        }
+        send_json(200, ['days' => $days, 'series' => $series]);
+    });
+
     $admin('GET', '/api/admin/overview', static function (array $ctx): void {
         $users = (int) db_scalar('SELECT COUNT(*) FROM users');
         $activeUsers = count_active_users();

@@ -177,7 +177,7 @@ const Components = (() => {
   function progress(props = {}) {
     const { value = 0, max = 100, variant = 'brand', label = '', ...rest } = props;
     const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
-    const node = el('div', { ...rest, class: ['progress', props.class].filter(Boolean).join(' '), role: 'progressbar', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100 });
+    const node = el('div', { ...rest, class: ['progress', props.class].filter(Boolean).join(' '), role: 'progressbar', 'aria-label': label || 'Progress', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100 });
     node.append(el('div', { class: ['progress-track', `progress-${variant}`].join(' ') },
       el('div', { class: 'progress-fill', style: { width: `${pct}%` } })));
     if (label) node.append(el('span', { class: 'progress-label', text: label }));
@@ -346,6 +346,10 @@ const Components = (() => {
       searchable = true,
       exportName = null,
       empty = 'No rows to display.',
+      selectable = false,
+      getRowId = (row) => row.id,
+      onBulk = null,
+      bulkActions = [],
       ...rest
     } = props;
 
@@ -356,6 +360,7 @@ const Components = (() => {
     let query = '';
     let isDense = dense;
     const hidden = new Set();
+    const selected = new Set();
 
     const root = el('div', { ...rest, class: ['data-table', props.class].filter(Boolean).join(' ') });
     const toolbar = el('div', { class: 'dt-toolbar' });
@@ -392,10 +397,25 @@ const Components = (() => {
       if (typeof downloadFile === 'function') downloadFile(`${exportName || 'export'}.csv`, '\uFEFF' + lines.join('\r\n'), 'text/csv;charset=utf-8');
     } }, iconEl('download'), 'CSV');
 
+    const bulkBar = el('div', { class: 'dt-bulk', hidden: true });
+    const refreshBulk = () => {
+      bulkBar.hidden = !selected.size;
+      bulkBar.replaceChildren(
+        el('span', { class: 'small' }, `${selected.size} selected`),
+        ...bulkActions.map((action) => button({ variant: action.variant || 'ghost', size: 'sm', onclick: async () => {
+          const chosen = rows.filter((r) => selected.has(String(getRowId(r))));
+          const keep = await action.onClick(chosen);
+          if (keep !== true) { selected.clear(); render(); }
+        } }, action.label)),
+        button({ variant: 'ghost', size: 'sm', onclick: () => { selected.clear(); render(); } }, 'Clear'),
+      );
+    };
+
     toolbar.append(
       searchable ? search : el('span'),
       el('div', { class: 'row', style: { gap: '6px' } }, colPanel, densityBtn, exportBtn),
     );
+    if (selectable && bulkActions.length) root.append(bulkBar);
 
     function render() {
       view = rows.filter((row) => !query || columns.some((c) => String(row[c.key] ?? '').toLowerCase().includes(query)));
@@ -413,7 +433,20 @@ const Components = (() => {
       page = Math.min(page, pageCount - 1);
       const slice = view.slice(page * pageSize, (page + 1) * pageSize);
 
-      const head = el('thead', {}, el('tr', {}, ...visible.map((c) =>
+      const headCells = [];
+      if (selectable) {
+        headCells.push(el('th', { scope: 'col', style: { width: '38px' } },
+          el('input', {
+            type: 'checkbox', 'aria-label': 'Select all rows on this page',
+            checked: slice.length > 0 && slice.every((r) => selected.has(String(getRowId(r)))),
+            onchange: (e) => {
+              slice.forEach((r) => { const id = String(getRowId(r)); if (e.target.checked) selected.add(id); else selected.delete(id); });
+              render();
+            },
+          }),
+        ));
+      }
+      visible.forEach((c) => headCells.push(
         el('th', { scope: 'col', class: c.sortable === false ? '' : 'is-sortable', style: c.width ? { width: c.width } : {} },
           c.sortable === false
             ? c.label || c.key
@@ -425,13 +458,25 @@ const Components = (() => {
               el('span', { class: 'dt-sort-icon', 'aria-hidden': 'true' }, sortKey === c.key ? (sortDir > 0 ? '↑' : '↓') : '↕'),
             ),
           ),
-      )));
+      ));
+      const head = el('thead', {}, el('tr', {}, ...headCells));
 
       const body = el('tbody', {}, ...(slice.length
-        ? slice.map((row) => el('tr', {}, ...visible.map((c) =>
-            el('td', { class: c.align ? `align-${c.align}` : '' }, typeof c.render === 'function' ? c.render(row) : (row[c.key] ?? '—')),
-          )))
-        : [el('tr', {}, el('td', { colspan: String(visible.length || 1), class: 'dt-empty' },
+        ? slice.map((row) => {
+            const cells = [];
+            if (selectable) {
+              cells.push(el('td', {}, el('input', {
+                type: 'checkbox', 'aria-label': `Select ${row.name || row.title || getRowId(row)}`,
+                checked: selected.has(String(getRowId(row))),
+                onchange: (e) => { const id = String(getRowId(row)); if (e.target.checked) selected.add(id); else selected.delete(id); refreshBulk(); },
+              })));
+            }
+            visible.forEach((c) => cells.push(el('td', { class: c.align ? `align-${c.align}` : '', 'data-label': c.label || c.key },
+              typeof c.render === 'function' ? c.render(row) : (row[c.key] ?? '—'),
+            )));
+            return el('tr', {}, ...cells);
+          })
+        : [el('tr', {}, el('td', { colspan: String(visible.length + (selectable ? 1 : 0) || 1), class: 'dt-empty' },
             empty instanceof Node ? empty : el('span', { class: 'muted' }, empty)))]));
 
       host.replaceChildren(el('table', { class: `data-table-table${isDense ? ' is-dense' : ''}` }, head, body));
@@ -444,6 +489,7 @@ const Components = (() => {
           button({ variant: 'ghost', size: 'sm', disabled: page >= pageCount - 1, onclick: () => { page += 1; render(); } }, 'Next'),
         ),
       );
+      refreshBulk();
     }
 
     render();

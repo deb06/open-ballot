@@ -33,6 +33,13 @@ async function viewHome() {
       ),
       el(
         'div',
+        { class: 'hero-mosaic' },
+        el('div', { class: 'mosaic-item' }, el('span', { class: 'mosaic-icon', html: icons.shield }), el('strong', {}, 'Verifiable'), el('span', { class: 'small muted' }, 'Merkle receipts')),
+        el('div', { class: 'mosaic-item' }, el('span', { class: 'mosaic-icon', html: icons.lock }), el('strong', {}, 'Anonymous'), el('span', { class: 'small muted' }, 'Separated records')),
+        el('div', { class: 'mosaic-item' }, el('span', { class: 'mosaic-icon', html: icons.chart }), el('strong', {}, 'Transparent'), el('span', { class: 'small muted' }, 'Public audit chain')),
+      ),
+      el(
+        'div',
         { class: 'hero-trust' },
         el('span', { class: 'badge' }, iconEl('check'), 'One person, one vote'),
         el('span', { class: 'badge' }, iconEl('lock'), 'Secret ballot'),
