@@ -549,3 +549,71 @@
 }
 
 .checkbox-label { cursor: pointer; color: var(--text-secondary); }
+
+/* ==========================================================================
+   Step 3 — voter experience polish
+   ========================================================================== */
+
+/* Home election cards ------------------------------------------------------ */
+.voted-ribbon {
+  display: inline-block; margin-left: 10px; padding: 3px 9px; border-radius: var(--radius-pill);
+  background: var(--success-soft); color: var(--success); font-size: var(--text-xs);
+  font-weight: var(--weight-bold); vertical-align: middle; white-space: nowrap;
+}
+.card-countdown {
+  display: inline-flex; align-items: center; gap: 6px; margin: 0 0 10px;
+  padding: 5px 10px; border-radius: var(--radius-pill);
+  background: var(--accent-soft); color: var(--accent-bright);
+  font-size: var(--text-xs); font-weight: var(--weight-semibold);
+}
+.card-countdown svg { width: 14px; height: 14px; }
+.turnout-sliver {
+  height: 5px; border-radius: var(--radius-pill); background: var(--surface-3);
+  overflow: hidden; margin: 0 0 14px;
+}
+.turnout-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--viz-1), var(--viz-2)); transition: width var(--duration-slow) var(--ease); }
+
+/* Election detail sticky sub-nav ------------------------------------------ */
+.detail-subnav {
+  position: sticky; top: calc(var(--header-h) + 6px); z-index: var(--z-sticky);
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  margin: 0 0 18px; padding: 8px 10px;
+  background: var(--header-bg); backdrop-filter: blur(12px);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+}
+.detail-subnav a {
+  padding: 6px 12px; border-radius: var(--radius-xs); text-decoration: none;
+  color: var(--text-muted); font-size: var(--text-sm); font-weight: var(--weight-medium);
+}
+.detail-subnav a:hover { background: var(--panel-hover); color: var(--text); }
+.subnav-count { margin-left: auto; padding-right: 6px; }
+
+/* Candidate grid ----------------------------------------------------------- */
+.candidate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; border: 0; margin: 0; padding: 0; }
+
+/* Verify split layout ------------------------------------------------------ */
+.verify-layout { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.verify-left, .verify-right { min-width: 0; }
+.verify-result { width: 100%; }
+
+/* Verification checkpoints ------------------------------------------------- */
+.verify-checkpoints { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.checkpoint {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--inset-bg);
+}
+.checkpoint-icon {
+  flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--surface-3); color: var(--text-muted);
+}
+.checkpoint-icon svg { width: 15px; height: 15px; }
+.checkpoint.is-ok { border-color: var(--status-open-line); background: var(--status-open-bg); }
+.checkpoint.is-ok .checkpoint-icon { background: var(--success); color: var(--on-accent); }
+.checkpoint.is-fail { border-color: var(--danger); background: var(--danger-soft); }
+.checkpoint.is-fail .checkpoint-icon { background: var(--danger); color: #fff; }
+.checkpoint-slot { margin-top: 6px; }
+
+@media (max-width: 900px) {
+  .verify-layout { grid-template-columns: 1fr; }
+  .detail-subnav { overflow-x: auto; flex-wrap: nowrap; }
+}

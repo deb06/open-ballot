@@ -53,8 +53,14 @@ async function viewHome() {
 
   /* Filterable election list */
   let filter = 'all';
+  let sort = 'closing';
   const list = el('div', { class: 'election-grid' });
   const tabs = el('div', { class: 'admin-nav', role: 'group', 'aria-label': 'Filter elections' });
+  const sortSelect = el('select', { class: 'select', 'aria-label': 'Sort elections', onchange: (e) => { sort = e.target.value; renderList(); } },
+    el('option', { value: 'closing' }, 'Closing soonest'),
+    el('option', { value: 'turnout' }, 'Highest turnout'),
+    el('option', { value: 'newest' }, 'Newest first'),
+  );
 
   const renderList = () => {
     const filtered = elections.filter((election) => {
@@ -62,6 +68,17 @@ async function viewHome() {
       if (filter === 'open') return election.status === 'open';
       if (filter === 'upcoming') return election.status === 'scheduled';
       return election.status === 'closed';
+    });
+    filtered.sort((a, b) => {
+      if (sort === 'turnout') {
+        const ar = a.registeredVoters ? a.totalVotes / a.registeredVoters : 0;
+        const br = b.registeredVoters ? b.totalVotes / b.registeredVoters : 0;
+        return br - ar;
+      }
+      if (sort === 'newest') return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+      const at = a.closesAt ? Date.parse(a.closesAt) : Infinity;
+      const bt = b.closesAt ? Date.parse(b.closesAt) : Infinity;
+      return at - bt;
     });
     if (!filtered.length) {
       list.replaceChildren(
@@ -111,10 +128,12 @@ async function viewHome() {
       'div',
       { class: 'section-head' },
       el('div', {}, el('h2', { id: 'elections-title' }, 'Elections'), el('p', {}, 'Every published ballot, open and past.')),
-      tabs,
+      el('div', { class: 'row', style: { gap: '10px', flexWrap: 'wrap' } }, sortSelect, tabs),
     ),
     list,
   );
+
+  addTimer(refreshCountdowns, 60000);
 
   const howItWorks = el(
     'section',
@@ -222,8 +241,30 @@ function integrityItem(title, text) {
   );
 }
 
+function compactCountdown(iso) {
+  if (!iso) return '';
+  const diff = Date.parse(iso) - Date.now();
+  if (!Number.isFinite(diff)) return '';
+  if (diff <= 0) return 'Closing now';
+  const mins = Math.floor(diff / 60000);
+  const days = Math.floor(mins / 1440);
+  if (days >= 1) return `${days}d ${Math.floor((mins % 1440) / 60)}h left`;
+  const hours = Math.floor(mins / 60);
+  if (hours >= 1) return `${hours}h ${mins % 60}m left`;
+  return `${mins}m left`;
+}
+
+function refreshCountdowns() {
+  document.querySelectorAll('[data-countdown]').forEach((node) => {
+    const text = compactCountdown(node.dataset.countdown);
+    if (text) node.textContent = text;
+  });
+}
+
 function electionCard(election) {
   const closeText = election.closesAt ? `Closes ${formatDate(election.closesAt)}` : 'No closing date';
+  const registered = Number(election.registeredVoters || 0);
+  const turnout = registered ? Math.min(100, Math.round((election.totalVotes / registered) * 100)) : 0;
   return el(
     'a',
     { class: 'election-card', href: `/election/${election.id}` },
@@ -233,14 +274,20 @@ function electionCard(election) {
       statusPill(election.status),
       el('span', { class: 'small muted' }, `${election.candidateCount} ${plural(election.candidateCount, 'candidate')}`),
     ),
-    el('h3', {}, election.title),
+    el('h3', {}, election.title, election.hasVoted ? el('span', { class: 'voted-ribbon' }, '✓ Voted') : null),
     el('p', { class: 'desc' }, election.description || 'No description was provided for this election.'),
+    election.status === 'open' && election.closesAt
+      ? el('div', { class: 'card-countdown', 'aria-label': 'Time remaining' }, iconEl('clock'), el('span', { 'data-countdown': election.closesAt }, compactCountdown(election.closesAt)))
+      : null,
+    el('div', { class: 'turnout-sliver', role: 'img', 'aria-label': `${turnout}% turnout` },
+      el('div', { class: 'turnout-fill', style: { width: `${turnout}%` } }),
+    ),
     el(
       'div',
       { class: 'card-meta' },
       el('span', {}, iconEl('clock'), closeText),
       el('span', {}, iconEl('ballot'), `${formatNumber(election.totalVotes)} ${plural(election.totalVotes, 'ballot')} cast`),
-      election.hasVoted ? el('span', { class: 'badge badge-success' }, 'You voted') : null,
+      el('span', {}, `${turnout}% turnout`),
     ),
     el(
       'div',
@@ -281,7 +328,7 @@ async function viewElection(rawId) {
 
   const header = el(
     'header',
-    { class: 'card', style: { marginBottom: '22px' } },
+    { class: 'card', id: 'overview', style: { marginBottom: '22px' } },
     el('div', { class: 'row', style: { marginBottom: '10px' } }, statusPill(election.status), election.hasVoted ? el('span', { class: 'badge badge-success' }, 'You voted') : null),
     el('h1', { class: 'detail-title' }, election.title),
     el('p', { class: 'detail-desc', style: { marginBottom: 0 } }, election.description || 'No description was provided for this election.'),
@@ -303,8 +350,16 @@ async function viewElection(rawId) {
     countdown = countdownCard('Voting closes in', election.closesAt, handleRoute);
   }
 
-  const actionMount = el('div', { style: { display: 'grid', gap: '18px' } });
-  const resultsMount = el('div', { class: 'stack', style: { marginTop: '22px' } });
+  const actionMount = el('div', { id: 'ballot', style: { display: 'grid', gap: '18px' } });
+  const resultsMount = el('div', { class: 'stack', id: 'results-section', style: { marginTop: '22px' } });
+
+  const sectionNav = el('nav', { class: 'detail-subnav', 'aria-label': 'Election sections' },
+    el('a', { href: '#overview' }, 'Overview'),
+    el('a', { href: '#ballot' }, 'Ballot'),
+    election.resultsVisible ? el('a', { href: '#results-section' }, 'Results') : null,
+    el('a', { href: '#rules' }, 'Rules'),
+    election.closesAt ? el('span', { class: 'small muted subnav-count', 'data-countdown': election.closesAt }, compactCountdown(election.closesAt)) : null,
+  );
 
   const renderAction = () => {
     actionMount.replaceChildren(ballotArea());
@@ -361,7 +416,13 @@ async function viewElection(rawId) {
         { class: 'row' },
         el('a', { class: 'btn btn-outline btn-sm', href: '/verify' }, iconEl('shield'), 'Verify a receipt'),
         receipt
-          ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => downloadReceipt(receipt, election, null) }, iconEl('download'), 'Download receipt')
+          ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => downloadReceipt(receipt, election, null) }, iconEl('download'), 'TXT')
+          : null,
+        receipt
+          ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => downloadReceiptPng(receipt, election) }, iconEl('download'), 'PNG')
+          : null,
+        receipt
+          ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => shareReceipt(receipt, election) }, iconEl('external'), 'Share')
           : null,
       ),
     );
@@ -370,10 +431,16 @@ async function viewElection(rawId) {
   function ballotForm() {
     const form = el('form', { class: 'card stack', novalidate: true });
     const submit = el('button', { class: 'btn btn-primary btn-lg', type: 'submit' }, 'Review and cast ballot');
+    const stepMount = el('div', {}, Components.stepper(
+      [{ label: 'Review' }, { label: 'Confirm' }, { label: 'Receipt' }], 0,
+    ));
+    const setStep = (index) => stepMount.replaceChildren(Components.stepper(
+      [{ label: 'Review' }, { label: 'Confirm' }, { label: 'Receipt' }], index,
+    ));
 
     const maxChoices = Number(election.maxChoices || 1);
     const multi = maxChoices > 1;
-    const fieldset = el('fieldset', { class: 'ballot' }, el('legend', { class: 'visually-hidden' }, multi ? 'Choose up to ' + maxChoices + ' candidates' : 'Choose one candidate'));
+    const fieldset = el('fieldset', { class: 'ballot candidate-grid' }, el('legend', { class: 'visually-hidden' }, multi ? 'Choose up to ' + maxChoices + ' candidates' : 'Choose one candidate'));
 
     for (const candidate of candidates) {
       fieldset.append(
@@ -402,6 +469,7 @@ async function viewElection(rawId) {
     const note = el('div', { class: 'notice' }, el('span', { class: 'inline-icon', html: icons.lock }), el('div', {}, 'Your choice is secret. Only the aggregate tally is published — never who voted for whom.'));
 
     form.append(
+      stepMount,
       el(
         'div',
         { class: 'card-header' },
@@ -433,6 +501,7 @@ async function viewElection(rawId) {
       const selectedCandidates = candidateIds.map((id) => candidates.find((entry) => entry.id === id)).filter(Boolean);
       if (!selectedCandidates.length) return;
 
+      setStep(1);
       const confirmed = await confirmDialog({
         title: 'Cast this ballot?',
         message: 'Once submitted, your ballot cannot be changed. A receipt code will be shown so you can verify it later.',
@@ -444,15 +513,17 @@ async function viewElection(rawId) {
           el('div', {}, el('div', { class: 'candidate-name' }, selectedCandidates.map((c) => c.name).join(', ')), el('div', { class: 'small muted' }, election.title)),
         ),
       });
-      if (!confirmed) return;
+      if (!confirmed) { setStep(0); return; }
 
       setBusy(submit, true, 'Submitting…');
       try {
         const result = await api('POST', `/api/elections/${election.id}/vote`, { candidateIds });
+        setStep(2);
         saveReceipt(election.id, { code: result.receipt, castAt: result.castAt, electionTitle: election.title });
         showReceiptDialog(result, election);
         handleRoute();
       } catch (error) {
+        setStep(0);
         toast(error.message, 'error');
         if (error.status === 409) handleRoute();
       } finally {
@@ -468,11 +539,11 @@ async function viewElection(rawId) {
   const layout = el(
     'div',
     { class: 'detail-grid' },
-    el('div', {}, header, countdown, actionMount, resultsMount),
+    el('div', {}, header, sectionNav, countdown, actionMount, resultsMount),
     el(
       'aside',
       { class: 'detail-side' },
-      rulesCard(),
+      el('div', { id: 'rules' }, rulesCard()),
       scheduleCard(),
       state.user && state.user.role === 'admin'
         ? el(
@@ -769,7 +840,9 @@ function showReceiptDialog(result, election) {
     ],
     actions: [
       el('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { dialog.close(); go('#/verify'); } }, 'Verify receipt'),
-      el('button', { class: 'btn btn-ghost', type: 'button', onclick: () => downloadReceipt(receiptData, election, { candidateName: result.candidate.name }) }, iconEl('download'), 'Save as file'),
+      el('button', { class: 'btn btn-ghost', type: 'button', onclick: () => downloadReceipt(receiptData, election, { candidateName: result.candidate.name }) }, iconEl('download'), 'TXT'),
+      el('button', { class: 'btn btn-ghost', type: 'button', onclick: () => downloadReceiptPng(receiptData, election) }, iconEl('download'), 'PNG'),
+      el('button', { class: 'btn btn-ghost', type: 'button', onclick: () => shareReceipt(receiptData, election) }, iconEl('external'), 'Share'),
       el('button', { class: 'btn btn-primary', type: 'button', onclick: () => dialog.close() }, 'Done'),
     ],
   });
@@ -798,6 +871,96 @@ function downloadReceipt(receipt, election, myVote) {
   ];
   downloadFile(`open-ballot-receipt-${receipt.code}.txt`, lines.join('\n'));
   toast('Receipt downloaded.', 'success');
+}
+
+function downloadReceiptPng(receipt, election) {
+  try {
+    if (typeof qrcode !== 'function' || !receipt || !receipt.code) throw new Error('Receipt image is unavailable.');
+    const url = `${location.origin}/verify?code=${encodeURIComponent(receipt.code)}`;
+    const qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    const canvas = document.createElement('canvas');
+    canvas.width = 1000;
+    canvas.height = 520;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 1000, 520);
+    grad.addColorStop(0, '#0b0e17');
+    grad.addColorStop(1, '#141b30');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1000, 520);
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(18, 18, 964, 484);
+
+    ctx.fillStyle = '#9d8bff';
+    ctx.font = '700 24px "Segoe UI", sans-serif';
+    ctx.fillText('OPEN BALLOT', 56, 84);
+    ctx.fillStyle = '#8b96ad';
+    ctx.font = '500 18px "Segoe UI", sans-serif';
+    ctx.fillText('SECURE · ANONYMOUS · RECEIPT-VERIFIED', 56, 116);
+
+    ctx.fillStyle = '#e9edf7';
+    ctx.font = '700 36px "Segoe UI", sans-serif';
+    const title = String(election?.title || 'Election');
+    ctx.fillText(title.length > 46 ? title.slice(0, 45) + '…' : title, 56, 184);
+
+    ctx.fillStyle = '#8b96ad';
+    ctx.font = '500 19px "Segoe UI", sans-serif';
+    ctx.fillText('Your ballot receipt', 56, 240);
+    ctx.fillStyle = '#b0a0ff';
+    ctx.font = '700 42px Consolas, monospace';
+    ctx.fillText(receipt.code, 56, 296);
+
+    ctx.fillStyle = '#8b96ad';
+    ctx.font = '500 18px "Segoe UI", sans-serif';
+    ctx.fillText('Scan to verify this ballot', 56, 366);
+    ctx.fillText(`Verification code is a secret: ${receipt.code}`, 56, 400);
+
+    const modules = qr.getModuleCount();
+    const cell = 6;
+    const size = modules * cell;
+    const qx = 1000 - 56 - size;
+    const qy = 150;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(qx - 12, qy - 12, size + 24, size + 24);
+    ctx.fillStyle = '#000000';
+    for (let r = 0; r < modules; r += 1) {
+      for (let c = 0; c < modules; c += 1) {
+        if (qr.isDark(r, c)) ctx.fillRect(qx + c * cell, qy + r * cell, cell, cell);
+      }
+    }
+
+    ctx.fillStyle = '#5d6880';
+    ctx.font = '500 15px "Segoe UI", sans-serif';
+    ctx.fillText('Keep this image private — anyone holding the code can see the linked choice.', 56, 464);
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const objectUrl = URL.createObjectURL(blob);
+      const link = el('a', { href: objectUrl, download: `open-ballot-receipt-${receipt.code}.png` });
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    }, 'image/png');
+    toast('Receipt image downloaded.', 'success');
+  } catch (error) {
+    toast(error.message || 'Could not create receipt image.', 'error');
+  }
+}
+
+function shareReceipt(receipt, election) {
+  const data = {
+    title: 'My Open Ballot receipt',
+    text: `I voted in ${election?.title || 'an election'}. Verify my receipt:`,
+    url: `${location.origin}/verify?code=${encodeURIComponent(receipt.code)}`,
+  };
+  if (navigator.share) {
+    navigator.share(data).catch(() => {});
+  } else {
+    copyText(data.url).then((ok) => toast(ok ? 'Verification link copied.' : 'Copy failed.', ok ? 'success' : 'error'));
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -1128,7 +1291,7 @@ function viewVerify() {
     el('p', { class: 'small muted', style: { margin: 0 } }, 'Verification does reveal the choice linked to the code. Keep your receipt private if you want your ballot to remain secret.'),
   );
 
-  return [el('div', { style: { maxWidth: '720px', margin: '0 auto' } }, form, result, explainer)];
+  return [el('div', { class: 'verify-layout' }, el('div', { class: 'verify-left' }, form, explainer), el('div', { class: 'verify-right' }, result))];
 }
 
 async function sha256Hex(text) {
@@ -1160,52 +1323,65 @@ function proofStatus(ok) {
 }
 
 function verificationCard(data) {
-  const proofBox = el('div', { class: 'merkle-proof' });
+  const checkpoint = (label, detail, state, action = null) =>
+    el('div', { class: `checkpoint is-${state}` },
+      el('span', { class: 'checkpoint-icon', 'aria-hidden': 'true', html: state === 'ok' ? icons.check : state === 'fail' ? icons.alert : icons.clock }),
+      el('div', { class: 'grow' }, el('strong', {}, label), el('div', { class: 'small muted' }, detail)),
+      action,
+    );
+
+  const list = el('div', { class: 'verify-checkpoints' });
+  list.append(checkpoint('Ballot found', 'A recorded ballot matches this receipt code.', 'ok'));
+  list.append(checkpoint('Counted in the tally', data.counted ? 'This ballot is included in the election tally.' : 'This ballot was not counted.', data.counted ? 'ok' : 'fail'));
+
+  const merkleSlot = el('div', { class: 'checkpoint-slot' });
+  list.append(el('div', { class: 'checkpoint is-pending' },
+    el('span', { class: 'checkpoint-icon', 'aria-hidden': 'true', html: icons.clock }),
+    el('div', { class: 'grow' }, el('strong', {}, 'Included in the Merkle root'), el('div', { class: 'small muted' }, 'Prove your ballot is part of the published tree.'), merkleSlot),
+  ));
+
+  const signedSlot = el('div', { class: 'checkpoint-slot' });
+  list.append(el('div', { class: 'checkpoint is-pending' },
+    el('span', { class: 'checkpoint-icon', 'aria-hidden': 'true', html: icons.clock }),
+    el('div', { class: 'grow' }, el('strong', {}, 'Results signature'), el('div', { class: 'small muted' }, 'Download the signed tally from the election page.'), signedSlot),
+  ));
+
   if (data.merkleRoot && data.merkleProof) {
-    const verifyBtn = el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
-      setBusy(verifyBtn, true, 'Verifying…');
+    const btn = el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
+      setBusy(btn, true, 'Verifying…');
       try {
         const ok = await verifyMerkleProof(data.merkleLeaf, data.merkleProof, data.merkleRoot);
-        setBusy(verifyBtn, false);
-        proofBox.replaceChildren(proofStatus(ok));
-        toast(ok ? 'Merkle proof verified — ballot is in the published root.' : 'Merkle proof did not match.', ok ? 'success' : 'error');
+        setBusy(btn, false);
+        const row = btn.closest('.checkpoint');
+        row.className = `checkpoint ${ok ? 'is-ok' : 'is-fail'}`;
+        row.querySelector('.checkpoint-icon').innerHTML = ok ? icons.check : icons.alert;
+        merkleSlot.replaceChildren(el('div', { class: 'mono tiny', style: { wordBreak: 'break-all', marginTop: '6px' } }, `Root: ${data.merkleRoot}`));
+        toast(ok ? 'Merkle proof verified.' : 'Merkle proof did not match.', ok ? 'success' : 'error');
       } catch (error) {
-        setBusy(verifyBtn, false);
+        setBusy(btn, false);
         toast(error.message, 'error');
       }
-    } }, iconEl('shield'), 'Verify inclusion proof');
-    proofBox.append(
-      el('div', { class: 'row-between' },
-        el('div', {}, el('strong', {}, 'Merkle receipt'), el('div', { class: 'small muted' }, 'Your ballot is part of this election’s published hash tree.')),
-        verifyBtn,
-      ),
-      el('div', { class: 'mono small', style: { marginTop: '8px', wordBreak: 'break-all' } }, `Root: ${data.merkleRoot}`),
-      el('div', { class: 'tiny muted', style: { marginTop: '4px' } }, `${data.merkleProof.length} proof ${plural(data.merkleProof.length, 'step')}`),
-    );
+    } }, iconEl('shield'), 'Verify proof');
+    merkleSlot.append(btn);
+  } else {
+    merkleSlot.append(el('span', { class: 'small muted' }, 'Proof unavailable.'));
   }
+  signedSlot.append(el('a', { class: 'btn btn-ghost btn-sm', href: `/election/${data.election.id}` }, 'Open election'));
 
-  return el(
-    'div',
-    { class: 'stack-sm' },
-    el(
-      'div',
-      { class: 'sealed' },
-    el(
-      'div',
-      { class: 'sealed-head' },
-      el('span', { class: 'sealed-icon', html: icons.check }),
-      el('div', {}, el('h3', { style: { margin: 0 } }, 'Ballot verified'), el('p', { style: { margin: 0 } }, 'This receipt matches a recorded ballot.')),
+  return el('div', { class: 'verify-result stack-sm' },
+    el('div', { class: 'sealed' },
+      el('div', { class: 'sealed-head' },
+        el('span', { class: 'sealed-icon', html: icons.check }),
+        el('div', {}, el('h3', { style: { margin: 0 } }, 'Ballot verified'), el('p', { style: { margin: 0 } }, 'This receipt matches a recorded ballot.')),
+      ),
+      el('div', { class: 'stack-sm' },
+        infoRow('Election', data.election.title),
+        infoRow('Recorded choice', `${data.candidate.name}${data.candidate.party ? ` · ${data.candidate.party}` : ''}`),
+        infoRow('Status', data.counted ? 'Counted in the tally' : 'Not counted'),
+      ),
+      el('a', { class: 'btn btn-outline btn-sm', href: `/election/${data.election.id}` }, 'View this election', iconEl('arrow')),
     ),
-    el(
-      'div',
-      { class: 'stack-sm' },
-      infoRow('Election', data.election.title),
-      infoRow('Recorded choice', `${data.candidate.name}${data.candidate.party ? ` · ${data.candidate.party}` : ''}`),
-      infoRow('Status', data.counted ? 'Counted in the tally' : 'Not counted'),
-    ),
-    el('a', { class: 'btn btn-outline btn-sm', href: `/election/${data.election.id}` }, 'View this election', iconEl('arrow')),
-    ),
-    proofBox,
+    el('div', { class: 'card stack' }, el('h3', { style: { margin: 0 } }, 'Verification checkpoints'), list),
   );
 }
 
