@@ -728,6 +728,95 @@ function api_routes(): array
     /* Signed results                                                      */
     /* ------------------------------------------------------------------ */
 
+    $add('GET', '/api/elections/:id/results/pdf', static function (array $ctx): void {
+        $id = (int) $ctx['params']['id'];
+        $signed = signed_results_for($id);
+        $payload = $signed['payload'];
+        if (($payload['status'] ?? '') !== 'closed') {
+            fail(409, 'Results can only be certified after voting closes.', 'election_open');
+        }
+        $lines = [
+            ['font' => 'sans', 'size' => 10, 'x' => 50, 'y' => 800, 'text' => 'OPEN BALLOT - OFFICIAL RESULTS CERTIFICATE'],
+            ['font' => 'sans', 'size' => 20, 'x' => 50, 'y' => 765, 'text' => (string) $payload['title']],
+            ['font' => 'sans', 'size' => 10, 'x' => 50, 'y' => 740, 'text' => 'Election ID: ' . (int) $payload['electionId'] . '   Status: ' . (string) $payload['status']],
+            ['font' => 'sans', 'size' => 10, 'x' => 50, 'y' => 722, 'text' => 'Total ballots cast: ' . (int) $payload['totalVotes'] . '   Generated: ' . (string) $payload['generatedAt']],
+            ['font' => 'sans', 'size' => 12, 'x' => 50, 'y' => 690, 'text' => 'CANDIDATE                         VOTES     SHARE'],
+        ];
+        $y = 668;
+        foreach ($payload['candidates'] as $candidate) {
+            $name = str_pad((string) $candidate['name'], 34);
+            $lines[] = [
+                'font' => 'mono', 'size' => 10, 'x' => 50, 'y' => $y,
+                'text' => $name . str_pad((string) $candidate['votes'], 9) . (string) $candidate['share'] . '%',
+            ];
+            $y -= 20;
+        }
+        $y -= 10;
+        $lines[] = ['font' => 'sans', 'size' => 10, 'x' => 50, 'y' => $y, 'text' => 'Integrity signature (' . $signed['algorithm'] . '):'];
+        $signature = (string) $signed['signature'];
+        foreach (str_split($signature, 64) as $chunk) {
+            $y -= 16;
+            $lines[] = ['font' => 'mono', 'size' => 8, 'x' => 50, 'y' => $y, 'text' => $chunk];
+        }
+        $y -= 24;
+        $lines[] = ['font' => 'sans', 'size' => 9, 'x' => 50, 'y' => $y, 'text' => 'Key fingerprint: ' . (string) $signed['keyFingerprint']];
+        $y -= 18;
+        $lines[] = ['font' => 'sans', 'size' => 9, 'x' => 50, 'y' => $y, 'text' => 'Verify at: ' . (string) env_value('APP_URL', 'http://127.0.0.1:3000') . '/election/' . $id];
+
+        $pdf = pdf_document('Open Ballot results certificate', $lines);
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="open-ballot-results-' . $id . '.pdf"');
+        header('Content-Length: ' . strlen($pdf));
+        header('Cache-Control: no-store');
+        echo $pdf;
+    });
+
+    $add('GET', '/api/archive', static function (array $ctx): void {
+        $rows = db_all("SELECT * FROM elections WHERE status = 'closed' ORDER BY closes_at DESC, created_at DESC");
+        $entries = [];
+        foreach ($rows as $row) {
+            $election = serialize_election($row, $ctx['user']);
+            if (empty($election['resultsVisible'])) {
+                continue;
+            }
+            $entries[] = [
+                'id' => (int) $election['id'],
+                'title' => (string) $election['title'],
+                'closedAt' => $election['closesAt'],
+                'totalVotes' => (int) $election['totalVotes'],
+                'results' => $election['results'] ?? null,
+            ];
+        }
+        send_json(200, ['elections' => $entries]);
+    });
+
+    $add('GET', '/api/audit/chain', static function (array $ctx): void {
+        $rows = db_all('SELECT a.*, u.name AS actor_name FROM audit_log a LEFT JOIN users u ON u.id = a.actor_id ORDER BY a.id ASC');
+        $prev = str_repeat('0', 64);
+        $entries = [];
+        foreach ($rows as $r) {
+            $details = safe_json($r['details']);
+            $entry = sprintf('%s|%s|%s|%s', $r['created_at'], $r['actor_name'] ?? 'system', $r['action'], is_string($details) ? $details : json_encode($details));
+            $hash = hash_hmac('sha256', $prev . $entry, (string) config('app_name'));
+            $entries[] = [
+                'id' => (int) $r['id'],
+                'createdAt' => sql_to_iso($r['created_at']),
+                'rawCreatedAt' => (string) $r['created_at'],
+                'actor' => $r['actor_name'] ?? 'system',
+                'action' => $r['action'],
+                'details' => is_string($details) ? $details : json_encode($details),
+                'hash' => $hash,
+            ];
+            $prev = $hash;
+        }
+        send_json(200, [
+            'entries' => $entries,
+            'head' => $prev,
+            'algorithm' => 'HMAC-SHA256',
+            'keyHint' => (string) config('app_name'),
+        ]);
+    });
+
     $add('GET', '/api/elections/:id/results/signed', static function (array $ctx): void {
         $id = (int) $ctx['params']['id'];
         send_json(200, signed_results_for($id));

@@ -22,6 +22,7 @@
     help: { title: 'Help & FAQ', description: 'Answers to common questions about voting, receipts and account security.' },
     privacy: { title: 'Privacy', description: 'How Open Ballot handles your data and keeps ballots anonymous.' },
     audit: { title: 'Public audit chain', description: 'Inspect the published HMAC chain of election and administrative events.' },
+    archive: { title: 'Results archive', description: 'Final, signed tallies from every published election.' },
     status: { title: 'Service status', description: 'Current health of Open Ballot services.' },
   };
 

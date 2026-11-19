@@ -570,7 +570,14 @@ async function viewElection(rawId) {
             toast('Signed results downloaded.', 'success');
           } catch (error) { toast(error.message, 'error'); }
         },
-      }, iconEl('download'), 'Download signed results'),
+      }, iconEl('download'), 'Signed JSON'),
+      election.status === 'closed'
+        ? el('a', {
+            class: 'btn btn-ghost btn-sm',
+            href: `/api/elections/${election.id}/results/pdf`,
+            download: `open-ballot-results-${election.id}.pdf`,
+          }, iconEl('download'), 'Signed PDF')
+        : null,
       el('button', {
         class: 'btn btn-ghost btn-sm', type: 'button',
         onclick: () => {
@@ -1630,8 +1637,107 @@ async function viewStatus() {
   )];
 }
 
+async function viewArchive() {
+  const errorBox = el('div', { class: 'form-error', role: 'alert' });
+  const list = el('div', { class: 'stack' }, el('p', { class: 'small muted' }, 'Loading published results…'));
+
+  const load = async () => {
+    try {
+      const data = await api('GET', '/api/archive');
+      if (!data.elections.length) {
+        list.replaceChildren(Components.emptyState({
+          variant: 'empty',
+          title: 'No published results yet',
+          message: 'Results appear here once an election closes and its publication setting allows them.',
+          actions: el('a', { class: 'btn btn-primary', href: '/' }, 'Browse elections'),
+        }));
+        return;
+      }
+      list.replaceChildren(...data.elections.map((entry) => {
+        const results = entry.results || {};
+        const candidates = results.candidates || [];
+        const total = entry.totalVotes || 0;
+        return el('div', { class: 'card stack' },
+          el('div', { class: 'row-between' },
+            el('div', {},
+              el('h2', { style: { margin: 0, fontSize: '1.2rem' } }, entry.title),
+              el('div', { class: 'small muted' }, `Closed ${formatDate(entry.closedAt)} · ${formatNumber(total)} ${plural(total, 'ballot')} cast`),
+            ),
+            el('a', { class: 'btn btn-outline btn-sm', href: `/election/${entry.id}` }, 'Full report', iconEl('arrow')),
+          ),
+          candidates.length
+            ? el('div', { class: 'results-list' }, ...candidates.map((c) =>
+                el('div', { class: 'result-row' },
+                  el('div', { class: 'result-top' },
+                    el('span', { class: 'result-name' }, c.name, c.party ? el('span', { class: 'party' }, c.party) : null),
+                    el('span', { class: 'result-count' }, el('strong', {}, formatNumber(c.votes)), ` · ${c.share}%`),
+                  ),
+                  el('div', { class: 'bar-track' }, el('div', { class: 'bar-fill', style: { width: `${Math.min(100, Number(c.share) || 0)}%` } })),
+                ),
+              ))
+            : el('p', { class: 'small muted' }, 'No candidate breakdown available.'),
+          el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
+            el('a', { class: 'btn btn-ghost btn-sm', href: `/api/elections/${entry.id}/results/signed`, download: `results-${entry.id}.json` }, iconEl('download'), 'Signed JSON'),
+            el('a', { class: 'btn btn-ghost btn-sm', href: `/api/elections/${entry.id}/results/pdf`, download: `results-${entry.id}.pdf` }, iconEl('download'), 'Signed PDF'),
+          ),
+        );
+      }));
+    } catch (error) {
+      errorBox.textContent = error.message;
+    }
+  };
+  load();
+
+  return [
+    el('div', { class: 'stack-lg' },
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Transparency'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Results archive')),
+      el('p', { class: 'muted', style: { margin: '-12px 0 0' } }, 'Final, signed tallies from every published election.'),
+      errorBox,
+      list,
+    ),
+  ];
+}
+
+async function hmacSha256Hex(key, message) {
+  const enc = new TextEncoder();
+  const cryptoKey = await crypto.subtle.importKey('raw', enc.encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(message));
+  return Array.from(new Uint8Array(signature)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function viewAuditChain() {
   const box = el('div', { class: 'card stack' }, el('p', { class: 'small muted' }, 'Loading the audit chain…'));
+  const verifyBox = el('div', { class: 'stack-sm' });
+
+  const verifyChain = async () => {
+    verifyBox.replaceChildren(el('p', { class: 'small muted' }, 'Fetching the full chain…'));
+    try {
+      const data = await api('GET', '/api/audit/chain');
+      let previous = '0'.repeat(64);
+      let failure = -1;
+      for (let i = 0; i < data.entries.length; i += 1) {
+        const entry = data.entries[i];
+        const line = `${entry.rawCreatedAt}|${entry.actor}|${entry.action}|${entry.details}`;
+        const expected = await hmacSha256Hex(data.keyHint, previous + line);
+        if (expected !== entry.hash) { failure = i; break; }
+        previous = expected;
+      }
+      const ok = failure === -1 && previous === data.head;
+      verifyBox.replaceChildren(
+        el('div', { class: `callout ${ok ? 'callout-success' : 'callout-danger'}` },
+          el('strong', {}, ok ? 'Chain integrity verified' : 'Chain integrity check failed'),
+          el('div', { class: 'small' }, ok
+            ? `All ${data.entries.length} entries link correctly to the published head.`
+            : `Mismatch at entry ${failure + 1}. The log may have been altered.`),
+        ),
+        el('div', { class: 'mono small', style: { wordBreak: 'break-all' } }, `Head: ${data.head}`),
+      );
+      toast(ok ? 'Audit chain verified.' : 'Audit chain check failed.', ok ? 'success' : 'error');
+    } catch (error) {
+      verifyBox.replaceChildren(el('p', { class: 'form-error' }, error.message));
+    }
+  };
+
   const load = async () => {
     try {
       const data = await api('GET', '/api/audit/verify');
@@ -1646,10 +1752,13 @@ async function viewAuditChain() {
           el('label', {}, 'Current chain head'),
           el('div', { class: 'mono small', style: { wordBreak: 'break-all', padding: '12px', borderRadius: '8px', background: 'var(--inset-bg, var(--surface-2))' } }, data.chainHead),
         ),
-        el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: load }, iconEl('shield'), 'Refresh head'),
-        state.user && state.user.role === 'admin'
-          ? el('a', { class: 'btn btn-primary btn-sm', href: '/admin/audit' }, 'Open full audit log', iconEl('arrow'))
-          : null,
+        el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
+          el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: verifyChain }, iconEl('shield'), 'Verify full chain'),
+          el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: load }, iconEl('shield'), 'Refresh head'),
+          state.user && state.user.role === 'admin'
+            ? el('a', { class: 'btn btn-ghost btn-sm', href: '/admin/audit' }, 'Open full audit log', iconEl('arrow'))
+            : null,
+        ),
       );
     } catch (error) {
       box.replaceChildren(el('p', { class: 'form-error' }, error.message));
@@ -1660,6 +1769,7 @@ async function viewAuditChain() {
     el('div', { class: 'stack-lg' },
       el('div', {}, el('p', { class: 'eyebrow' }, 'Transparency'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Public audit chain')),
       box,
+      el('div', { class: 'card stack' }, el('h3', { style: { margin: 0 } }, 'Integrity verification'), verifyBox),
     ),
   ];
 }
