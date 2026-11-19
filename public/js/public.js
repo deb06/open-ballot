@@ -1168,8 +1168,45 @@ async function viewAccount() {
     }
   });
 
+  /* Two-factor / passkey security */
+  const codesBox = el('div', { class: 'form-error', role: 'alert' });
+  const generateCodes = el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: async () => {
+    setBusy(generateCodes, true, 'Generating…');
+    codesBox.textContent = '';
+    try {
+      const data = await api('POST', '/api/auth/backup-codes/generate');
+      const list = el('div', { class: 'backup-codes' }, ...data.codes.map((c) => el('code', {}, c)));
+      const body = el('div', { class: 'stack' },
+        el('p', { class: 'small muted' }, 'Save these 10 one-time codes somewhere safe. Each can be used once if you lose access to your authenticator. They will not be shown again.'),
+        list,
+        el('button', {
+          class: 'btn btn-ghost btn-sm',
+          type: 'button',
+          onclick: async () => {
+            const ok = await copyText(data.codes.join('\n'));
+            toast(ok ? 'Backup codes copied.' : 'Copy failed — select the codes manually.', ok ? 'success' : 'error');
+          },
+        }, iconEl('copy'), 'Copy all'),
+      );
+      const dlg = openModal({ title: 'Backup codes', body, actions: [el('button', { class: 'btn btn-primary', type: 'button', onclick: () => dlg.close() }, 'Done')] });
+    } catch (error) {
+      codesBox.textContent = error.message;
+    } finally {
+      setBusy(generateCodes, false);
+    }
+  } }, iconEl('key'), 'Generate backup codes');
+
+  const securityCard = el('div', { class: 'card stack' },
+    el('div', { class: 'card-header' }, el('div', {}, el('h2', { style: { margin: 0 } }, 'Security'), el('p', { style: { margin: '4px 0 0' } }, 'Add a passkey or keep one-time backup codes for account recovery.'))),
+    codesBox,
+    el('div', { class: 'row', style: { gap: '10px', flexWrap: 'wrap' } },
+      el('a', { class: 'btn btn-outline btn-sm', href: '#/passkeys' }, iconEl('fingerprint'), 'Manage passkeys'),
+      generateCodes,
+    ),
+  );
+
   return [
-    el('div', { class: 'stack-lg' }, profile, el('div', {}, el('h2', {}, 'Your ballots'), el('p', { class: 'muted' }, 'Ballots you have cast and the receipts saved on this device.'), ballotList), passwordForm),
+    el('div', { class: 'stack-lg' }, profile, el('div', {}, el('h2', {}, 'Your ballots'), el('p', { class: 'muted' }, 'Ballots you have cast and the receipts saved on this device.'), ballotList), securityCard, passwordForm),
   ];
 }
 

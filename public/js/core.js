@@ -117,6 +117,9 @@ const icons = {
   edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>',
   sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4"/><path d="M12 17v4"/><path d="M3 12h4"/><path d="M17 12h4"/><path d="m5.6 5.6 2.8 2.8"/><path d="m15.6 15.6 2.8 2.8"/><path d="m18.4 5.6-2.8 2.8"/><path d="m8.4 15.6-2.8 2.8"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"/><path d="M10 21h4"/></svg>',
+  upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 21h16"/></svg>',
+  fingerprint: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 11v4"/><path d="M8 13a4 4 0 0 1 8 0v2"/><path d="M5 12a7 7 0 0 1 14 0v4"/><path d="M2 12a10 10 0 0 1 5-8.7"/><path d="M22 12a10 10 0 0 0-5-8.7"/><path d="M5 17a7 7 0 0 0 1 3"/><path d="M19 17a7 7 0 0 1-1 3"/></svg>',
   sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m4.9 19.1 1.4-1.4"/><path d="m17.7 6.3 1.4-1.4"/></svg>',
   moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>',
 };
@@ -638,6 +641,113 @@ function errorView(error) {
    Header + navigation
    -------------------------------------------------------------------------- */
 
+/* --------------------------------------------------------------------------
+   Notifications
+   -------------------------------------------------------------------------- */
+
+let notificationState = { unread: 0, items: [], loaded: false };
+
+async function refreshNotifications() {
+  if (!state.user) return;
+  try {
+    const data = await api('GET', '/api/notifications');
+    notificationState = { unread: data.unread, items: data.notifications, loaded: true };
+    paintNotificationBadge();
+    paintNotificationPanel();
+  } catch {
+    /* notifications are best-effort */
+  }
+}
+
+function paintNotificationBadge() {
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  const n = notificationState.unread;
+  badge.textContent = n > 99 ? '99+' : String(n);
+  badge.hidden = n === 0;
+}
+
+function paintNotificationPanel() {
+  const list = document.getElementById('notif-list');
+  if (!list) return;
+  const items = notificationState.items;
+  if (!items.length) {
+    list.replaceChildren(el('p', { class: 'small muted', style: { padding: '14px', margin: 0 } }, 'No notifications yet.'));
+    return;
+  }
+  list.replaceChildren(
+    ...items.map((note) =>
+      el(
+        'div',
+        { class: `notif-item${note.read_at ? '' : ' is-unread'}` },
+        el('div', { class: 'notif-item-title' }, note.title),
+        el('div', { class: 'small muted' }, note.body),
+        el(
+          'div',
+          { class: 'row', style: { gap: '8px', marginTop: '6px' } },
+          el('span', { class: 'tiny muted' }, formatDate(note.created_at)),
+          note.read_at
+            ? null
+            : el('button', {
+                class: 'btn btn-ghost btn-sm',
+                type: 'button',
+                onclick: async () => {
+                  try {
+                    await api('POST', `/api/notifications/${note.id}/read`);
+                    await refreshNotifications();
+                  } catch (error) {
+                    toast(error.message, 'error');
+                  }
+                },
+              }, 'Mark read'),
+          note.link ? el('a', { class: 'btn btn-ghost btn-sm', href: note.link, onclick: () => { document.getElementById('notif-panel').hidden = true; } }, 'Open') : null,
+        ),
+      ),
+    ),
+  );
+}
+
+function notificationBell() {
+  const panel = el('div', { class: 'notif-panel', id: 'notif-panel', hidden: true, role: 'dialog', 'aria-label': 'Notifications' },
+    el('div', { class: 'row-between', style: { padding: '12px 14px', borderBottom: '1px solid var(--line)' } },
+      el('strong', {}, 'Notifications'),
+      el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
+        try {
+          await api('POST', '/api/notifications/read-all');
+          await refreshNotifications();
+        } catch (error) { toast(error.message, 'error'); }
+      } }, 'Mark all read'),
+    ),
+    el('div', { class: 'notif-list', id: 'notif-list' }),
+  );
+  panel.addEventListener('click', (event) => event.stopPropagation());
+
+  const badge = el('span', { class: 'notif-badge', id: 'notif-badge', hidden: false }, '0');
+  const button = el('button', {
+    class: 'btn btn-ghost btn-sm btn-icon notif-button',
+    type: 'button',
+    'aria-label': 'Notifications',
+    'aria-expanded': 'false',
+    onclick: async (event) => {
+      event.stopPropagation();
+      const willOpen = panel.hidden;
+      panel.hidden = !willOpen;
+      button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      if (willOpen) await refreshNotifications();
+    },
+  }, el('span', { html: icons.bell }), badge);
+
+  document.addEventListener('click', () => {
+    if (!panel.hidden) {
+      panel.hidden = true;
+      button.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  setTimeout(() => { if (state.user) refreshNotifications(); }, 300);
+  return el('div', { class: 'notif-wrap' }, button, panel);
+}
+
 function renderHeader() {
   const actions = document.getElementById('header-actions');
   if (!actions) return;
@@ -659,6 +769,7 @@ function renderHeader() {
 
   if (state.user) {
     actions.append(
+      notificationBell(),
       el(
         'a',
         { class: 'btn btn-ghost btn-sm', href: '#/account', title: state.user.email },
@@ -788,6 +899,7 @@ async function viewFor(parts) {
     if (sub === 'election' && id) return viewAdminElection(id);
     if (sub === 'users') return viewAdminUsers();
     if (sub === 'audit') return viewAdminAudit();
+  if (sub === 'webhooks') return viewAdminWebhooks();
   if (sub === 'schema') return viewAdminSchema();
   }
   return viewNotFound();

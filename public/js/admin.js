@@ -41,6 +41,7 @@ function adminNav(active) {
     link('#/admin', 'Overview', 'overview'),
     link('#/admin/users', 'Voters', 'users'),
     link('#/admin/audit', 'Audit log', 'audit'),
+    link('#/admin/webhooks', 'Webhooks', 'webhooks'),
     link('#/admin/schema', 'Schema', 'schema'),
   );
 }
@@ -57,6 +58,24 @@ function adminHeader(title, subtitle, actions = null) {
 /* --------------------------------------------------------------------------
    Overview
    -------------------------------------------------------------------------- */
+
+async function cloneElection(election) {
+  const ok = await confirmDialog({
+    title: 'Duplicate election?',
+    message: `A new draft will be created from “${election.title}” with its settings and ${election.candidateCount} ${plural(election.candidateCount, 'candidate')}.`,
+    confirmLabel: 'Duplicate',
+  });
+  if (!ok) return;
+  try {
+    const data = await api('POST', `/api/admin/elections/from-template/${election.id}`, {
+      title: `${election.title} (copy)`,
+    });
+    toast('Election duplicated as a draft.', 'success');
+    go(`#/admin/election/${data.election.id}`);
+  } catch (error) {
+    toast(error.message, 'error');
+  }
+}
 
 async function viewAdminOverview() {
   const guard = adminOnly();
@@ -99,6 +118,7 @@ async function viewAdminOverview() {
               { class: 'actions' },
               el('a', { class: 'btn btn-sm btn-ghost', href: `#/election/${election.id}` }, 'View'),
               el('a', { class: 'btn btn-sm btn-outline', href: `#/admin/election/${election.id}` }, 'Manage'),
+              el('button', { class: 'btn btn-sm btn-ghost', type: 'button', title: 'Duplicate election', onclick: () => cloneElection(election) }, iconEl('copy')),
             ),
           ),
         ),
@@ -579,6 +599,14 @@ function candidatesCard(election, candidates, locked) {
   );
   if (locked) addButton.disabled = true;
 
+  const importButton = el(
+    'button',
+    { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => openCandidateImportModal(election) },
+    iconEl('upload'),
+    'Import CSV',
+  );
+  if (locked) importButton.disabled = true;
+
   const list = candidates.length
     ? candidates.map((candidate) =>
         el(
@@ -639,10 +667,44 @@ function candidatesCard(election, candidates, locked) {
       'div',
       { class: 'card-header' },
       el('div', {}, el('h2', { style: { margin: 0 } }, 'Candidates'), el('p', { style: { margin: '4px 0 0' } }, locked ? 'Candidates are locked because voting has started or the election is closed.' : 'Editing is available until the first ballot is cast.')),
-      addButton,
+      el('div', { class: 'row', style: { gap: '8px' } }, importButton, addButton),
     ),
     el('div', { class: 'stack-sm' }, list),
   );
+}
+
+function openCandidateImportModal(election) {
+  const errorBox = el('div', { class: 'form-error', role: 'alert' });
+  const csv = el('textarea', { class: 'textarea mono', rows: '10', placeholder: 'name,party,bio\nJane Doe,Unity Slate,Third-year economics student\nJohn Smith,Independent,' });
+  csv.style.minHeight = '200px';
+  const file = el('input', { class: 'input', type: 'file', accept: '.csv,text/csv', 'aria-label': 'CSV file' });
+  file.addEventListener('change', async () => {
+    if (file.files && file.files[0]) csv.value = await file.files[0].text();
+  });
+  const form = el('div', { class: 'stack' },
+    errorBox,
+    el('p', { class: 'small muted', style: { margin: 0 } }, 'Paste CSV rows (name, party, bio) or choose a file. The header row is optional.'),
+    el('div', { class: 'field' }, el('label', {}, 'CSV file'), file),
+    el('div', { class: 'field' }, el('label', {}, 'CSV content'), csv),
+  );
+  const save = el('button', { class: 'btn btn-primary', type: 'button', onclick: async () => {
+    errorBox.textContent = '';
+    setBusy(save, true, 'Importing…');
+    try {
+      const data = await api('POST', `/api/admin/elections/${election.id}/candidates/import`, { csv: csv.value });
+      toast(`${data.imported} ${plural(data.imported, 'candidate')} imported.`, 'success');
+      dialog.close();
+      handleRoute();
+    } catch (error) {
+      errorBox.textContent = error.message;
+      setBusy(save, false);
+    }
+  } }, iconEl('upload'), 'Import candidates');
+  const dialog = openModal({
+    title: 'Import candidates from CSV',
+    body: form,
+    actions: [el('button', { class: 'btn btn-ghost', type: 'button', onclick: () => dialog.close() }, 'Cancel'), save],
+  });
 }
 
 function openCandidateModal({ election, candidate = null }) {
@@ -770,7 +832,39 @@ function adminResultsCard(resultsData, election) {
     el('hr', { class: 'divider' }),
     el('h3', { style: { marginTop: 0, fontSize: '1rem' } }, 'Ballots over time'),
     timeline,
+    (() => {
+      const box = el('div', { class: 'analytics-box' }, el('span', { class: 'small muted' }, 'Loading analytics…'));
+      loadElectionAnalytics(box, Number(election.id));
+      return box;
+    })(),
   );
+}
+
+async function loadElectionAnalytics(box, electionId) {
+  try {
+    const data = await api('GET', `/api/admin/elections/${electionId}/analytics`);
+    const daily = data.daily || [];
+    const peak = data.peakDay;
+    const max = Math.max(...daily.map((d) => d.votes), 1);
+    box.replaceChildren(
+      el('hr', { class: 'divider' }),
+      el('h3', { style: { marginTop: 0, fontSize: '1rem' } }, 'Analytics'),
+      el('div', { class: 'row', style: { gap: '24px', flexWrap: 'wrap', marginBottom: '12px' } },
+        el('div', {}, el('strong', {}, formatNumber(data.totalVotes || 0)), el('span', { class: 'small muted' }, ' ballots')),
+        peak ? el('div', {}, el('strong', {}, formatDate(peak.day)), el('span', { class: 'small muted' }, ` · peak (${peak.votes} ballots)`)) : null,
+      ),
+      daily.length
+        ? el('div', { class: 'analytics-days' }, ...daily.map((d) =>
+            el('div', { class: 'analytics-day', title: `${d.day}: ${d.votes} ballots` },
+              el('div', { class: 'analytics-bar', style: { height: `${Math.max(4, (d.votes / max) * 90)}px` } }),
+              el('span', { class: 'tiny muted' }, formatDate(d.day)),
+            ),
+          ))
+        : el('p', { class: 'small muted' }, 'No turnout data yet.'),
+    );
+  } catch {
+    box.replaceChildren(el('p', { class: 'small muted' }, 'Analytics unavailable.'));
+  }
 }
 
 function sparkline(points) {
@@ -1158,7 +1252,21 @@ async function viewAdminAudit() {
     el(
       'div',
       { class: 'admin-shell' },
-      adminHeader('Audit log', 'An append-only record of authentication, ballots and administrative changes.'),
+      adminHeader('Audit log', 'An append-only record of authentication, ballots and administrative changes.',
+        el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: async () => {
+          try {
+            const data = await api('GET', '/api/admin/audit/export');
+            const blob = new Blob([data.content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = el('a', { href: url, download: `open-ballot-audit-${new Date().toISOString().slice(0, 10)}.txt` });
+            document.body.append(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            toast(`Exported ${data.exported} audit entries.`, 'success');
+          } catch (error) { toast(error.message, 'error'); }
+        } }, iconEl('download'), 'Export signed log'),
+      ),
       adminNav('audit'),
       el(
         'div',
@@ -1170,6 +1278,85 @@ async function viewAdminAudit() {
     ),
   ];
 }
+async function viewAdminWebhooks() {
+  const guard = adminOnly();
+  if (guard) return guard;
+
+  const errorBox = el('div', { class: 'form-error', role: 'alert' });
+  const secretBox = el('div', { class: 'callout callout-info', hidden: true });
+  const tbody = el('tbody');
+
+  const urlInput = el('input', { class: 'input', type: 'url', placeholder: 'https://example.com/hooks/open-ballot', 'aria-label': 'Webhook URL' });
+  const eventsInput = el('input', { class: 'input', type: 'text', value: 'vote.cast', placeholder: 'vote.cast, election.close', 'aria-label': 'Events (comma separated)' });
+  const addBtn = el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: async () => {
+    errorBox.textContent = '';
+    secretBox.hidden = true;
+    setBusy(addBtn, true, 'Adding…');
+    try {
+      const data = await api('POST', '/api/admin/webhooks', { url: urlInput.value, events: eventsInput.value });
+      toast('Webhook created. Copy its signing secret now.', 'success');
+      secretBox.replaceChildren(
+        el('strong', {}, 'Signing secret: '), el('code', {}, data.secret),
+        el('div', { class: 'small muted' }, 'Shown only once. Use it to verify the X-Webhook-Signature header.'),
+      );
+      secretBox.hidden = false;
+      urlInput.value = '';
+      load();
+    } catch (error) { errorBox.textContent = error.message; }
+    finally { setBusy(addBtn, false); }
+  } }, iconEl('plus'), 'Add webhook');
+
+  const load = async () => {
+    try {
+      const data = await api('GET', '/api/admin/webhooks');
+      tbody.replaceChildren(
+        ...(data.webhooks.length
+          ? data.webhooks.map((h) => el('tr', {},
+              el('td', { class: 'small mono' }, h.url),
+              el('td', { class: 'small' }, h.events),
+              el('td', {}, h.active ? el('span', { class: 'badge badge-success' }, 'Active') : el('span', { class: 'badge' }, 'Inactive')),
+              el('td', { class: 'small muted' }, h.last_sent_at ? formatDateTime(h.last_sent_at) : 'Never'),
+              el('td', {}, el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
+                const ok = await confirmDialog({ title: 'Delete webhook?', message: 'This endpoint will stop receiving events.', confirmLabel: 'Delete' });
+                if (!ok) return;
+                try { await api('DELETE', `/api/admin/webhooks/${h.id}`); toast('Webhook deleted.', 'success'); load(); }
+                catch (error) { toast(error.message, 'error'); }
+              } }, iconEl('trash'), 'Remove')),
+            ))
+          : [el('tr', {}, el('td', { colspan: '5', class: 'muted' }, 'No webhooks configured.'))]),
+      );
+    } catch (error) { errorBox.textContent = error.message; }
+  };
+  load();
+
+  return [
+    el('div', { class: 'admin-shell' },
+      adminHeader('Webhooks', 'Send signed event callbacks to external systems.'),
+      adminNav('webhooks'),
+      el('div', { class: 'stack' },
+        el('div', { class: 'card stack' },
+          el('h2', { style: { margin: 0 } }, 'Add a webhook'),
+          errorBox,
+          secretBox,
+          el('div', { class: 'form-grid' },
+            el('div', { class: 'field' }, el('label', {}, 'Endpoint URL'), urlInput),
+            el('div', { class: 'field' }, el('label', {}, 'Events'), eventsInput),
+          ),
+          el('div', { class: 'row' }, addBtn),
+          el('p', { class: 'small muted' }, 'Available events: vote.cast. Each request is signed with HMAC-SHA256 in X-Webhook-Signature. Delivery is best-effort with a 2-second timeout.'),
+        ),
+        el('div', { class: 'card' },
+          el('h2', { style: { margin: '0 0 12px' } }, 'Configured webhooks'),
+          el('div', { class: 'table-wrap' }, el('table', { class: 'data-table' },
+            el('thead', {}, el('tr', {}, el('th', {}, 'URL'), el('th', {}, 'Events'), el('th', {}, 'Status'), el('th', {}, 'Last sent'), el('th', {}, 'Actions'))),
+            tbody,
+          )),
+        ),
+      ),
+    ),
+  ];
+}
+
 async function viewAdminSchema() {
   const guard = adminOnly();
   if (guard) return guard;
