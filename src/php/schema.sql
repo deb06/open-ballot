@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS elections (
   created_by         INT UNSIGNED NULL DEFAULT NULL,
   created_at         DATETIME(3) NOT NULL,
   updated_at         DATETIME(3) NOT NULL,
+  merkle_root        VARCHAR(64) NULL DEFAULT NULL,
   PRIMARY KEY (id),
   KEY idx_elections_status (status),
   KEY idx_elections_created (created_at),

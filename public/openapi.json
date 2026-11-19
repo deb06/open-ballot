@@ -72,7 +72,13 @@
         "responses": { "200": { "description": "OK" } }
       }
     },
-    "/elections/{id}": {
+    "/elections/{id}/audit": {
+      "get": {
+        "summary": "Merkle audit proof for an election's ballots",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
+      }
+    },
       "get": {
         "summary": "Get a single election with its candidates",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],

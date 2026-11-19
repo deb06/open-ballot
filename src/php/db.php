@@ -316,7 +316,17 @@ function db_migrate_multi_choice(): void
     $pdo->exec('INSERT IGNORE INTO vote_choices (vote_id, candidate_id) SELECT id, candidate_id FROM votes WHERE candidate_id IS NOT NULL');
 }
 
-function db_schema_installed(): bool
+function db_migrate_merkle(): void
+{
+    $pdo = db();
+    if (!db_column_exists('elections', 'merkle_root')) {
+        try {
+            $pdo->exec('ALTER TABLE elections ADD COLUMN merkle_root VARCHAR(64) NULL');
+        } catch (Throwable) {
+            // column may already exist on this driver
+        }
+    }
+}
 {
     try {
         db()->query('SELECT 1 FROM users LIMIT 1');
@@ -346,6 +356,7 @@ function db_ensure_ready(): void
             db_migrate_quick_wins();
             db_migrate_multi_choice();
         }
+        db_migrate_merkle();
     }
     // Rate-limit counters are per process lifetime in the original design; clearing
     // them on (re)start keeps the limits effective without permanently blocking

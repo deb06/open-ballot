@@ -474,3 +474,72 @@ function create_session(array $user, string $ip): string
     set_cookie((string) config('session_cookie'), $token, $ttl);
     return $csrf;
 }
+
+/**
+ * Merkle tree helpers over SHA-256 leaf hashes.
+ */
+function merkle_hash(string $data): string
+{
+    return hash('sha256', $data);
+}
+
+function merkle_root(array $leaves): string
+{
+    if ($leaves === []) {
+        return str_repeat('0', 64);
+    }
+    $level = array_values($leaves);
+    while (count($level) > 1) {
+        $next = [];
+        for ($i = 0; $i < count($level); $i += 2) {
+            $left = $level[$i];
+            $right = $level[$i + 1] ?? $level[$i];
+            $next[] = merkle_hash($left . $right);
+        }
+        $level = $next;
+    }
+    return $level[0];
+}
+
+function merkle_proof(array $leaves, int $index): array
+{
+    $proof = [];
+    $level = array_values($leaves);
+    $i = $index;
+    while (count($level) > 1) {
+        $siblingIndex = ($i % 2 === 0) ? $i + 1 : $i - 1;
+        if ($siblingIndex < count($level)) {
+            $proof[] = [
+                'hash' => $level[$siblingIndex],
+                'position' => ($i % 2 === 0) ? 'right' : 'left',
+            ];
+        } else {
+            $proof[] = [
+                'hash' => $level[$i],
+                'position' => ($i % 2 === 0) ? 'right' : 'left',
+            ];
+        }
+        $next = [];
+        for ($j = 0; $j < count($level); $j += 2) {
+            $left = $level[$j];
+            $right = $level[$j + 1] ?? $level[$j];
+            $next[] = merkle_hash($left . $right);
+        }
+        $level = $next;
+        $i = intdiv($i, 2);
+    }
+    return $proof;
+}
+
+function merkle_verify(string $leaf, array $proof, string $root): bool
+{
+    $current = $leaf;
+    foreach ($proof as $step) {
+        if ($step['position'] === 'left') {
+            $current = merkle_hash($step['hash'] . $current);
+        } else {
+            $current = merkle_hash($current . $step['hash']);
+        }
+    }
+    return hash_equals($root, $current);
+}

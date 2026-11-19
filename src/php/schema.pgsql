@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS elections (
   closes_at          TIMESTAMP(3) NULL,
   created_by         INT NULL REFERENCES users(id) ON DELETE SET NULL,
   created_at         TIMESTAMP(3) NOT NULL,
-  updated_at         TIMESTAMP(3) NOT NULL
+  updated_at         TIMESTAMP(3) NOT NULL,
+  merkle_root        VARCHAR(64) NULL
 );
 CREATE INDEX IF NOT EXISTS idx_elections_status ON elections(status);
 CREATE INDEX IF NOT EXISTS idx_elections_created ON elections(created_at);

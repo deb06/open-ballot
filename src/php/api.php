@@ -562,6 +562,22 @@ function api_routes(): array
         if ($vote === null) {
             fail(404, 'No ballot matches that receipt code.', 'receipt_not_found');
         }
+        $receiptHashes = db_all(
+            'SELECT receipt_hash FROM votes WHERE election_id = ? ORDER BY id ASC',
+            [(int) $vote['election_id']],
+        );
+        $leaves = array_map(static fn (array $r): string => (string) $r['receipt_hash'], $receiptHashes);
+        $leaf = receipt_hash($code);
+        $leafIndex = array_search($leaf, $leaves, true);
+        if ($leafIndex === false) {
+            $leafIndex = 0;
+        }
+        $merkleRoot = merkle_root($leaves);
+        $proof = merkle_proof($leaves, (int) $leafIndex);
+
+        // persist root if missing
+        db_exec('UPDATE elections SET merkle_root = ? WHERE id = ? AND (merkle_root IS NULL OR merkle_root = ?)', [$merkleRoot, (int) $vote['election_id'], '']);
+
         $choices = db_all(
             'SELECT c.name, c.party FROM vote_choices vc JOIN candidates c ON c.id = vc.candidate_id WHERE vc.vote_id = ?',
             [$vote['vote_id']],
@@ -577,6 +593,29 @@ function api_routes(): array
             'election' => ['id' => (int) $vote['election_id'], 'title' => $vote['election_title']],
             'candidate' => $candidates[0] ?? ['name' => '', 'party' => ''],
             'candidates' => $candidates,
+            'merkleRoot' => $merkleRoot,
+            'merkleProof' => $proof,
+        ]);
+    });
+
+    $add('GET', '/api/elections/:id/audit', static function (array $ctx): void {
+        $id = (int) $ctx['params']['id'];
+        $election = db_one('SELECT id, title, merkle_root FROM elections WHERE id = ?', [$id]);
+        if ($election === null) {
+            fail(404, 'Election not found.', 'not_found');
+        }
+        $rows = db_all('SELECT receipt_hash FROM votes WHERE election_id = ? ORDER BY id ASC', [$id]);
+        $leaves = array_map(static fn (array $r): string => (string) $r['receipt_hash'], $rows);
+        $root = $election['merkle_root'] ?: merkle_root($leaves);
+        if (!$election['merkle_root']) {
+            db_exec('UPDATE elections SET merkle_root = ? WHERE id = ?', [$root, $id]);
+        }
+        send_json(200, [
+            'electionId' => $id,
+            'title' => $election['title'],
+            'ballotCount' => count($leaves),
+            'merkleRoot' => $root,
+            'leaves' => $leaves,
         ]);
     });
 
