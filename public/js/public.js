@@ -350,7 +350,10 @@ async function viewElection(rawId) {
             'div',
             {},
             el('p', { class: 'small muted', style: { marginBottom: '7px' } }, 'Your ballot receipt'),
-            Components.receiptCode(receipt.code),
+            el('div', { class: 'row', style: { gap: '14px', alignItems: 'center', flexWrap: 'wrap' } },
+              el('div', { class: 'grow' }, Components.receiptCode(receipt.code)),
+              receiptQr(receipt.code),
+            ),
           )
         : el('p', { class: 'small muted', style: { margin: 0 } }, 'The receipt for this ballot is not stored on this device. It was shown when you voted.'),
       el(
@@ -669,9 +672,22 @@ function resultsCard(results, { live = false, updatedAt = null } = {}) {
       'div',
       { class: 'card-header' },
       el('div', {}, el('h2', { style: { margin: 0 } }, 'Results'), el('p', { style: { margin: '4px 0 0' } }, live ? 'Updated automatically as ballots arrive.' : 'Final tally for this election.')),
-      live
-        ? el('span', { class: 'live-indicator' }, el('span', { class: 'live-dot', 'aria-hidden': 'true' }), 'Live tally')
-        : el('span', { class: 'badge badge-success' }, iconEl('check'), 'Final'),
+      el('div', { class: 'row', style: { gap: '8px' } },
+        el('button', {
+          class: 'btn btn-ghost btn-sm', type: 'button',
+          onclick: async () => {
+            const share = { title: 'Election results', text: 'View the results on Open Ballot', url: location.href };
+            try {
+              if (navigator.share) await navigator.share(share);
+              else if (await copyText(location.href)) toast('Link copied.', 'success');
+              else toast('Sharing is not available.', 'error');
+            } catch { /* user cancelled */ }
+          },
+        }, iconEl('external'), 'Share'),
+        live
+          ? el('span', { class: 'live-indicator' }, el('span', { class: 'live-dot', 'aria-hidden': 'true' }), 'Live tally')
+          : el('span', { class: 'badge badge-success' }, iconEl('check'), 'Final'),
+      ),
     ),
     el(
       'div',
@@ -712,6 +728,17 @@ function resultsCard(results, { live = false, updatedAt = null } = {}) {
   return card;
 }
 
+function receiptQr(code) {
+  if (typeof qrcode !== 'function') return null;
+  const url = `${location.origin}/verify?code=${encodeURIComponent(code)}`;
+  const qr = qrcode(0, 'M');
+  qr.addData(url);
+  qr.make();
+  const holder = el('div', { class: 'receipt-qr', title: 'Scan to verify this receipt' });
+  holder.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 8, scalable: true, alt: 'Verify ballot receipt' });
+  return holder;
+}
+
 function showReceiptDialog(result, election) {
   const receiptData = { code: result.receipt, castAt: result.castAt, electionTitle: election.title };
 
@@ -728,7 +755,10 @@ function showReceiptDialog(result, election) {
         'div',
         {},
         el('p', { class: 'small muted', style: { marginBottom: '7px' } }, 'Keep this receipt to verify your ballot'),
-        Components.receiptCode(result.receipt),
+        el('div', { class: 'row', style: { gap: '14px', alignItems: 'center', flexWrap: 'wrap' } },
+          el('div', { class: 'grow' }, Components.receiptCode(result.receipt)),
+          receiptQr(result.receipt),
+        ),
       ),
       el(
         'div',
@@ -1054,6 +1084,12 @@ function viewVerify() {
       setBusy(submit, false);
     }
   });
+
+  const sharedCode = new URLSearchParams(location.search).get('code');
+  if (sharedCode) {
+    input.value = sharedCode.trim();
+    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+  }
 
   const explainer = el(
     'div',
