@@ -41,6 +41,7 @@ function adminNav(active) {
     link('#/admin', 'Overview', 'overview'),
     link('#/admin/users', 'Voters', 'users'),
     link('#/admin/audit', 'Audit log', 'audit'),
+    link('#/admin/schema', 'Schema', 'schema'),
   );
 }
 
@@ -1169,6 +1170,36 @@ async function viewAdminAudit() {
     ),
   ];
 }
+async function viewAdminSchema() {
+  const guard = adminOnly();
+  if (guard) return guard;
+
+  const data = await api('GET', '/api/admin/schema');
+  const cards = data.tables.map((table) =>
+    el(
+      'div',
+      { class: 'card' },
+      el('h2', { style: { margin: '0 0 10px', fontSize: '1.1rem' } }, table.table, el('span', { class: 'small muted', style: { marginLeft: '8px' } }, `${table.columns.length} columns`)),
+      el(
+        'div',
+        { class: 'table-wrap' },
+        el(
+          'table',
+          { class: 'data-table' },
+          el('thead', {}, el('tr', {}, el('th', {}, 'Column'), el('th', {}, 'Type'), el('th', {}, 'Nullable'), el('th', {}, 'Default'))),
+          el('tbody', {}, ...table.columns.map((c) =>
+            el('tr', {}, el('td', { class: 'mono small' }, c.column_name), el('td', { class: 'small' }, c.data_type), el('td', { class: 'small' }, c.is_nullable), el('td', { class: 'small muted mono' }, c.column_default ?? '—')),
+          )),
+        ),
+      ),
+    ),
+  );
+
+  return [
+    el('div', { class: 'admin-shell' }, adminHeader('Schema', 'Database tables and columns in the live store.'), adminNav('schema'), el('div', { class: 'stack' }, ...cards)),
+  ];
+}
+
 async function viewAdminLogin() {
   if (state.user && state.user.role === 'admin') {
     go('#/admin');

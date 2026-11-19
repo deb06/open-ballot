@@ -787,6 +787,7 @@ async function viewFor(parts) {
     if (sub === 'election' && id) return viewAdminElection(id);
     if (sub === 'users') return viewAdminUsers();
     if (sub === 'audit') return viewAdminAudit();
+  if (sub === 'schema') return viewAdminSchema();
   }
   return viewNotFound();
 }
