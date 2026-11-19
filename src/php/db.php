@@ -16,7 +16,7 @@ function db(): PDO
     $cfg = config('db');
     $driver = $cfg['driver'] ?? 'mysql';
     if ($driver === 'pgsql') {
-        $dsn = sprintf('pgsql:host=%s;port=%d;dbname=%s', $cfg['host'], (int) $cfg['port'], $cfg['name']);
+        $dsn = sprintf('pgsql:host=%s;port=%d;dbname=%s;sslmode=require', $cfg['host'], (int) $cfg['port'], $cfg['name']);
     } else {
         $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $cfg['host'], (int) $cfg['port'], $cfg['name']);
     }
