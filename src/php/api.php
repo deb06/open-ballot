@@ -117,7 +117,7 @@ function api_routes(): array
             'INSERT INTO email_verifications (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)',
             [$id, $hash, iso_to_sql(now_iso_at(time() + 86400)), iso_to_sql($now)],
         );
-        $link = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/#/verify-email/' . $token);
+        $link = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/verify-email/' . $token);
         send_mail($email, 'Verify your Open Ballot e-mail', "Verify your e-mail address:\n\n{$link}\n\nThe link expires in 24 hours.");
 
         $user = [
@@ -158,8 +158,9 @@ function api_routes(): array
             fail(401, 'Incorrect email or password.', 'invalid_credentials');
         }
 
+        $trusted = is_trusted_device((int) $row['id']);
         $now = now_iso();
-        if (!empty($row['mfa_enabled']) && !empty($row['mfa_secret'])) {
+        if (!$trusted && !empty($row['mfa_enabled']) && !empty($row['mfa_secret'])) {
             $challenge = random_token(32);
             $hash = sha256($challenge);
             db_exec(
@@ -174,6 +175,9 @@ function api_routes(): array
         $row['last_login_at'] = iso_to_sql($now);
         $user = public_user($row);
         $csrf = create_session($user, $ctx['ip']);
+        if (!$trusted) {
+            send_login_alert($user, $ctx['ip'], device_name((string) ($_SERVER['HTTP_USER_AGENT'] ?? '')));
+        }
         audit((int) $row['id'], 'auth.login', [], $ctx['ip']);
         send_json(200, ['user' => $user, 'csrf' => $csrf]);
     });
@@ -211,6 +215,7 @@ function api_routes(): array
         $row['last_login_at'] = iso_to_sql($now);
         $user = public_user($row);
         $csrf = create_session($user, $ctx['ip']);
+        send_login_alert($user, $ctx['ip'], device_name((string) ($_SERVER['HTTP_USER_AGENT'] ?? '')));
         audit((int) $row['id'], 'auth.admin_login', [], $ctx['ip']);
         send_json(200, ['user' => $user, 'csrf' => $csrf]);
     });
@@ -226,7 +231,7 @@ function api_routes(): array
                 'INSERT INTO password_resets (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)',
                 [(int) $row['id'], $hash, iso_to_sql(now_iso_at(time() + 3600)), iso_to_sql(now_iso())],
             );
-            $link = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/#/reset-password/' . $token);
+            $link = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/reset-password/' . $token);
             send_mail($email, 'Reset your Open Ballot password', "Use this link to reset your password:\n\n{$link}\n\nThe link expires in one hour.");
             audit((int) $row['id'], 'auth.password_reset_requested', [], $ctx['ip']);
         }
@@ -282,7 +287,7 @@ function api_routes(): array
                 'INSERT INTO email_verifications (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)',
                 [(int) $row['id'], $hash, iso_to_sql(now_iso_at(time() + 86400)), iso_to_sql(now_iso())],
             );
-            $link = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/#/verify-email/' . $token);
+            $link = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/verify-email/' . $token);
             send_mail((string) $row['email'], 'Verify your Open Ballot e-mail', "Verify your e-mail address:\n\n{$link}\n\nThe link expires in 24 hours.");
             audit((int) $row['id'], 'auth.verification_sent', [], $ctx['ip']);
         }
@@ -390,6 +395,10 @@ function api_routes(): array
         $row['last_login_at'] = iso_to_sql($now);
         $user = public_user($row);
         $csrf = create_session($user, $ctx['ip']);
+        if (!empty($body['trust'])) {
+            issue_trusted_device((int) $row['user_id']);
+        }
+        send_login_alert($user, $ctx['ip'], device_name((string) ($_SERVER['HTTP_USER_AGENT'] ?? '')));
         audit((int) $row['id'], 'auth.login', [], $ctx['ip']);
         send_json(200, ['user' => $user, 'csrf' => $csrf]);
     });
@@ -733,6 +742,58 @@ function api_routes(): array
         $valid = verify_results_signature($payload, $signature);
         send_json(200, ['valid' => $valid]);
     });
+
+    /* ------------------------------------------------------------------ */
+    /* Sessions & trusted devices                                          */
+    /* ------------------------------------------------------------------ */
+
+    $add('GET', '/api/sessions', static function (array $ctx): void {
+        $sessions = session_rows((int) $ctx['user']['id'], (string) $ctx['session']['id']);
+        send_json(200, ['sessions' => $sessions]);
+    }, ['auth' => true]);
+
+    $add('DELETE', '/api/sessions/:id', static function (array $ctx): void {
+        $id = (string) $ctx['params']['id'];
+        if (hash_equals((string) $ctx['session']['id'], $id)) {
+            fail(400, 'Use sign out to end your current session.', 'current_session');
+        }
+        db_exec(
+            'DELETE FROM sessions WHERE id = ? AND user_id = ?',
+            [$id, (int) $ctx['user']['id']],
+        );
+        audit((int) $ctx['user']['id'], 'auth.session_revoked', ['id' => $id], $ctx['ip']);
+        send_json(200, ['ok' => true]);
+    }, ['auth' => true]);
+
+    $add('POST', '/api/sessions/revoke-others', static function (array $ctx): void {
+        db_exec(
+            'DELETE FROM sessions WHERE user_id = ? AND id != ?',
+            [(int) $ctx['user']['id'], (string) $ctx['session']['id']],
+        );
+        audit((int) $ctx['user']['id'], 'auth.sessions_revoked', [], $ctx['ip']);
+        send_json(200, ['ok' => true]);
+    }, ['auth' => true]);
+
+    $add('GET', '/api/trusted-devices', static function (array $ctx): void {
+        $rows = db_all(
+            'SELECT id, name, created_at, expires_at FROM trusted_devices
+             WHERE user_id = ? ORDER BY created_at DESC',
+            [(int) $ctx['user']['id']],
+        );
+        send_json(200, ['devices' => $rows]);
+    }, ['auth' => true]);
+
+    $add('POST', '/api/trusted-devices', static function (array $ctx): void {
+        issue_trusted_device((int) $ctx['user']['id']);
+        audit((int) $ctx['user']['id'], 'auth.device_trusted', [], $ctx['ip']);
+        send_json(200, ['ok' => true]);
+    }, ['auth' => true]);
+
+    $add('DELETE', '/api/trusted-devices', static function (array $ctx): void {
+        revoke_trusted_device((int) $ctx['user']['id']);
+        audit((int) $ctx['user']['id'], 'auth.device_forgotten', [], $ctx['ip']);
+        send_json(200, ['ok' => true]);
+    }, ['auth' => true]);
 
     /* ------------------------------------------------------------------ */
     /* Public audit verification                                           */

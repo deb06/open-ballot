@@ -294,7 +294,7 @@ try {
         $res = $voter->request('POST', '/api/auth/register', [
             'name' => 'Test Voter',
             'email' => 'voter@example.test',
-            'password' => 'VoterPass#1',
+            'password' => 'VoterPass#12',
         ]);
         assert_same(201, $res['status']);
         assert_same('voter', $res['data']['user']['role']);
@@ -330,7 +330,7 @@ try {
         $res = $voter->request('POST', '/api/auth/register', [
             'name' => 'Duplicate',
             'email' => 'voter@example.test',
-            'password' => 'VoterPass#1',
+            'password' => 'VoterPass#12',
         ]);
         assert_same(409, $res['status']);
     });
@@ -528,7 +528,7 @@ try {
     step('votes in the new election as a voter', static function () use ($voter, &$newElectionId, &$newCandidateIds): void {
         $login = $voter->request('POST', '/api/auth/login', [
             'email' => 'voter@example.test',
-            'password' => 'VoterPass#1',
+            'password' => 'VoterPass#12',
         ]);
         assert_same(200, $login['status']);
         $voter->csrf = $login['data']['csrf'];
@@ -606,7 +606,7 @@ try {
         ]);
         assert_same(401, $wrong['status']);
         $ok = $voter->request('POST', '/api/auth/password', [
-            'currentPassword' => 'VoterPass#1',
+            'currentPassword' => 'VoterPass#12',
             'newPassword' => 'NewVoterPass#2',
         ]);
         assert_same(200, $ok['status']);

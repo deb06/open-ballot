@@ -52,6 +52,36 @@ function safe_equal(string $a, string $b): bool
     return hash_equals(sha256($a), sha256($b));
 }
 
+/**
+ * Check Have I Been Pwned using k-anonymity: only the first 5 characters of
+ * the SHA-1 hash are sent. Best-effort — if the service is unreachable the
+ * other password rules still apply.
+ */
+function password_breached(string $password): bool
+{
+    static $unavailable = false;
+    if ($unavailable || env_value('BREACH_CHECK', '1') !== '1') {
+        return false;
+    }
+    $hash = strtoupper(sha1($password));
+    $prefix = substr($hash, 0, 5);
+    $suffix = substr($hash, 5);
+    $context = stream_context_create([
+        'http' => ['timeout' => 1, 'header' => "User-Agent: Open Ballot\r\n", 'ignore_errors' => true],
+    ]);
+    $response = @file_get_contents('https://api.pwnedpasswords.com/range/' . $prefix, false, $context);
+    if ($response === false || $response === '') {
+        $unavailable = true; // avoid repeated slow calls in this request
+        return false;
+    }
+    foreach (explode("\n", $response) as $line) {
+        if (strpos($line, $suffix) === 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function hash_password(string $password): string
 {
     return password_hash($password, PASSWORD_DEFAULT);

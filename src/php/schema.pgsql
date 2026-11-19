@@ -133,6 +133,16 @@ CREATE TABLE IF NOT EXISTS backup_codes (
 );
 CREATE INDEX IF NOT EXISTS idx_backup_codes_user ON backup_codes(user_id);
 
+CREATE TABLE IF NOT EXISTS trusted_devices (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  name       VARCHAR(120) NOT NULL DEFAULT '',
+  created_at TIMESTAMP(3) NOT NULL,
+  expires_at TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_trusted_devices_user ON trusted_devices(user_id);
+
 CREATE TABLE IF NOT EXISTS passkeys (
   id           SERIAL PRIMARY KEY,
   user_id      INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -157,8 +167,6 @@ CREATE INDEX IF NOT EXISTS idx_webauthn_challenges_expires ON webauthn_challenge
 
 CREATE TABLE IF NOT EXISTS notifications (
   id         SERIAL PRIMARY KEY,
-  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type       VARCHAR(40) NOT NULL,
   title      VARCHAR(160) NOT NULL,
   body       VARCHAR(500) NOT NULL DEFAULT '',
   link       VARCHAR(200) NULL,

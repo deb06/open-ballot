@@ -141,15 +141,27 @@ function normalize_email(mixed $value): string
 function validate_password(mixed $value): string
 {
     $password = as_text($value);
-    if (strlen($password) < 8) {
-        fail(400, 'Password must be at least 8 characters.', 'weak_password');
+    if (strlen($password) < 12) {
+        fail(400, 'Password must be at least 12 characters.', 'weak_password');
     }
     if (strlen($password) > 200) {
         fail(400, 'Password must be 200 characters or fewer.', 'weak_password');
     }
-    $blocked = ['password', 'password1', '12345678', '123456789', 'qwerty123', 'letmein1', 'admin123'];
+    $classes = 0;
+    if (preg_match('/[a-z]/', $password)) $classes += 1;
+    if (preg_match('/[A-Z]/', $password)) $classes += 1;
+    if (preg_match('/[0-9]/', $password)) $classes += 1;
+    if (preg_match('/[^A-Za-z0-9]/', $password)) $classes += 1;
+    if ($classes < 3) {
+        fail(400, 'Use at least three of: lowercase, uppercase, numbers, symbols.', 'weak_password');
+    }
+    $blocked = ['password', 'password1', 'password123', '12345678', '123456789', '1234567890',
+        'qwerty123', 'qwertyuiop', 'letmein1', 'admin123', 'welcome123', 'iloveyou1'];
     if (in_array(strtolower($password), $blocked, true)) {
         fail(400, 'That password is too common. Choose something less predictable.', 'weak_password');
+    }
+    if (password_breached($password)) {
+        fail(400, 'This password has appeared in a known data breach. Choose a different one.', 'breached_password');
     }
     return $password;
 }
@@ -473,6 +485,109 @@ function create_session(array $user, string $ip): string
 
     set_cookie((string) config('session_cookie'), $token, $ttl);
     return $csrf;
+}
+
+
+/* --------------------------------------------------------------------------
+   Sessions, trusted devices & login alerts
+   -------------------------------------------------------------------------- */
+
+function device_name(string $userAgent): string
+{
+    $ua = strtolower($userAgent);
+    $browser = 'Unknown browser';
+    if (str_contains($ua, 'edg/')) $browser = 'Edge';
+    elseif (str_contains($ua, 'chrome/')) $browser = 'Chrome';
+    elseif (str_contains($ua, 'firefox/')) $browser = 'Firefox';
+    elseif (str_contains($ua, 'safari/')) $browser = 'Safari';
+    $os = 'Unknown device';
+    if (str_contains($ua, 'windows')) $os = 'Windows';
+    elseif (str_contains($ua, 'android')) $os = 'Android';
+    elseif (str_contains($ua, 'iphone') || str_contains($ua, 'ipad')) $os = 'iOS';
+    elseif (str_contains($ua, 'mac os')) $os = 'macOS';
+    elseif (str_contains($ua, 'linux')) $os = 'Linux';
+    return $browser . ' on ' . $os;
+}
+
+function session_rows(int $userId, string $currentId): array
+{
+    $rows = db_all(
+        'SELECT id, created_at, expires_at, ip, user_agent FROM sessions
+         WHERE user_id = ? ORDER BY created_at DESC',
+        [$userId],
+    );
+    return array_map(static function (array $row) use ($currentId): array {
+        return [
+            'id' => (string) $row['id'],
+            'createdAt' => sql_to_iso($row['created_at']),
+            'expiresAt' => sql_to_iso($row['expires_at']),
+            'ip' => $row['ip'] ?? null,
+            'device' => device_name((string) ($row['user_agent'] ?? '')),
+            'current' => hash_equals($currentId, (string) $row['id']),
+        ];
+    }, $rows);
+}
+
+function trusted_cookie_name(): string
+{
+    return 'ob_trusted';
+}
+
+function trusted_cookie_token(): ?string
+{
+    $cookies = parse_cookies();
+    $token = $cookies[trusted_cookie_name()] ?? null;
+    return is_string($token) && preg_match('/^[a-f0-9]{64}$/', $token) === 1 ? $token : null;
+}
+
+function is_trusted_device(int $userId): bool
+{
+    $token = trusted_cookie_token();
+    if ($token === null) {
+        return false;
+    }
+    $row = db_one(
+        'SELECT id, expires_at FROM trusted_devices WHERE user_id = ? AND token_hash = ?',
+        [$userId, sha256($token)],
+    );
+    if ($row === null || sql_timestamp($row['expires_at']) <= time()) {
+        clear_cookie(trusted_cookie_name());
+        return false;
+    }
+    return true;
+}
+
+function issue_trusted_device(int $userId): void
+{
+    $token = random_token(32);
+    $name = device_name((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+    db_exec(
+        'INSERT INTO trusted_devices (user_id, token_hash, name, created_at, expires_at) VALUES (?, ?, ?, ?, ?)',
+        [$userId, sha256($token), mb_substr($name, 0, 120), iso_to_sql(now_iso()), iso_to_sql(now_iso_at(time() + 30 * 86400))],
+    );
+    set_cookie(trusted_cookie_name(), $token, 30 * 86400);
+}
+
+function revoke_trusted_device(int $userId): void
+{
+    $token = trusted_cookie_token();
+    if ($token !== null) {
+        db_exec('DELETE FROM trusted_devices WHERE user_id = ? AND token_hash = ?', [$userId, sha256($token)]);
+    }
+    clear_cookie(trusted_cookie_name());
+}
+
+function send_login_alert(array $user, string $ip, string $device): void
+{
+    $email = (string) ($user['email'] ?? '');
+    if ($email === '') {
+        return;
+    }
+    $body = "A new sign-in to your Open Ballot account was just completed.\n\n"
+        . "Device: {$device}\nIP address: {$ip}\nTime: " . now_iso() . "\n\n"
+        . "If this was you, no action is needed. If you do not recognise this sign-in, change your password immediately.";
+    send_mail($email, 'New sign-in to your Open Ballot account', $body);
+    audit((int) $user['id'], 'auth.login_alert', ['device' => $device], $ip);
 }
 
 /**

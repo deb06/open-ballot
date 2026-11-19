@@ -889,7 +889,12 @@ function viewLogin() {
   let mfaChallenge = null;
   const mfaField = el('div', { class: 'field', style: { display: 'none' } });
   const mfaInput = el('input', { class: 'input', type: 'text', id: nextId('mfa'), inputmode: 'numeric', pattern: '[0-9]*', placeholder: '123456' });
-  mfaField.append(el('label', { for: mfaInput.id }, 'Authentication code'), mfaInput);
+  const trustCheck = el('input', { type: 'checkbox', id: nextId('trust') });
+  mfaField.append(
+    el('label', { for: mfaInput.id }, 'Authentication code'),
+    mfaInput,
+    el('label', { class: 'checkbox-label small', for: trustCheck.id, style: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' } }, trustCheck, ' Trust this device for 30 days'),
+  );
   form.insertBefore(mfaField, submit);
 
   form.addEventListener('submit', async (event) => {
@@ -898,7 +903,7 @@ function viewLogin() {
     setBusy(submit, true, 'Signing in…');
     try {
       if (mfaChallenge) {
-        const data = await api('POST', '/api/auth/mfa/challenge', { challenge: mfaChallenge, code: mfaInput.value });
+        const data = await api('POST', '/api/auth/mfa/challenge', { challenge: mfaChallenge, code: mfaInput.value, trust: trustCheck.checked });
         mfaChallenge = null;
         mfaField.style.display = 'none';
         state.user = data.user;
@@ -1359,8 +1364,62 @@ async function viewAccount() {
     ),
   );
 
+  const sessionsBox = el('div', { class: 'stack-sm' });
+  const sessionsCard = el('div', { class: 'card stack' },
+    el('div', { class: 'row-between' },
+      el('h2', { style: { margin: 0 } }, 'Active sessions'),
+      el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
+        const ok = await confirmDialog({ title: 'Sign out other devices?', message: 'All other sessions will be ended immediately.', confirmLabel: 'Sign out others' });
+        if (!ok) return;
+        try { await api('POST', '/api/sessions/revoke-others'); toast('Other sessions signed out.', 'success'); loadSessions(); }
+        catch (error) { toast(error.message, 'error'); }
+      } }, 'Sign out others'),
+    ),
+    sessionsBox,
+  );
+
+  const loadSessions = async () => {
+    try {
+      const data = await api('GET', '/api/sessions');
+      sessionsBox.replaceChildren(...data.sessions.map((s) =>
+        el('div', { class: 'card-flat row-between', style: { padding: '10px 14px' } },
+          el('div', {},
+            el('div', { class: 'cell-title' }, s.device, s.current ? el('span', { class: 'badge badge-success', style: { marginLeft: '8px' } }, 'This device') : null),
+            el('div', { class: 'cell-sub muted' }, `${s.ip || 'Unknown IP'} · ${formatDateTime(s.createdAt)}`),
+          ),
+          s.current ? null : el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
+            const ok = await confirmDialog({ title: 'Revoke this session?', message: 'That device will be signed out immediately.', confirmLabel: 'Revoke' });
+            if (!ok) return;
+            try { await api('DELETE', `/api/sessions/${encodeURIComponent(s.id)}`); toast('Session revoked.', 'success'); loadSessions(); }
+            catch (error) { toast(error.message, 'error'); }
+          } }, 'Revoke'),
+        ),
+      ));
+    } catch (error) { sessionsBox.replaceChildren(el('p', { class: 'form-error' }, error.message)); }
+  };
+  loadSessions();
+
+  const trustToggle = el('input', { type: 'checkbox', id: nextId('trustdev') });
+  const trustedCard = el('div', { class: 'card stack' },
+    el('h2', { style: { margin: 0 } }, 'Trusted device'),
+    el('label', { class: 'checkbox-label small', for: trustToggle.id, style: { display: 'flex', alignItems: 'center', gap: '8px' } }, trustToggle, ' Trust this browser for 30 days (skips MFA on sign-in)'),
+  );
+  (async () => {
+    try {
+      const data = await api('GET', '/api/trusted-devices');
+      trustToggle.checked = data.devices.length > 0;
+    } catch { /* ignore */ }
+  })();
+  trustToggle.addEventListener('change', async () => {
+    try {
+      if (trustToggle.checked) await api('POST', '/api/trusted-devices');
+      else await api('DELETE', '/api/trusted-devices');
+      toast(trustToggle.checked ? 'Device trusted for 30 days.' : 'Device forgotten.', 'success');
+    } catch (error) { toast(error.message, 'error'); trustToggle.checked = !trustToggle.checked; }
+  });
+
   return [
-    el('div', { class: 'stack-lg' }, profile, el('div', {}, el('h2', {}, 'Your ballots'), el('p', { class: 'muted' }, 'Ballots you have cast and the receipts saved on this device.'), ballotList), securityCard, passwordForm),
+    el('div', { class: 'stack-lg' }, profile, el('div', {}, el('h2', {}, 'Your ballots'), el('p', { class: 'muted' }, 'Ballots you have cast and the receipts saved on this device.'), ballotList), securityCard, sessionsCard, trustedCard, passwordForm),
   ];
 }
 
