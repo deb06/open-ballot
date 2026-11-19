@@ -9,3 +9,8 @@ data/
 node_modules/
 .DS_Store
 .env
+
+
+# Python caches
+__pycache__/
+*.pyc
