@@ -75,7 +75,8 @@
       "lines": [
         "Enhancements delivered in the second phase are also in scope. The front end now has a token-based design system, a reusable component library, a light theme, a living style guide at #/design, and a service worker with an installable PWA manifest.",
         "Account security includes WebAuthn passkeys, ten single-use backup codes, TOTP multi-factor authentication, signed audit export, and passwordless sign-in. Election administration gained a tabbed election manager, election cloning, CSV candidate import, turnout analytics, notifications and configurable webhooks.",
-        "Verifiability was extended with a SHA-256 Merkle tree of ballot receipt hashes, inclusion proofs returned by the verification endpoint, a public audit endpoint, and a live entity-relationship diagram generated from the database catalogue."
+        "Verifiability was extended with a SHA-256 Merkle tree of ballot receipt hashes, inclusion proofs returned by the verification endpoint, a public audit endpoint, and a live entity-relationship diagram generated from the database catalogue.",
+        "The platform now uses real path-based URLs with per-page SEO metadata, a public audit chain and signed-results verification, QR-coded receipts that open the verification page directly, a public status page, a password-strength meter, automatic election scheduling, and continuous integration that runs the 38-check smoke suite on every change."
       ]
     },
     {
