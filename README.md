@@ -4,7 +4,7 @@
 [![Smoke tests](https://img.shields.io/badge/smoke%20tests-55%2F55-brightgreen)](test/smoke.php)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A secure, anonymous and receipt-verifiable online voting platform. Generated on 2026-11-20 from commit `8bee004`.
+A secure, anonymous and receipt-verifiable online voting platform. Generated on 2026-11-20 from commit `2639f8c`.
 
 > **Live demo:** <https://open-ballot.onrender.com> · **Report:** [DOCX](docs/Open_Ballot_Project_Report.docx) · [PDF](docs/Open_Ballot_Project_Report.pdf)
 
