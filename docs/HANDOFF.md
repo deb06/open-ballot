@@ -68,6 +68,8 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
      `db.php` for `*.neon.tech` hosts.
   3. `PHP_CLI_SERVER_WORKERS=4` + `PDO::ATTR_PERSISTENT` so slow remote handshakes don't block
      Render's health check (otherwise 502 flapping).
+- `APP_SECRET` env var is set on Render to the same key that minted the imported receipt hashes (local
+  `data/secret.key`), so public receipt verification works on the live site.
 - Neon data fully synced: 15 users, 4 elections, 18 candidates, 11 ballots, 11 vote_choices,
   11 participation, 145 audit_log. Sequences reset.
 - Render's own PG18 DB (`open-ballot-db`) still exists but is UNUSED; its Dec 20 2026 expiry is irrelevant.
@@ -84,10 +86,12 @@ This is a public repository — live credentials are deliberately omitted here. 
 ## Gotchas / do not regress
 - Do NOT "simplify" back to `fromDatabase` DB_* wiring on Render — that silently sends the app to
   the expiring Render DB. Keep `DATABASE_URL`.
-- `README.md` production step 3 still tells you to set DB_* manually — stale; the real setup is
-  `DATABASE_URL`. Fix if touching docs.
-- Receipt hashes in the imported rows were minted with the LOCAL `data/secret.key`; live verification
-  only works if live uses the same secret (check `data/secret.key` if receipts fail).
+- `README.md` documents the `DATABASE_URL` flow (regenerated from `docs/README.template.md` — edit the
+  template, not the generated README).
+- Receipt hashes in imported rows were minted with the LOCAL `data/secret.key`; the live app now reads
+  the same key via the `APP_SECRET` env var (declared `sync: false` in `render.yaml`). Verified end to
+  end: a ballot seeded in Neon with a known code returned `valid=true, counted=true` from
+  `/api/verify/:code`. If receipts ever stop verifying, check `APP_SECRET` first.
 - Any schema change must be applied to BOTH `schema.sql` and `schema.pgsql` AND the live Neon DB.
 - Watch for CHECK constraints in Postgres (`users_role_check` must include `observer`).
 - Free Render sleeps when idle; first request can be slow. Health endpoint is DB-free by design.
