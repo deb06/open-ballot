@@ -23,6 +23,13 @@ function app_secret(): string
         return $secret;
     }
 
+    // An explicit secret lets a deployment share the key used to mint
+    // imported receipt hashes without committing the key to the repository.
+    $configured = env_value('APP_SECRET');
+    if ($configured !== null && trim($configured) !== '') {
+        return $secret = trim($configured);
+    }
+
     $file = config('data_dir') . DIRECTORY_SEPARATOR . 'secret.key';
     if (is_file($file)) {
         $stored = trim((string) file_get_contents($file));

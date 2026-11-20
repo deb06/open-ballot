@@ -38,6 +38,10 @@ services:
       # When present, config.php uses it instead of the DB_* variables above.
       - key: DATABASE_URL
         sync: false
+      # Set this in the Render dashboard to the same key that minted the
+      # imported receipt hashes (local data/secret.key), so receipts verify.
+      - key: APP_SECRET
+        sync: false
       - key: ADMIN_EMAIL
         value: admin@openballot.local
       - key: ADMIN_PASSWORD

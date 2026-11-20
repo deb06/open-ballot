@@ -43,8 +43,13 @@ npm stop        # stop everything
 ## Production deployment (free)
 
 1. Push to `main` — Render deploys automatically from `render.yaml`.
-2. Create a free [Neon](https://neon.tech) PostgreSQL database and copy its connection details.
-3. In Render → **Environment**, set `DB_DRIVER=pgsql` plus `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `APP_URL`, `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+2. Create a free [Neon](https://neon.tech) PostgreSQL database and copy its connection string.
+3. In Render → **Environment**, set `DATABASE_URL` to that connection string. `config.php` parses it and
+   overrides the individual `DB_*` variables, so the app uses Neon instead of Render's own database.
+   Also set `APP_URL`, `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+   `APP_SECRET` should match the key that minted any imported receipt hashes (`data/secret.key` locally);
+   otherwise previously imported receipts will not verify. All of these are declared with `sync: false`
+   in `render.yaml`, so blueprint syncs will not overwrite them.
 4. UptimeRobot should ping `/api/stats` every 5 minutes to keep the free services awake.
 
 Full guide: [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md).

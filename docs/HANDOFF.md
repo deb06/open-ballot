@@ -1,0 +1,93 @@
+# Open Ballot — project crux (handoff to Claude)
+
+## What it is
+A secure, anonymous, receipt-verifiable online voting platform (student/community elections).
+Live demo: https://open-ballot.onrender.com — already deployed, healthy, with full demo data.
+Repo: https://github.com/deb06/open-ballot (branch `main`, working tree clean at `8b204e3`).
+
+## Stack & architecture
+- Frontend: plain HTML/CSS/vanilla JS component system. NO build step, NO framework, NO Vite/bundler.
+  - `public/js/core.js`, `components.js`, `public.js`, `admin.js`, `design.js`, `theme.js`, `i18n.js`, `meta.js`.
+  - History API path routing via `router.php` (NOT hash routing).
+  - Dark default + light + system theme; EN/ES i18n; local vendored axe + qrcode.
+- Backend: one PHP monolith (`src/php/api.php`, ~1000+ lines) with `bootstrap.php`, `config.php`, `db.php`,
+  `domain.php`, `security.php`, `validation.php`, `http.php`, `oauth.php`, `pdf.php`.
+  - PDO prepared statements; dual schema: `schema.sql` (MariaDB local) and `schema.pgsql` (Postgres prod).
+    KEEP THEM IN SYNC. `db_ensure_ready()` runs migrations + seed at boot.
+  - API under `/api` and `/api/v1`; OpenAPI spec at `public/openapi.json`.
+- Runtime: Docker `php:8.3-cli-alpine` + `php -S` with `PHP_CLI_SERVER_WORKERS=4` and persistent PDO
+  (needed because remote Neon handshakes are slow and would block health checks).
+- Local: Windows/PowerShell scripts download portable PHP 8.5.13 + MariaDB (port 3307), app on
+  http://127.0.0.1:3000. `npm start` / `npm stop` / `npm test`.
+
+## Repo map (top level)
+`public/` (app + styles/tokens.css, styles.css, styles/components.css), `src/php/`, `router.php`,
+`Dockerfile`, `render.yaml`, `docker-compose.yml`, `scripts/*.ps1`, `test/smoke.php`, `tools/php/`,
+`docs/` (FUTURE_ROADMAP.md, DEPLOY_RENDER.md, OPS.md, generated README + DOCX/PDF report),
+`data/secret.key` (receipt HMAC key), `package.json`.
+Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FUTURE_ROADMAP.md`.
+
+## Feature status — ALL waves shipped (do not re-implement)
+- Trust: public results archive, receipt Merkle index + inclusion proofs, full audit-chain verifier,
+  observer role (read-only), signed PDF results.
+- Security: sessions, login alerts, trusted devices, password policy, OAuth (GitHub/Google),
+  recovery contact, MFA, backup codes, passkeys/WebAuthn, API keys, HMAC-chained audit log.
+- Elections: ranked-choice IRV, multi-choice, templates, bulk voter import UI, email invitations,
+  wizard creation flow, per-election branding.
+- Ops: Sentry-ready, backups, status history, public API + keys, webhook history, docker-compose.
+- Nice-to-have: i18n EN/ES, email digest, results party screen, command palette, sparklines,
+  filter chips, bulk actions, responsive tables, admin drawer.
+- Ballot privacy model: `votes` has NO voter id/timestamp; `participation` stores who voted separately;
+  `UNIQUE(election_id, voter_id)` enforces one vote; casting is atomic in one transaction.
+
+## Visual identity — anti-"AI slop" (important, already fixed)
+- Flat institutional brass accent `#d9a441`. NO violet `#8b7bff`, NO violet→cyan gradient.
+- Solid page background, hairline borders, no glass overlays or big shadows, radius 10px.
+- Editorial serif display on public `h1` (Iowan/Palatino/Georgia); sans for functional admin.
+- Hero is a concrete verified-receipt / audit excerpt, NOT a three-tile motif.
+- Favicon, PWA icons and OG image regenerated to match. Preserve this direction.
+
+## Verification (all green)
+- `npm test` → 38/38 smoke checks.
+- axe-core: 0 WCAG A/AA violations on 12 audited routes in BOTH themes.
+- Zero browser console errors.
+- CI: `scripts/lib.ps1` pins PHP 8.5.13 + SHA256 (8.5.12 URL 404s — do not downgrade).
+- Live: 10/10 health checks, stats users=15/open=1/completed=2/ballots=11, 4 elections, brass theme served.
+
+## Live deployment — current truth
+- Render free web service `srv-dbvjd3ff3r2c73ce894g` (Blueprint-managed from `render.yaml`),
+  permanent URL https://open-ballot.onrender.com. Deploys auto on push to `main` (~35–50s cached).
+- **The app reads Neon**, not Render's DB. Verified by an A/B test: a title changed in Neon only
+  appeared on the live API.
+- Mechanism: `DATABASE_URL` env var set in the Render dashboard; `src/php/config.php` parses it and
+  OVERRIDES the individual `DB_*` vars. `render.yaml` declares it with `sync: false` so blueprint
+  syncs won't erase it.
+- Three fixes that made Neon work from Render's Alpine PHP:
+  1. Postgres URL without explicit port must default to **5432** (config.php).
+  2. Neon pooler needs `options='endpoint=<first-label-of-host>'` for libpq without SNI — added in
+     `db.php` for `*.neon.tech` hosts.
+  3. `PHP_CLI_SERVER_WORKERS=4` + `PDO::ATTR_PERSISTENT` so slow remote handshakes don't block
+     Render's health check (otherwise 502 flapping).
+- Neon data fully synced: 15 users, 4 elections, 18 candidates, 11 ballots, 11 vote_choices,
+  11 participation, 145 audit_log. Sequences reset.
+- Render's own PG18 DB (`open-ballot-db`) still exists but is UNUSED; its Dec 20 2026 expiry is irrelevant.
+
+## Credentials (intentionally not committed)
+This is a public repository — live credentials are deliberately omitted here. They are available in:
+- **Neon connection string**: the `DATABASE_URL` env var in the Render dashboard (Environment tab), or the Neon console.
+- **Render dashboard auth**: the logged-in browser session; token lives in localStorage key `render-auth`
+  on `dashboard.render.com` (use browser tools; do not hardcode it).
+- **Admin credentials**: the `ADMIN_EMAIL` / `ADMIN_PASSWORD` env vars in the Render dashboard; local
+  defaults documented in `README.md`.
+- A full unredacted copy of this crux exists only in a private local file outside the repository.
+
+## Gotchas / do not regress
+- Do NOT "simplify" back to `fromDatabase` DB_* wiring on Render — that silently sends the app to
+  the expiring Render DB. Keep `DATABASE_URL`.
+- `README.md` production step 3 still tells you to set DB_* manually — stale; the real setup is
+  `DATABASE_URL`. Fix if touching docs.
+- Receipt hashes in the imported rows were minted with the LOCAL `data/secret.key`; live verification
+  only works if live uses the same secret (check `data/secret.key` if receipts fail).
+- Any schema change must be applied to BOTH `schema.sql` and `schema.pgsql` AND the live Neon DB.
+- Watch for CHECK constraints in Postgres (`users_role_check` must include `observer`).
+- Free Render sleeps when idle; first request can be slow. Health endpoint is DB-free by design.
