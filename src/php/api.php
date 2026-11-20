@@ -234,7 +234,7 @@ function api_routes(): array
             'UPDATE organizations SET name = ?, domain = ?, membership_mode = ? WHERE id = ?',
             [$name, $domain !== '' ? $domain : null, $mode, $scope],
         );
-        audit($scope, 'organization.update', ['organizationId' => $scope], $ctx['ip']);
+        audit((int) $ctx['user']['id'], 'organization.update', ['organizationId' => $scope], $ctx['ip']);
         send_json(200, ['organization' => organization_public(organization_by_id($scope))]);
     });
 
@@ -281,7 +281,7 @@ function api_routes(): array
         );
         $link = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/join?token=' . $token);
         send_mail($email, 'Invitation to join your organization on Open Ballot', "You have been invited to join Open Ballot.\n\nRegister or sign in here:\n\n{$link}\n\nThis link expires in 7 days.");
-        audit($scope, 'organization.invite', ['organizationId' => $scope, 'email' => $email], $ctx['ip']);
+        audit((int) $ctx['user']['id'], 'organization.invite', ['organizationId' => $scope, 'email' => $email], $ctx['ip']);
         send_json(201, ['invite' => ['email' => $email, 'role' => $role, 'link' => $link]]);
     });
 
