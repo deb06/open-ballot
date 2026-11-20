@@ -3,7 +3,8 @@
 ## What it is
 A secure, anonymous, receipt-verifiable online voting platform (student/community elections).
 Live demo: https://open-ballot.onrender.com — already deployed, healthy, with full demo data.
-Repo: https://github.com/deb06/open-ballot (branch `main`, working tree clean at `8b204e3`).
+Repo: https://github.com/deb06/open-ballot (branch `main`; check `git rev-parse --short HEAD` for
+the exact commit — generated docs are bumped by CI, so this file deliberately avoids pinning one).
 
 ## Stack & architecture
 - Frontend: plain HTML/CSS/vanilla JS component system. NO build step, NO framework, NO Vite/bundler.
