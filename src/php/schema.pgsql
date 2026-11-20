@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   name          VARCHAR(80) NOT NULL,
   email         VARCHAR(160) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
-  role          VARCHAR(10) NOT NULL DEFAULT 'voter' CHECK (role IN ('voter','admin')),
+  role          VARCHAR(20) NOT NULL DEFAULT 'voter' CHECK (role IN ('voter','admin','observer')),
   active            SMALLINT NOT NULL DEFAULT 1,
   student_id        VARCHAR(40) NULL,
   email_verified_at TIMESTAMP(3) NULL,
