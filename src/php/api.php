@@ -624,6 +624,7 @@ function api_routes(): array
             audit((int) $row['id'], 'auth.login_failed', ['email' => $email], $ctx['ip']);
             fail(401, 'Incorrect email or password.', 'invalid_credentials');
         }
+        upgrade_password_hash((int) $row['id'], $password, (string) $row['password_hash']);
 
         // Accounts created before an organization claimed their domain are
         // adopted on their next sign-in with that organization e-mail.
@@ -677,6 +678,7 @@ function api_routes(): array
             audit((int) $row['id'], 'auth.admin_login_failed', ['email' => $email], $ctx['ip']);
             fail(401, 'Incorrect email or password.', 'invalid_credentials');
         }
+        upgrade_password_hash((int) $row['id'], $password, (string) $row['password_hash']);
         if ((string) $row['role'] !== 'admin') {
             audit((int) $row['id'], 'auth.admin_login_denied', ['email' => $email], $ctx['ip']);
             fail(403, 'Administrator access required.', 'forbidden');

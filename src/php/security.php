@@ -89,9 +89,27 @@ function password_breached(string $password): bool
     return false;
 }
 
+/**
+ * Prefer Argon2id (memory-hard) and fall back to a high-cost bcrypt where the
+ * build does not provide it. Existing hashes are upgraded on successful login.
+ */
+function password_algorithm(): string
+{
+    return defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_BCRYPT;
+}
+
+/** @return array<string,int> */
+function password_options(): array
+{
+    if (defined('PASSWORD_ARGON2ID')) {
+        return ['memory_cost' => 65536, 'time_cost' => 4, 'threads' => 1];
+    }
+    return ['cost' => 13];
+}
+
 function hash_password(string $password): string
 {
-    return password_hash($password, PASSWORD_DEFAULT);
+    return password_hash($password, password_algorithm(), password_options());
 }
 
 function verify_password(string $password, string $stored): bool
@@ -100,6 +118,29 @@ function verify_password(string $password, string $stored): bool
         return false;
     }
     return password_verify($password, $stored);
+}
+
+/** True when a stored hash should be re-hashed with the current algorithm. */
+function password_needs_upgrade(string $stored): bool
+{
+    if ($stored === '') {
+        return false;
+    }
+    return password_needs_rehash($stored, password_algorithm(), password_options());
+}
+
+/** Upgrade a hash after a verified login, keeping the account usable if it fails. */
+function upgrade_password_hash(int $userId, string $password, string $stored): void
+{
+    if (!password_needs_upgrade($stored)) {
+        return;
+    }
+    try {
+        $newHash = hash_password($password);
+        db_exec('UPDATE users SET password_hash = ? WHERE id = ?', [$newHash, $userId]);
+    } catch (Throwable) {
+        // Re-hashing is opportunistic; the verified login still succeeds.
+    }
 }
 
 /**

@@ -850,6 +850,50 @@ try {
         assert_same(200, $unsub['status'], $unsub['text']);
     });
 
+    /* Security phase 1 — credentials and transport */
+
+    step('serves hardening headers on API responses', static function () use ($base): void {
+        $res = http_request('GET', $base . '/api/health', null, ['Accept: application/json']);
+        $headers = implode("\n", $res['headers']);
+        foreach (['Content-Security-Policy:', 'X-Content-Type-Options: nosniff', 'X-Frame-Options: DENY',
+                  'Referrer-Policy: no-referrer', 'Cache-Control: no-store'] as $needle) {
+            assert_true(str_contains($headers, $needle), 'Missing header: ' . $needle);
+        }
+    });
+
+    step('stores new passwords with a memory-hard hash', static function (): void {
+        $hash = (string) db_scalar("SELECT password_hash FROM users WHERE email = 'voter@example.test'");
+        if (defined('PASSWORD_ARGON2ID')) {
+            assert_true(str_starts_with($hash, '$argon2id$'), 'Expected Argon2id hash, got ' . substr($hash, 0, 12));
+        } else {
+            assert_true(password_needs_rehash($hash, PASSWORD_BCRYPT, ['cost' => 13]) === false, 'Expected cost-13 bcrypt hash.');
+        }
+    });
+
+    step('upgrades legacy password hashes on successful sign-in', static function () use ($voter, $base): void {
+        if (!defined('PASSWORD_ARGON2ID')) {
+            return; // bcrypt builds have no stronger algorithm to upgrade to.
+        }
+        $legacy = password_hash('NewVoterPass#2', PASSWORD_BCRYPT, ['cost' => 10]);
+        db_exec("UPDATE users SET password_hash = ? WHERE email = 'voter@example.test'", [$legacy]);
+        $login = http_request('POST', $base . '/api/auth/login',
+            json_encode(['email' => 'voter@example.test', 'password' => 'NewVoterPass#2']),
+            ['Content-Type: application/json'],
+        );
+        assert_same(200, $login['status'], $login['text']);
+        $data = json_decode($login['text'], true);
+        $voter->cookie = '';
+        $voter->csrf = null;
+        foreach ($login['headers'] as $line) {
+            if (stripos($line, 'Set-Cookie:') === 0 && str_starts_with(trim(substr($line, 11)), 'ob_session=')) {
+                $voter->cookie = explode(';', trim(substr($line, 11)))[0];
+            }
+        }
+        if (isset($data['csrf'])) { $voter->csrf = (string) $data['csrf']; }
+        $upgraded = (string) db_scalar("SELECT password_hash FROM users WHERE email = 'voter@example.test'");
+        assert_true(str_starts_with($upgraded, '$argon2id$'), 'Hash was not upgraded on login.');
+    });
+
     echo "\n  {$passed} checks passed.\n\n";
     $stopServer();
     exit(0);

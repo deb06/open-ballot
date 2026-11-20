@@ -98,7 +98,8 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
 - Favicon, PWA icons and OG image regenerated to match. Preserve this direction.
 
 ## Verification (all green)
-- `npm test` → 51/51 smoke checks (6 org tenancy + 3 poll + 3 moderation + 1 reminder/cron check).
+- `npm test` → 54/54 smoke checks (org tenancy, polls, moderation, reminders, security Phase 1).
+- Security program status: `docs/SECURITY_PLAN.md` (Phase 1 complete, Phases 2–5 planned).
 - axe-core: 0 WCAG A/AA violations on 12 audited routes in BOTH themes.
 - Zero browser console errors.
 - CI: `scripts/lib.ps1` pins PHP 8.5.13 + SHA256 (8.5.12 URL 404s — do not downgrade).
