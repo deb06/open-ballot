@@ -167,8 +167,8 @@ function api_routes(): array
             ? one_of($body['resultsVisibility'], ['always', 'after_vote', 'after_close', 'hidden'])
             : 'after_vote';
 
-        $ballotType = in_array($body['ballotType'] ?? 'single', ['single', 'ranked'], true)
-            ? (string) $body['ballotType'] : 'single';
+        $requestedType = (string) ($body['ballotType'] ?? 'single');
+        $ballotType = in_array($requestedType, ['single', 'ranked'], true) ? $requestedType : 'single';
         $base = strtolower((string) preg_replace('/[^a-z0-9]+/', '-', $title));
         $base = trim($base, '-');
         $slug = substr($base !== '' ? $base : 'poll', 0, 60) . '-' . bin2hex(random_bytes(3));
