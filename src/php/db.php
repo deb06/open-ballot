@@ -16,6 +16,13 @@ function db_connect(): PDO
     if ($driver === 'pgsql') {
         $sslmode = $cfg['sslmode'] ?? 'require';
         $dsn = sprintf('pgsql:host=%s;port=%d;dbname=%s;sslmode=%s', $cfg['host'], (int) $cfg['port'], $cfg['name'], $sslmode);
+        // Neon's pooler requires the endpoint ID when the client's libpq does
+        // not send SNI (older builds, e.g. Alpine PostgreSQL clients). Passing
+        // it explicitly is harmless for clients that do support SNI.
+        if (str_ends_with((string) $cfg['host'], '.neon.tech')) {
+            $endpoint = explode('.', (string) $cfg['host'])[0];
+            $dsn .= ";options='endpoint=$endpoint'";
+        }
     } else {
         $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $cfg['host'], (int) $cfg['port'], $cfg['name']);
     }
