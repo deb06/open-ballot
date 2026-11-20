@@ -28,7 +28,6 @@ CREATE TABLE IF NOT EXISTS users (
   last_login_at     TIMESTAMP(3) NULL,
   organization_id   INT NULL REFERENCES organizations(id) ON DELETE SET NULL
 );
-CREATE INDEX IF NOT EXISTS idx_users_organization ON users(organization_id);
 
 CREATE TABLE IF NOT EXISTS organization_invites (
   id              SERIAL PRIMARY KEY,
@@ -57,7 +56,6 @@ CREATE TABLE IF NOT EXISTS elections (
   merkle_root        VARCHAR(64) NULL,
   organization_id    INT NULL REFERENCES organizations(id) ON DELETE SET NULL
 );
-CREATE INDEX IF NOT EXISTS idx_elections_organization ON elections(organization_id);
 CREATE INDEX IF NOT EXISTS idx_elections_status ON elections(status);
 CREATE INDEX IF NOT EXISTS idx_elections_created ON elections(created_at);
 

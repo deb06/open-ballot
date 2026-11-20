@@ -35,8 +35,7 @@ CREATE TABLE IF NOT EXISTS users (
   last_login_at     DATETIME(3) NULL DEFAULT NULL,
   organization_id   INT UNSIGNED NULL DEFAULT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_users_email (email),
-  KEY idx_users_organization (organization_id)
+  UNIQUE KEY uq_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS organization_invites (
@@ -69,7 +68,6 @@ CREATE TABLE IF NOT EXISTS elections (
   merkle_root        VARCHAR(64) NULL DEFAULT NULL,
   organization_id    INT UNSIGNED NULL DEFAULT NULL,
   PRIMARY KEY (id),
-  KEY idx_elections_organization (organization_id),
   KEY idx_elections_status (status),
   KEY idx_elections_created (created_at),
   CONSTRAINT fk_elections_creator FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
