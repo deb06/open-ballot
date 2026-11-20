@@ -113,8 +113,8 @@ function segmentDistance(px, py, x1, y1, x2, y2) {
 function drawIcon(size) {
   const rgba = Buffer.alloc(size * size * 4);
   const radius = size * 0.225;
-  const top = [139, 123, 255];
-  const bottom = [91, 140, 247];
+  const top = [217, 164, 65];
+  const bottom = [217, 164, 65];
   const stroke = size * 0.082;
   const check = [
     [size * 0.28, size * 0.53],

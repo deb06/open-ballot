@@ -369,7 +369,7 @@ function openElectionForm() {
   const closesAt = el('input', { class: 'input', id: nextId('closes'), type: 'datetime-local' });
   const maxChoices = el('input', { class: 'input', id: nextId('maxChoices'), type: 'number', min: '1', value: '1' });
   const ballotType = el('select', { class: 'select', id: nextId('ballotType') }, el('option', { value: 'single' }, 'Single / multi-choice'), el('option', { value: 'ranked' }, 'Ranked choice (IRV)'));
-  const brandColor = el('input', { class: 'input', id: nextId('brandColor'), type: 'color', value: '#8b7bff', style: { padding: '4px', height: '42px' } });
+  const brandColor = el('input', { class: 'input', id: nextId('brandColor'), type: 'color', value: '#d9a441', style: { padding: '4px', height: '42px' } });
 
   const form = el(
     'form',
@@ -1102,12 +1102,12 @@ function sparkline(points) {
   const gradient = svgEl(
     'linearGradient',
     { id: `${id}-line`, x1: '0', y1: '0', x2: '1', y2: '0' },
-    [svgEl('stop', { offset: '0', 'stop-color': '#8b7bff' }), svgEl('stop', { offset: '1', 'stop-color': '#22d3ee' })],
+    [svgEl('stop', { offset: '0', 'stop-color': '#d9a441' }), svgEl('stop', { offset: '1', 'stop-color': '#7da8c8' })],
   );
   const areaGradient = svgEl(
     'linearGradient',
     { id: `${id}-area`, x1: '0', y1: '0', x2: '0', y2: '1' },
-    [svgEl('stop', { offset: '0', 'stop-color': 'rgba(139,123,255,.35)' }), svgEl('stop', { offset: '1', 'stop-color': 'rgba(34,211,238,0)' })],
+    [svgEl('stop', { offset: '0', 'stop-color': 'rgba(217,164,65,.35)' }), svgEl('stop', { offset: '1', 'stop-color': 'rgba(217,164,65,0)' })],
   );
   const defs = svgEl('defs', {}, [gradient, areaGradient]);
 
@@ -1139,7 +1139,7 @@ function sparkline(points) {
         points: coords.map(([x, y]) => `${x},${y}`).join(' '),
         stroke: `url(#${id}-line)`,
       }),
-      ...coords.map(([x, y]) => svgEl('circle', { cx: x, cy: y, r: 3, fill: '#a99cff' })),
+      ...coords.map(([x, y]) => svgEl('circle', { cx: x, cy: y, r: 3, fill: '#f0c978' })),
     ],
   );
 
@@ -1741,7 +1741,7 @@ async function viewAdminSchema() {
   grad.setAttribute('id', 'worm-grad');
   grad.setAttribute('x1', '0'); grad.setAttribute('y1', '0');
   grad.setAttribute('x2', '1'); grad.setAttribute('y2', '0');
-  for (const [offset, color] of [['0%', '#8b7bff'], ['50%', '#22d3ee'], ['100%', '#8b7bff']]) {
+  for (const [offset, color] of [['0%', '#d9a441'], ['50%', '#7da8c8'], ['100%', '#d9a441']]) {
     const stop = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
     stop.setAttribute('offset', offset);
     stop.setAttribute('stop-color', color);
@@ -1832,8 +1832,8 @@ async function viewAdminSchema() {
     let out = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">`;
     out += `<rect width="100%" height="100%" fill="#0b0e17"/>`;
     out += `<text x="20" y="28" fill="#8b96ad" font-family="sans-serif" font-size="13">Open Ballot — Database Schema (${tables.length} tables)</text>`;
-    for (const d of linePaths) out += `<path d="${d}" fill="none" stroke="#8b7bff" stroke-width="1.6" opacity="0.55"/>`;
-    for (const points of arrowPolys) out += `<polygon points="${points}" fill="#22d3ee" opacity="0.85"/>`;
+    for (const d of linePaths) out += `<path d="${d}" fill="none" stroke="#d9a441" stroke-width="1.6" opacity="0.55"/>`;
+    for (const points of arrowPolys) out += `<polygon points="${points}" fill="#7da8c8" opacity="0.85"/>`;
     for (const t of tables) {
       const p = positions[t.table];
       out += `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="12" fill="#11172a" stroke="#2a3350"/>`;

@@ -66,7 +66,7 @@ def main() -> None:
     draw.text((270, 166), "OPEN BALLOT", font=font(72, True), fill=(245, 246, 255))
     draw.text((274, 258), "SECURE ONLINE VOTING", font=font(26), fill=(167, 180, 220))
 
-    draw.rounded_rectangle((80, 360, 520, 420), radius=30, fill=(139, 123, 255, 45))
+    draw.rounded_rectangle((80, 360, 520, 420), radius=30, fill=(217, 164, 65, 45))
     draw.text((110, 374), "One person. One vote.", font=font(30, True), fill=(190, 180, 255))
     draw.text((80, 460), "Secret ballots  ·  Receipt-verifiable  ·  Audit-ready", font=font(28), fill=(200, 210, 235))
 

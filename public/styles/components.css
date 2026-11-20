@@ -28,8 +28,8 @@
    Badge — extra variants
    -------------------------------------------------------------------------- */
 .badge-neutral { background: var(--panel-strong); border-color: var(--line); color: var(--text-secondary); }
-.badge-info { background: var(--info-soft); border-color: rgba(34, 211, 238, 0.3); color: var(--cyan-400); }
-.badge-brand { background: var(--accent-soft); border-color: rgba(139, 123, 255, 0.3); color: var(--accent-bright); }
+.badge-info { background: var(--info-soft); border-color: rgba(217, 164, 65, 0.3); color: var(--accent); }
+.badge-brand { background: var(--accent-soft); border-color: rgba(217, 164, 65, 0.3); color: var(--accent-bright); }
 .badge-lg { padding: 5px 12px; font-size: 0.8rem; border-radius: 9px; }
 
 /* status dot */
@@ -78,7 +78,7 @@
 .callout-warning .callout-icon { color: var(--warning); }
 .callout-danger { background: var(--danger-soft); border-color: rgba(248, 113, 113, 0.28); }
 .callout-danger .callout-icon { color: var(--danger); }
-.callout-info { background: var(--info-soft); border-color: rgba(34, 211, 238, 0.28); }
+.callout-info { background: var(--info-soft); border-color: rgba(217, 164, 65, 0.28); }
 .callout-info .callout-icon { color: var(--info); }
 
 /* --------------------------------------------------------------------------
@@ -359,7 +359,7 @@
 /* Election analytics ------------------------------------------------------ */
 .analytics-days { display: flex; align-items: flex-end; gap: 10px; padding: 10px 0; overflow-x: auto; }
 .analytics-day { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 54px; }
-.analytics-bar { width: 28px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--accent), var(--cyan-400)); min-height: 4px; }
+.analytics-bar { width: 28px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--accent), var(--accent)); min-height: 4px; }
 
 /* Merkle receipt proof ---------------------------------------------------- */
 .merkle-proof { margin-top: 14px; padding: 14px; border-radius: var(--radius); background: var(--inset-bg, var(--surface-2)); border: 1px solid var(--line); }
@@ -571,7 +571,7 @@
   height: 5px; border-radius: var(--radius-pill); background: var(--surface-3);
   overflow: hidden; margin: 0 0 14px;
 }
-.turnout-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--viz-1), var(--viz-2)); transition: width var(--duration-slow) var(--ease); }
+.turnout-fill { height: 100%; border-radius: inherit; background: var(--viz-1); transition: width var(--duration-slow) var(--ease); }
 
 /* Election detail sticky sub-nav ------------------------------------------ */
 .detail-subnav {
@@ -630,7 +630,7 @@
 .party-wrap { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 .party-stage { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; padding: 48px 0; }
 .party-stat { flex: 1 1 200px; text-align: center; }
-.party-number { font-size: clamp(3rem, 8vw, 6rem); font-weight: 800; line-height: 1; background: linear-gradient(135deg, var(--brand-300), var(--cyan-400)); -webkit-background-clip: text; background-clip: text; color: transparent; font-variant-numeric: tabular-nums; }
+.party-number { font-size: clamp(3rem, 8vw, 6rem); font-weight: 800; line-height: 1; color: var(--accent-bright); font-variant-numeric: tabular-nums; }
 .party-label { color: var(--text-muted); font-size: var(--text-sm); margin-top: 8px; }
 .rank-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
 .rank-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--inset-bg); }
@@ -683,31 +683,23 @@
    UI Wave E — visual refresh (editorial hero, glass cards, motion, control room)
    ========================================================================== */
 
-/* E1 — editorial hero mosaic ---------------------------------------------- */
-.hero-mosaic { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 20px 0 16px; max-width: 520px; }
-.mosaic-item {
-  display: flex; flex-direction: column; gap: 4px; padding: 12px;
-  border: 1px solid var(--line); border-radius: var(--radius-sm);
-  background: var(--panel); backdrop-filter: blur(8px);
+/* E1 — hero artifact: a real document excerpt, not a three-tile motif ------ */
+.hero-artifact {
+  max-width: 520px; margin: 22px 0 18px;
+  border: 1px solid var(--line-strong); border-left: 3px solid var(--accent);
+  background: var(--inset-bg); padding: 14px 18px;
+  font-family: var(--mono); font-size: var(--text-xs);
 }
-.mosaic-icon { color: var(--accent-bright); }
-.mosaic-icon svg { width: 20px; height: 20px; }
+.hero-artifact .artifact-head {
+  color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase;
+  border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 10px;
+}
+.hero-artifact .artifact-line { display: flex; gap: 12px; padding: 2px 0; }
+.hero-artifact .artifact-key { color: var(--text-faint); min-width: 104px; }
+.hero-artifact .artifact-value { color: var(--accent-bright); word-break: break-all; }
 
-/* E2 — refined glass cards with subtle gradient borders ------------------- */
-.card {
-  background-image: var(--surface-gradient);
-  border-color: var(--line-strong);
-}
-.card::after {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  padding: 1px; background: linear-gradient(140deg, rgba(255,255,255,0.14), transparent 45%, rgba(139,123,255,0.08));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  opacity: 0.5;
-}
-[data-theme="light"] .card::after {
-  background: linear-gradient(140deg, rgba(255,255,255,0.9), transparent 45%, rgba(122,102,242,0.06));
-}
+/* E2 — refined quiet surfaces (flat, hairline borders) -------------------- */
+.card { border-color: var(--line); }
 
 /* E3 — motion system ------------------------------------------------------ */
 @keyframes page-enter {

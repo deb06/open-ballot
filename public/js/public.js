@@ -33,10 +33,11 @@ async function viewHome() {
       ),
       el(
         'div',
-        { class: 'hero-mosaic' },
-        el('div', { class: 'mosaic-item' }, el('span', { class: 'mosaic-icon', html: icons.shield }), el('strong', {}, 'Verifiable'), el('span', { class: 'small muted' }, 'Merkle receipts')),
-        el('div', { class: 'mosaic-item' }, el('span', { class: 'mosaic-icon', html: icons.lock }), el('strong', {}, 'Anonymous'), el('span', { class: 'small muted' }, 'Separated records')),
-        el('div', { class: 'mosaic-item' }, el('span', { class: 'mosaic-icon', html: icons.chart }), el('strong', {}, 'Transparent'), el('span', { class: 'small muted' }, 'Public audit chain')),
+        { class: 'hero-artifact', 'aria-label': 'Example of a verified ballot receipt and audit record' },
+        el('div', { class: 'artifact-head' }, 'Verified receipt · record excerpt'),
+        el('div', { class: 'artifact-line' }, el('span', { class: 'artifact-key' }, 'receipt'), el('span', { class: 'artifact-value' }, 'OB-7F3A-9C2E-1B8D')),
+        el('div', { class: 'artifact-line' }, el('span', { class: 'artifact-key' }, 'merkle'), el('span', { class: 'artifact-value' }, 'included · proof valid')),
+        el('div', { class: 'artifact-line' }, el('span', { class: 'artifact-key' }, 'audit'), el('span', { class: 'artifact-value' }, 'chain head verified')),
       ),
       el(
         'div',
@@ -958,7 +959,7 @@ function downloadReceiptPng(receipt, election) {
     ctx.fillStyle = '#8b96ad';
     ctx.font = '500 19px "Segoe UI", sans-serif';
     ctx.fillText('Your ballot receipt', 56, 240);
-    ctx.fillStyle = '#b0a0ff';
+    ctx.fillStyle = '#f0c978';
     ctx.font = '700 42px Consolas, monospace';
     ctx.fillText(receipt.code, 56, 296);
 
