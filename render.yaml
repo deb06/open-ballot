@@ -34,6 +34,10 @@ services:
         fromDatabase:
           name: open-ballot-db
           property: password
+      # Set this in the Render dashboard to point at the permanent Neon DB.
+      # When present, config.php uses it instead of the DB_* variables above.
+      - key: DATABASE_URL
+        sync: false
       - key: ADMIN_EMAIL
         value: admin@openballot.local
       - key: ADMIN_PASSWORD
