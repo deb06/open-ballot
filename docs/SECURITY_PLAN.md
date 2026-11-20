@@ -44,6 +44,9 @@ Live: clean database (1 platform admin, 0 elections, 0 ballots), health OK.
 ### Residual / operator-owned items
 - Platform admin password and `APP_SECRET` were rotated in the Render dashboard and are no longer the
   demo values. Store them in a password manager; they are not in the repository.
+- Important: `ADMIN_PASSWORD` only seeds an admin when the users table is empty. To rotate the password
+  of an existing admin, change it through the authenticated password-change flow (or update the stored
+  hash directly) — changing the env var alone does not affect an existing account.
 - Render database user remains the Neon/Render-managed owner; least-privilege split is a platform-side
   decision and is not enforced by this codebase.
 - External uptime/security scanning and backup restore drills should be scheduled by the operator.
