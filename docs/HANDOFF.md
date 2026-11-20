@@ -41,6 +41,17 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
 - Ballot privacy model: `votes` has NO voter id/timestamp; `participation` stores who voted separately;
   `UNIQUE(election_id, voter_id)` enforces one vote; casting is atomic in one transaction.
 
+## Organizations (multi-tenant)
+- Platform admin = global `admin` role (from `ADMIN_EMAIL`/`ADMIN_PASSWORD`). Org admins use `org_admin`
+  plus `users.organization_id`; elections carry `organization_id`.
+- Public signup: `POST /api/organizations/register` auto-approves and signs the org admin in.
+  Pages: `/register-organization`, `/join?token=…` (invite acceptance), `/org` (member view).
+- Membership: `organizations.membership_mode = 'domain'` auto-attaches anyone whose email domain matches
+  (also adopted at login for older accounts); `'invite'` requires an `organization_invites` token.
+- Org admins get a scoped subset of the admin API: `/api/admin/{overview,elections,users,audit,schema}`
+  plus `/api/org*`; platform-only areas (webhooks, API keys, org list) stay `admin`-only.
+- Any schema change must keep `schema.sql`, `schema.pgsql` and `db_migrate_final()` aligned.
+
 ## Visual identity — anti-"AI slop" (important, already fixed)
 - Flat institutional brass accent `#d9a441`. NO violet `#8b7bff`, NO violet→cyan gradient.
 - Solid page background, hairline borders, no glass overlays or big shadows, radius 10px.
@@ -49,7 +60,7 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
 - Favicon, PWA icons and OG image regenerated to match. Preserve this direction.
 
 ## Verification (all green)
-- `npm test` → 38/38 smoke checks.
+- `npm test` → 44/44 smoke checks (includes 6 organization tenancy checks).
 - axe-core: 0 WCAG A/AA violations on 12 audited routes in BOTH themes.
 - Zero browser console errors.
 - CI: `scripts/lib.ps1` pins PHP 8.5.13 + SHA256 (8.5.12 URL 404s — do not downgrade).

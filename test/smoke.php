@@ -627,6 +627,103 @@ try {
         assert_same(400, $res['status']);
     });
 
+    /* Organization tenancy */
+
+    $tag = bin2hex(random_bytes(4));
+    $orgDomain = $tag . '.edu';
+    $orgAdmin = new Client($base);
+    $orgId = 0;
+    $orgCsrf = '';
+
+    step('registers an organization with its administrator', static function () use ($orgAdmin, $tag, $orgDomain, &$orgId, &$orgCsrf): void {
+        $res = $orgAdmin->request('POST', '/api/organizations/register', [
+            'organizationName' => 'Test College ' . $tag,
+            'slug' => 'college-' . $tag,
+            'domain' => $orgDomain,
+            'membershipMode' => 'domain',
+            'adminName' => 'Org Admin',
+            'adminEmail' => 'admin@' . $orgDomain,
+            'adminPassword' => 'OrgAdmin#2026!',
+        ]);
+        assert_same(201, $res['status'], 'Organization registration failed: ' . $res['text']);
+        assert_same('org_admin', $res['data']['user']['role']);
+        assert_same('active', $res['data']['organization']['status']);
+        $orgId = (int) $res['data']['organization']['id'];
+        $orgCsrf = (string) $res['data']['csrf'];
+        $orgAdmin->csrf = $orgCsrf;
+    });
+
+    step('organization administrator reads scoped organization', static function () use ($orgAdmin, $orgId): void {
+        $res = $orgAdmin->request('GET', '/api/org');
+        assert_same(200, $res['status']);
+        assert_same($orgId, (int) $res['data']['organization']['id']);
+        assert_same(1, (int) $res['data']['members']);
+    });
+
+    step('member with matching domain joins automatically', static function () use ($base, $orgDomain, $orgId): void {
+        $member = new Client($base);
+        $res = $member->request('POST', '/api/auth/register', [
+            'name' => 'Domain Member',
+            'email' => 'member@' . $orgDomain,
+            'password' => 'Member#2026!',
+        ]);
+        assert_same(201, $res['status'], $res['text']);
+        assert_same($orgId, (int) $res['data']['user']['organizationId']);
+    });
+
+    step('organization administrator manages only their elections', static function () use ($orgAdmin, $orgId): void {
+        $created = $orgAdmin->request('POST', '/api/admin/elections', [
+            'title' => 'Org election ' . $orgId,
+            'description' => 'Scoped to the organization',
+        ]);
+        assert_same(201, $created['status'], $created['text']);
+        $list = $orgAdmin->request('GET', '/api/admin/elections');
+        assert_same(200, $list['status']);
+        $ids = array_column($list['data']['elections'], 'id');
+        assert_true(in_array($created['data']['election']['id'], $ids, true), 'New org election missing from scoped list.');
+        $denied = $orgAdmin->request('GET', '/api/admin/api-keys');
+        assert_same(403, $denied['status'], 'Org admins must not access platform settings.');
+    });
+
+    step('invite-only organization joins through an invitation', static function () use ($base, $tag): void {
+        $invAdmin = new Client($base);
+        $domain = 'inv-' . $tag . '.edu';
+        $created = $invAdmin->request('POST', '/api/organizations/register', [
+            'organizationName' => 'Invite Corp ' . $tag,
+            'slug' => 'invite-' . $tag,
+            'domain' => $domain,
+            'membershipMode' => 'invite',
+            'adminName' => 'Invite Admin',
+            'adminEmail' => 'admin@' . $domain,
+            'adminPassword' => 'OrgAdmin#2026!',
+        ]);
+        assert_same(201, $created['status'], $created['text']);
+        $invAdmin->csrf = (string) $created['data']['csrf'];
+        $inviteId = (int) $created['data']['organization']['id'];
+
+        $invited = $invAdmin->request('POST', '/api/org/invites', ['email' => 'friend@' . $domain, 'role' => 'voter']);
+        assert_same(201, $invited['status'], $invited['text']);
+        parse_str((string) parse_url($invited['data']['invite']['link'], PHP_URL_QUERY) ?: '', $query);
+        $token = (string) ($query['token'] ?? '');
+
+        $joiner = new Client($base);
+        $res = $joiner->request('POST', '/api/auth/register', [
+            'name' => 'Invited Member',
+            'email' => 'friend@' . $domain,
+            'password' => 'Member#2026!',
+            'inviteToken' => $token,
+        ]);
+        assert_same(201, $res['status'], $res['text']);
+        assert_same($inviteId, (int) $res['data']['user']['organizationId']);
+    });
+
+    step('platform administrator lists organizations', static function () use ($admin, $orgId): void {
+        $res = $admin->request('GET', '/api/admin/organizations');
+        assert_same(200, $res['status'], $res['text']);
+        $ids = array_column($res['data']['organizations'], 'id');
+        assert_true(in_array($orgId, $ids, true), 'Registered organization missing from platform list.');
+    });
+
     echo "\n  {$passed} checks passed.\n\n";
     $stopServer();
     exit(0);

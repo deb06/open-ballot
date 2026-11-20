@@ -6,12 +6,26 @@
 -- timestamp. The two tables share no key, so the database cannot link a voter
 -- to a choice.
 
+CREATE TABLE IF NOT EXISTS organizations (
+  id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name            VARCHAR(160) NOT NULL,
+  slug            VARCHAR(80) NOT NULL,
+  domain          VARCHAR(190) NULL DEFAULT NULL,
+  membership_mode ENUM('domain','invite') NOT NULL DEFAULT 'domain',
+  status          ENUM('active','suspended') NOT NULL DEFAULT 'active',
+  created_by      INT UNSIGNED NULL DEFAULT NULL,
+  created_at      DATETIME(3) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_organizations_slug (slug),
+  UNIQUE KEY uq_organizations_domain (domain)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS users (
   id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name          VARCHAR(80) NOT NULL,
   email         VARCHAR(160) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  role          ENUM('voter', 'admin') NOT NULL DEFAULT 'voter',
+  role          ENUM('voter', 'admin', 'observer', 'org_admin') NOT NULL DEFAULT 'voter',
   active            TINYINT(1) NOT NULL DEFAULT 1,
   student_id        VARCHAR(40) NULL DEFAULT NULL,
   email_verified_at DATETIME(3) NULL DEFAULT NULL,
@@ -19,8 +33,25 @@ CREATE TABLE IF NOT EXISTS users (
   mfa_enabled       TINYINT(1) NOT NULL DEFAULT 0,
   created_at        DATETIME(3) NOT NULL,
   last_login_at     DATETIME(3) NULL DEFAULT NULL,
+  organization_id   INT UNSIGNED NULL DEFAULT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_users_email (email)
+  UNIQUE KEY uq_users_email (email),
+  KEY idx_users_organization (organization_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS organization_invites (
+  id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  organization_id INT UNSIGNED NOT NULL,
+  email           VARCHAR(255) NOT NULL,
+  role            ENUM('voter','observer','org_admin') NOT NULL DEFAULT 'voter',
+  token           CHAR(64) NOT NULL,
+  expires_at      DATETIME(3) NULL DEFAULT NULL,
+  accepted_at     DATETIME(3) NULL DEFAULT NULL,
+  created_at      DATETIME(3) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_invites_token (token),
+  UNIQUE KEY uq_invites_org_email (organization_id, email),
+  KEY idx_invites_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS elections (
@@ -36,7 +67,9 @@ CREATE TABLE IF NOT EXISTS elections (
   created_at         DATETIME(3) NOT NULL,
   updated_at         DATETIME(3) NOT NULL,
   merkle_root        VARCHAR(64) NULL DEFAULT NULL,
+  organization_id    INT UNSIGNED NULL DEFAULT NULL,
   PRIMARY KEY (id),
+  KEY idx_elections_organization (organization_id),
   KEY idx_elections_status (status),
   KEY idx_elections_created (created_at),
   CONSTRAINT fk_elections_creator FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL

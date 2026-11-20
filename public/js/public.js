@@ -1248,6 +1248,145 @@ function viewRegister() {
 }
 
 /* --------------------------------------------------------------------------
+   Organizations
+   -------------------------------------------------------------------------- */
+
+function viewRegisterOrganization() {
+  const errorBox = el('div', { class: 'form-error', role: 'alert' });
+  const orgName = el('input', { class: 'input', type: 'text', id: nextId('orgName'), required: true, placeholder: 'Riverside College', maxlength: '160' });
+  const slug = el('input', { class: 'input', type: 'text', id: nextId('slug'), required: true, placeholder: 'riverside', maxlength: '80' });
+  const domain = el('input', { class: 'input', type: 'text', id: nextId('domain'), placeholder: 'riverside.edu', maxlength: '190' });
+  const mode = el('select', { class: 'select', id: nextId('mode') },
+    el('option', { value: 'domain' }, 'Anyone with an @organization email joins automatically'),
+    el('option', { value: 'invite' }, 'Invite-only — I will add each member by email'),
+  );
+  const adminName = el('input', { class: 'input', type: 'text', id: nextId('adminName'), required: true, autocomplete: 'name', placeholder: 'Your full name' });
+  const adminEmail = el('input', { class: 'input', type: 'email', id: nextId('adminEmail'), required: true, autocomplete: 'email', placeholder: 'you@riverside.edu' });
+  const password = el('input', { class: 'input', type: 'password', id: nextId('password'), required: true, autocomplete: 'new-password', placeholder: 'At least 12 characters' });
+  const submit = el('button', { class: 'btn btn-primary btn-block btn-lg', type: 'submit' }, 'Register organization');
+
+  const form = el('form', { class: 'stack', novalidate: true },
+    errorBox,
+    el('div', { class: 'field' }, el('label', { for: orgName.id }, 'Organization name'), orgName),
+    el('div', { class: 'row', style: { gap: '12px' } },
+      el('div', { class: 'field grow' }, el('label', { for: slug.id }, 'Short name (URL)'), slug),
+      el('div', { class: 'field grow' }, el('label', { for: domain.id }, 'Email domain (optional)'), domain),
+    ),
+    el('div', { class: 'field' }, el('label', { for: mode.id }, 'How people join'), mode, el('p', { class: 'hint' }, 'You can change this later in Organization settings.')),
+    el('div', { class: 'divider' }),
+    el('p', { class: 'small muted' }, 'You will become this organization’s administrator.'),
+    el('div', { class: 'field' }, el('label', { for: adminName.id }, 'Your name'), adminName),
+    el('div', { class: 'field' }, el('label', { for: adminEmail.id }, 'Your organization email'), adminEmail),
+    el('div', { class: 'field' }, el('label', { for: password.id }, 'Password'), password, strengthMeter(password)),
+    submit,
+  );
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    errorBox.textContent = '';
+    setBusy(submit, true, 'Registering…');
+    try {
+      const data = await api('POST', '/api/organizations/register', {
+        organizationName: orgName.value, slug: slug.value, domain: domain.value,
+        membershipMode: mode.value, adminName: adminName.value, adminEmail: adminEmail.value,
+        adminPassword: password.value,
+      });
+      state.user = data.user;
+      state.csrf = data.csrf;
+      renderHeader();
+      toast(data.organization.name + ' is ready.', 'success');
+      go('#/admin');
+    } catch (error) {
+      errorBox.textContent = error.message;
+    } finally {
+      setBusy(submit, false);
+    }
+  });
+
+  return authLayout({
+    title: 'Register your organization',
+    subtitle: 'Run your own elections on a shared, verifiable platform.',
+    form,
+    alt: el('span', {}, 'Already have an account? ', el('a', { href: '/login' }, 'Sign in')),
+  });
+}
+
+function viewJoin() {
+  const token = new URLSearchParams(location.search).get('token')
+    || new URLSearchParams((location.hash.split('?')[1] || '')).get('token') || '';
+  const errorBox = el('div', { class: 'form-error', role: 'alert' });
+  const name = el('input', { class: 'input', type: 'text', id: nextId('name'), required: true, autocomplete: 'name' });
+  const email = el('input', { class: 'input', type: 'email', id: nextId('email'), required: true, autocomplete: 'email' });
+  const password = el('input', { class: 'input', type: 'password', id: nextId('password'), required: true, autocomplete: 'new-password' });
+  const confirm = el('input', { class: 'input', type: 'password', id: nextId('confirm'), required: true, autocomplete: 'new-password' });
+  const submit = el('button', { class: 'btn btn-primary btn-block btn-lg', type: 'submit' }, 'Join organization');
+
+  const form = el('form', { class: 'stack', novalidate: true },
+    errorBox,
+    !token ? el('p', { class: 'form-error' }, 'This invitation link is missing its token. Ask your administrator for a new one.') : null,
+    el('div', { class: 'field' }, el('label', { for: name.id }, 'Full name'), name),
+    el('div', { class: 'field' }, el('label', { for: email.id }, 'Email'), email),
+    el('div', { class: 'field' }, el('label', { for: password.id }, 'Password'), password, strengthMeter(password)),
+    el('div', { class: 'field' }, el('label', { for: confirm.id }, 'Confirm password'), confirm),
+    submit,
+  );
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    errorBox.textContent = '';
+    if (password.value !== confirm.value) {
+      errorBox.textContent = 'Passwords do not match.';
+      return;
+    }
+    setBusy(submit, true, 'Joining…');
+    try {
+      const data = await api('POST', '/api/auth/register', {
+        name: name.value, email: email.value, password: password.value, inviteToken: token,
+      });
+      state.user = data.user;
+      state.csrf = data.csrf;
+      renderHeader();
+      toast('You joined ' + (state.user.organizationId ? 'your organization' : 'Open Ballot') + '.', 'success');
+      go('#/');
+    } catch (error) {
+      errorBox.textContent = error.message;
+    } finally {
+      setBusy(submit, false);
+    }
+  });
+
+  return authLayout({ title: 'Join your organization', subtitle: 'Create your account with the email your administrator invited.', form });
+}
+
+async function viewOrganization() {
+  if (!state.user) {
+    go('#/login');
+    return el('div', {});
+  }
+  const errorBox = el('div', { class: 'form-error', role: 'alert' });
+  const panel = el('div', { class: 'card stack' }, el('p', { class: 'muted' }, 'Loading organization…'));
+  try {
+    const data = await api('GET', '/api/org');
+    const org = data.organization;
+    panel.replaceChildren(
+      el('p', { class: 'eyebrow' }, 'Your organization'),
+      el('h1', { style: { fontSize: '2rem' } }, org.name),
+      el('p', { class: 'muted' }, org.domain ? 'Members are identified by @' + org.domain + ' email addresses.' : 'No email domain claimed yet.'),
+      el('div', { class: 'row', style: { gap: '24px', flexWrap: 'wrap' } },
+        el('div', {}, el('strong', {}, String(data.members)), el('span', { class: 'small muted' }, ' members')),
+        el('div', {}, el('strong', {}, String(data.elections)), el('span', { class: 'small muted' }, ' elections')),
+        el('div', {}, el('strong', {}, org.membershipMode === 'domain' ? 'Domain auto-join' : 'Invite only'), el('span', { class: 'small muted' }, ' membership')),
+      ),
+      state.user.orgAdmin ? el('a', { class: 'btn btn-primary', href: '/admin/org' }, 'Manage organization') : null,
+    );
+  } catch (error) {
+    panel.replaceChildren(errorBox);
+    errorBox.textContent = error.message;
+  }
+  return el('div', { class: 'stack', style: { maxWidth: '720px', margin: '32px auto' } }, panel);
+}
+
+/* --------------------------------------------------------------------------
    Verify receipt
    -------------------------------------------------------------------------- */
 

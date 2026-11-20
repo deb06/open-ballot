@@ -796,11 +796,14 @@ function renderHeader() {
       el(
         'a',
         { class: 'btn btn-ghost btn-sm', href: '/account', title: state.user.email },
-        el('span', { class: 'badge badge-accent' }, state.user.role === 'admin' ? 'Admin' : state.user.role === 'observer' ? 'Observer' : 'Voter'),
+        el('span', { class: 'badge badge-accent' }, state.user.role === 'admin' ? 'Admin' : state.user.role === 'org_admin' ? 'Org admin' : state.user.role === 'observer' ? 'Observer' : 'Voter'),
         state.user.name.split(' ')[0],
       ),
       state.user.role === 'observer'
         ? el('a', { class: 'btn btn-ghost btn-sm', href: '/observer' }, 'Observe')
+        : null,
+      state.user.role === 'org_admin'
+        ? el('a', { class: 'btn btn-ghost btn-sm', href: '/org' }, 'Organization')
         : null,
       el(
         'button',
@@ -812,12 +815,13 @@ function renderHeader() {
   } else {
     actions.append(
       el('a', { class: 'btn btn-ghost btn-sm', href: '/login' }, 'Sign in'),
+      el('a', { class: 'btn btn-ghost btn-sm', href: '/register-organization' }, 'Register organization'),
       el('a', { class: 'btn btn-primary btn-sm', href: '/register' }, 'Create account'),
     );
   }
 
   const adminLink = document.querySelector('[data-nav="admin"]');
-  if (adminLink) adminLink.hidden = !(state.user && state.user.role === 'admin');
+  if (adminLink) adminLink.hidden = !(state.user && ['admin', 'org_admin'].includes(state.user.role));
 }
 
 async function signOut() {
@@ -930,6 +934,9 @@ async function viewFor(parts) {
   if (root === 'reset-password' && sub) return viewResetPassword(sub);
   if (root === 'verify-email' && sub) return viewVerifyEmail(sub);
   if (root === 'register') return viewRegister();
+  if (root === 'register-organization') return viewRegisterOrganization();
+  if (root === 'join') return viewJoin();
+  if (root === 'org') return viewOrganization();
   if (root === 'passkeys') return viewPasskeys();
   if (root === 'help') return viewHelp();
   if (root === 'privacy') return viewPrivacy();
@@ -943,6 +950,8 @@ async function viewFor(parts) {
   if (root === 'admin' && sub === 'login') return viewAdminLogin();
   if (root === 'admin') {
     if (!sub) return viewAdminOverview();
+    if (sub === 'org') return viewAdminOrganization();
+    if (sub === 'organizations') return viewAdminOrganizations();
     if (sub === 'election' && id) return viewAdminElection(id);
     if (sub === 'users') return viewAdminUsers();
     if (sub === 'audit') return viewAdminAudit();
@@ -1032,6 +1041,10 @@ function paletteItems() {
   } else {
     items.push({ label: 'Sign in', hint: 'Account', path: '/login' });
     items.push({ label: 'Create account', hint: 'Register', path: '/register' });
+    items.push({ label: 'Register organization', hint: 'For administrators', path: '/register-organization' });
+  }
+  if (state.user && state.user.role === 'org_admin') {
+    items.push({ label: 'My organization', hint: 'Settings & invitations', path: '/admin/org' });
   }
   if (state.user && state.user.role === 'admin') {
     items.push(

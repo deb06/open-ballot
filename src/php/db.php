@@ -372,13 +372,22 @@ function db_migrate_final(): void
     db_add_column('elections', 'logo_url', 'VARCHAR(300) NULL DEFAULT NULL', 'VARCHAR(300) NULL');
     db_add_column('candidates', 'position', 'INT UNSIGNED NOT NULL DEFAULT 0', 'INT NOT NULL DEFAULT 0');
     db_add_column('vote_choices', 'rank', 'INT UNSIGNED NOT NULL DEFAULT 0', 'INT NOT NULL DEFAULT 0');
-    // Widen role to allow observers (MySQL only; PG uses VARCHAR).
+    db_add_column('users', 'organization_id', 'INT UNSIGNED NULL DEFAULT NULL', 'INT NULL');
+    db_add_column('elections', 'organization_id', 'INT UNSIGNED NULL DEFAULT NULL', 'INT NULL');
     $cfg = config('db');
     if (($cfg['driver'] ?? 'mysql') !== 'pgsql') {
         try {
-            db()->exec("ALTER TABLE users MODIFY COLUMN role ENUM('voter','admin','observer') NOT NULL DEFAULT 'voter'");
+            db()->exec("ALTER TABLE users MODIFY COLUMN role ENUM('voter','admin','observer','org_admin') NOT NULL DEFAULT 'voter'");
         } catch (Throwable) { /* keep existing enum */ }
+    } else {
+        // Postgres uses a CHECK constraint; recreate it so org admins are allowed.
+        try {
+            db()->exec('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check');
+            db()->exec("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('voter','admin','observer','org_admin'))");
+        } catch (Throwable) { /* constraint may be managed externally */ }
     }
+    try { db()->exec('CREATE INDEX IF NOT EXISTS idx_users_organization ON users(organization_id)'); } catch (Throwable) {}
+    try { db()->exec('CREATE INDEX IF NOT EXISTS idx_elections_organization ON elections(organization_id)'); } catch (Throwable) {}
 }
 
 function db_schema_installed(): bool

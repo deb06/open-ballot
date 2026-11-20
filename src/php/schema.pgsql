@@ -1,19 +1,45 @@
 -- Open Ballot schema for PostgreSQL 14+.
 -- Timestamps stored as UTC TIMESTAMP(3).
 
+CREATE TABLE IF NOT EXISTS organizations (
+  id              SERIAL PRIMARY KEY,
+  name            VARCHAR(160) NOT NULL,
+  slug            VARCHAR(80) NOT NULL UNIQUE,
+  domain          VARCHAR(190) NULL UNIQUE,
+  membership_mode VARCHAR(16) NOT NULL DEFAULT 'domain' CHECK (membership_mode IN ('domain','invite')),
+  status          VARCHAR(16) NOT NULL DEFAULT 'active' CHECK (status IN ('active','suspended')),
+  created_by      INT NULL,
+  created_at      TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_organizations_domain ON organizations(domain);
+
 CREATE TABLE IF NOT EXISTS users (
   id            SERIAL PRIMARY KEY,
   name          VARCHAR(80) NOT NULL,
   email         VARCHAR(160) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
-  role          VARCHAR(20) NOT NULL DEFAULT 'voter' CHECK (role IN ('voter','admin','observer')),
+  role          VARCHAR(20) NOT NULL DEFAULT 'voter' CHECK (role IN ('voter','admin','observer','org_admin')),
   active            SMALLINT NOT NULL DEFAULT 1,
   student_id        VARCHAR(40) NULL,
   email_verified_at TIMESTAMP(3) NULL,
   mfa_secret        VARCHAR(64) NULL,
   mfa_enabled       SMALLINT NOT NULL DEFAULT 0,
   created_at        TIMESTAMP(3) NOT NULL,
-  last_login_at     TIMESTAMP(3) NULL
+  last_login_at     TIMESTAMP(3) NULL,
+  organization_id   INT NULL REFERENCES organizations(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_users_organization ON users(organization_id);
+
+CREATE TABLE IF NOT EXISTS organization_invites (
+  id              SERIAL PRIMARY KEY,
+  organization_id INT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  email           VARCHAR(255) NOT NULL,
+  role            VARCHAR(16) NOT NULL DEFAULT 'voter' CHECK (role IN ('voter','observer','org_admin')),
+  token           CHAR(64) NOT NULL UNIQUE,
+  expires_at      TIMESTAMP(3) NULL,
+  accepted_at     TIMESTAMP(3) NULL,
+  created_at      TIMESTAMP(3) NOT NULL,
+  UNIQUE (organization_id, email)
 );
 
 CREATE TABLE IF NOT EXISTS elections (
@@ -28,8 +54,10 @@ CREATE TABLE IF NOT EXISTS elections (
   created_by         INT NULL REFERENCES users(id) ON DELETE SET NULL,
   created_at         TIMESTAMP(3) NOT NULL,
   updated_at         TIMESTAMP(3) NOT NULL,
-  merkle_root        VARCHAR(64) NULL
+  merkle_root        VARCHAR(64) NULL,
+  organization_id    INT NULL REFERENCES organizations(id) ON DELETE SET NULL
 );
+CREATE INDEX IF NOT EXISTS idx_elections_organization ON elections(organization_id);
 CREATE INDEX IF NOT EXISTS idx_elections_status ON elections(status);
 CREATE INDEX IF NOT EXISTS idx_elections_created ON elections(created_at);
 

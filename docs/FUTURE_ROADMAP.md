@@ -16,11 +16,12 @@ This document plans the next waves of work. Everything already shipped (Phases 1
 | 3 — Election capabilities | ✅ Ranked-choice IRV, multi-choice, templates library, bulk voter import UI, email invitations, wizard-style creation form |
 | 4 — Platform & ops | ✅ Sentry, backups, status history, public API + keys, webhook delivery history, docker-compose |
 | 5 — Nice-to-haves | ✅ i18n (EN/ES), per-election branding, email digest, results party screen, command palette |
+| 6 — Organizations | ✅ Org self-registration, org admins, domain auto-join or invite-only membership, scoped admin API, platform oversight |
 | UI Waves A–D | ✅ Shared components, breadcrumbs, command palette, voter polish, admin polish, design tokens |
 | UI Wave E (visual refresh concepts) | ✅ Editorial hero mosaic, glass-card borders, motion system (reduced-motion aware), control-room dashboard |
 | Accessibility | ✅ axe-core sweep: 0 WCAG 2.0/2.1 A+AA violations on all 12 audited routes |
 
-**Verification:** 38/38 smoke checks, zero console errors, zero axe violations, all routes browser-verified.
+**Verification:** 44/44 smoke checks (including organization tenancy), zero console errors, zero axe violations, all routes browser-verified.
 
 ---
 
@@ -242,7 +243,7 @@ This document plans the next waves of work. Everything already shipped (Phases 1
 |---|---|
 | axe-core violations | 0 on all routes |
 | Lighthouse (Perf / A11y / BP / SEO) | ≥95 / 100 / 100 / 100 |
-| Smoke checks | 38/38 on every CI run |
+| Smoke checks | 44/44 on every CI run |
 | Dark/light parity | 100% of views |
 | Keyboard-complete flows | 100% of core flows |
 | Component duplication | 0 one-off tables/cards |

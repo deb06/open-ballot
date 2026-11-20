@@ -112,6 +112,12 @@ function api_routes(): array
             [$name, $email, hash_password($password), iso_to_sql($now)],
         );
 
+        // Members of a domain-verified organization are attached automatically.
+        // An invitation link (invite-only organizations) takes precedence.
+        $claim_domain_membership = claim_domain_membership($id, $email);
+        $inviteToken = as_text($body['inviteToken'] ?? null);
+        $inviteOrg = accept_invite_for_user($id, $email, $inviteToken);
+
         // Send verification e-mail (best effort; link is also written to data/mail.log).
         $token = random_token(32);
         $hash = sha256($token);
@@ -122,18 +128,198 @@ function api_routes(): array
         $link = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/verify-email/' . $token);
         send_mail($email, 'Verify your Open Ballot e-mail', "Verify your e-mail address:\n\n{$link}\n\nThe link expires in 24 hours.");
 
-        $user = [
-            'id' => $id,
-            'name' => $name,
-            'email' => $email,
-            'role' => 'voter',
-            'active' => true,
-            'emailVerified' => false,
-            'createdAt' => $now,
-        ];
+        $user = public_user(db_one('SELECT * FROM users WHERE id = ?', [$id]));
         $csrf = create_session($user, $ctx['ip']);
-        audit($id, 'auth.register', ['email' => $email], $ctx['ip']);
+        audit($id, 'auth.register', ['email' => $email, 'organizationId' => $user['organizationId']], $ctx['ip']);
         send_json(201, ['user' => $user, 'csrf' => $csrf]);
+    });
+
+    /* -------------------------------------------------------------- */
+    /* Organizations                                                   */
+    /* -------------------------------------------------------------- */
+
+    $add('POST', '/api/organizations/register', static function (array $ctx): void {
+        ensure_limit('org-register:' . $ctx['ip'], 5, 3600, 'Too many organizations registered from this address. Try again later.');
+        $body = $ctx['body'];
+        $orgName = require_text($body['organizationName'] ?? $body['name'] ?? null, 2, 160, 'Organization name');
+        $slugRaw = require_text($body['slug'] ?? null, 2, 80, 'Organization slug');
+        $slug = strtolower((string) preg_replace('/[^a-z0-9-]+/', '-', $slugRaw));
+        $slug = trim($slug, '-');
+        if ($slug === '' || strlen($slug) > 80) {
+            fail(400, 'Use 2–80 letters, numbers or hyphens for the organization slug.', 'invalid_slug');
+        }
+        $domain = strtolower(trim(as_text($body['domain'] ?? null)));
+        $domain = ltrim($domain, '@');
+        if ($domain !== '' && preg_match('/^[a-z0-9.-]+\.[a-z]{2,}$/', $domain) !== 1) {
+            fail(400, 'Enter a valid email domain, such as university.edu.', 'invalid_domain');
+        }
+        $mode = one_of($body['membershipMode'] ?? $body['membership_mode'] ?? 'domain', ['domain', 'invite']);
+        $adminName = require_text($body['adminName'] ?? null, 2, 80, 'Administrator name');
+        $adminEmail = normalize_email($body['adminEmail'] ?? $body['email'] ?? null);
+        $password = validate_password($body['adminPassword'] ?? $body['password'] ?? null);
+
+        if (db_one('SELECT id FROM organizations WHERE slug = ?', [$slug]) !== null) {
+            fail(409, 'That organization slug is already taken.', 'slug_taken');
+        }
+        if ($domain !== '' && db_one('SELECT id FROM organizations WHERE lower(domain) = lower(?)', [$domain]) !== null) {
+            fail(409, 'That email domain is already claimed by another organization.', 'domain_taken');
+        }
+        if (db_one('SELECT id FROM users WHERE email = ?', [$adminEmail]) !== null) {
+            fail(409, 'An account with that email already exists.', 'email_taken');
+        }
+
+        $now = now_iso();
+        $orgId = 0;
+        $adminId = 0;
+        db_transaction(static function () use (&$orgId, &$adminId, $orgName, $slug, $domain, $mode, $adminName, $adminEmail, $password, $now): void {
+            $orgId = db_insert(
+                'INSERT INTO organizations (name, slug, domain, membership_mode, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                [$orgName, $slug, $domain !== '' ? $domain : null, $mode, 'active', iso_to_sql($now)],
+            );
+            $adminId = db_insert(
+                'INSERT INTO users (name, email, password_hash, role, active, email_verified_at, organization_id, created_at)
+                 VALUES (?, ?, ?, ?, 1, ?, ?, ?)',
+                [$adminName, $adminEmail, hash_password($password), 'org_admin', iso_to_sql($now), $orgId, iso_to_sql($now)],
+            );
+            db_exec('UPDATE organizations SET created_by = ? WHERE id = ?', [$adminId, $orgId]);
+        });
+
+        $org = organization_by_id($orgId);
+        $user = public_user(db_one('SELECT * FROM users WHERE id = ?', [$adminId]));
+        $csrf = create_session($user, $ctx['ip']);
+        audit($adminId, 'organization.register', ['organizationId' => $orgId, 'slug' => $slug], $ctx['ip']);
+        send_json(201, ['organization' => organization_public($org), 'user' => $user, 'csrf' => $csrf]);
+    });
+
+    $add('GET', '/api/org', static function (array $ctx): void {
+        $scope = org_scope($ctx['user']);
+        if ($scope < 0) {
+            fail(403, 'Organization access required.', 'forbidden');
+        }
+        $org = organization_by_id($scope === 0 ? null : $scope);
+        if ($org === null) {
+            fail(404, 'Organization not found.', 'not_found');
+        }
+        send_json(200, [
+            'organization' => organization_public($org),
+            'members' => (int) db_scalar('SELECT COUNT(*) FROM users WHERE organization_id = ?', [$scope]),
+            'elections' => (int) db_scalar('SELECT COUNT(*) FROM elections WHERE organization_id = ?', [$scope]),
+        ]);
+    });
+
+    $add('PATCH', '/api/org', static function (array $ctx): void {
+        if (!is_org_admin($ctx['user'])) {
+            fail(403, 'Organization administrator access required.', 'forbidden');
+        }
+        $scope = (int) user_organization_id($ctx['user']);
+        $org = organization_by_id($scope);
+        if ($org === null) {
+            fail(404, 'Organization not found.', 'not_found');
+        }
+        $body = $ctx['body'];
+        $name = array_key_exists('name', $body) ? require_text($body['name'], 2, 160, 'Organization name') : (string) $org['name'];
+        $domain = array_key_exists('domain', $body) ? strtolower(trim(as_text($body['domain']))) : (string) ($org['domain'] ?? '');
+        $domain = ltrim($domain, '@');
+        if ($domain !== '' && preg_match('/^[a-z0-9.-]+\.[a-z]{2,}$/', $domain) !== 1) {
+            fail(400, 'Enter a valid email domain, such as university.edu.', 'invalid_domain');
+        }
+        $mode = array_key_exists('membershipMode', $body)
+            ? one_of($body['membershipMode'], ['domain', 'invite'])
+            : (string) $org['membership_mode'];
+        $taken = db_one('SELECT id FROM organizations WHERE lower(domain) = lower(?) AND id <> ?', [$domain, $scope]);
+        if ($domain !== '' && $taken !== null) {
+            fail(409, 'That email domain is already claimed by another organization.', 'domain_taken');
+        }
+        db_exec(
+            'UPDATE organizations SET name = ?, domain = ?, membership_mode = ? WHERE id = ?',
+            [$name, $domain !== '' ? $domain : null, $mode, $scope],
+        );
+        audit($scope, 'organization.update', ['organizationId' => $scope], $ctx['ip']);
+        send_json(200, ['organization' => organization_public(organization_by_id($scope))]);
+    });
+
+    $add('GET', '/api/org/members', static function (array $ctx): void {
+        $scope = org_scope($ctx['user']);
+        if ($scope < 0) {
+            fail(403, 'Organization access required.', 'forbidden');
+        }
+        $rows = $scope === 0
+            ? db_all('SELECT * FROM users ORDER BY id')
+            : db_all('SELECT * FROM users WHERE organization_id = ? ORDER BY id', [$scope]);
+        send_json(200, ['members' => array_map('public_user', $rows)]);
+    });
+
+    $add('GET', '/api/org/invites', static function (array $ctx): void {
+        if (!is_org_admin($ctx['user'])) {
+            fail(403, 'Organization administrator access required.', 'forbidden');
+        }
+        $rows = db_all('SELECT * FROM organization_invites WHERE organization_id = ? ORDER BY id DESC', [(int) user_organization_id($ctx['user'])]);
+        send_json(200, ['invites' => array_map(static fn (array $r): array => [
+            'id' => (int) $r['id'],
+            'email' => (string) $r['email'],
+            'role' => (string) $r['role'],
+            'accepted' => $r['accepted_at'] !== null,
+            'expiresAt' => sql_to_iso($r['expires_at']),
+            'createdAt' => sql_to_iso($r['created_at']),
+        ], $rows)]);
+    });
+
+    $add('POST', '/api/org/invites', static function (array $ctx): void {
+        if (!is_org_admin($ctx['user'])) {
+            fail(403, 'Organization administrator access required.', 'forbidden');
+        }
+        $scope = (int) user_organization_id($ctx['user']);
+        $email = normalize_email($ctx['body']['email'] ?? null);
+        $role = one_of($ctx['body']['role'] ?? 'voter', ['voter', 'observer', 'org_admin']);
+        if (db_one('SELECT id FROM organization_invites WHERE organization_id = ? AND lower(email) = lower(?)', [$scope, $email]) !== null) {
+            fail(409, 'That address already has an invitation.', 'invite_exists');
+        }
+        $token = random_token(32);
+        db_exec(
+            'INSERT INTO organization_invites (organization_id, email, role, token, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [$scope, $email, $role, $token, iso_to_sql(now_iso_at(time() + 7 * 86400)), iso_to_sql(now_iso())],
+        );
+        $link = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/join?token=' . $token);
+        send_mail($email, 'Invitation to join your organization on Open Ballot', "You have been invited to join Open Ballot.\n\nRegister or sign in here:\n\n{$link}\n\nThis link expires in 7 days.");
+        audit($scope, 'organization.invite', ['organizationId' => $scope, 'email' => $email], $ctx['ip']);
+        send_json(201, ['invite' => ['email' => $email, 'role' => $role, 'link' => $link]]);
+    });
+
+    $add('DELETE', '/api/org/invites/:id', static function (array $ctx): void {
+        if (!is_org_admin($ctx['user'])) {
+            fail(403, 'Organization administrator access required.', 'forbidden');
+        }
+        db_exec('DELETE FROM organization_invites WHERE id = ? AND organization_id = ?', [(int) $ctx['params']['id'], (int) user_organization_id($ctx['user'])]);
+        send_json(200, ['ok' => true]);
+    });
+
+    $add('GET', '/api/admin/organizations', static function (array $ctx): void {
+        if (!is_platform_admin($ctx['user'])) {
+            fail(403, 'Platform administrator access required.', 'forbidden');
+        }
+        $rows = db_all(
+            'SELECT o.*, (SELECT COUNT(*) FROM users u WHERE u.organization_id = o.id) AS member_count,
+                    (SELECT COUNT(*) FROM elections e WHERE e.organization_id = o.id) AS election_count
+             FROM organizations o ORDER BY o.id',
+        );
+        send_json(200, ['organizations' => array_map(static fn (array $r): array => organization_public($r) + [
+            'memberCount' => (int) $r['member_count'],
+            'electionCount' => (int) $r['election_count'],
+        ], $rows)]);
+    });
+
+    $add('PATCH', '/api/admin/organizations/:id', static function (array $ctx): void {
+        if (!is_platform_admin($ctx['user'])) {
+            fail(403, 'Platform administrator access required.', 'forbidden');
+        }
+        $org = organization_by_id((int) $ctx['params']['id']);
+        if ($org === null) {
+            fail(404, 'Organization not found.', 'not_found');
+        }
+        $status = one_of($ctx['body']['status'] ?? 'active', ['active', 'suspended']);
+        db_exec('UPDATE organizations SET status = ? WHERE id = ?', [$status, (int) $org['id']]);
+        audit((int) $ctx['user']['id'], 'organization.status', ['organizationId' => (int) $org['id'], 'status' => $status], $ctx['ip']);
+        send_json(200, ['organization' => organization_public(organization_by_id((int) $org['id']))]);
     });
 
     $add('POST', '/api/auth/login', static function (array $ctx): void {
@@ -159,6 +345,11 @@ function api_routes(): array
             audit((int) $row['id'], 'auth.login_failed', ['email' => $email], $ctx['ip']);
             fail(401, 'Incorrect email or password.', 'invalid_credentials');
         }
+
+        // Accounts created before an organization claimed their domain are
+        // adopted on their next sign-in with that organization e-mail.
+        claim_domain_membership((int) $row['id'], $email);
+        $row = db_one('SELECT * FROM users WHERE id = ?', [(int) $row['id']]);
 
         $trusted = is_trusted_device((int) $row['id']);
         $now = now_iso();
@@ -1553,10 +1744,13 @@ function api_routes(): array
     });
 
     $admin('GET', '/api/admin/overview', static function (array $ctx): void {
-        $users = (int) db_scalar('SELECT COUNT(*) FROM users');
-        $activeUsers = count_active_users();
-        $admins = (int) db_scalar("SELECT COUNT(*) FROM users WHERE role = 'admin' AND active = 1");
-        $elections = db_all('SELECT * FROM elections');
+        $scope = org_scope($ctx['user']);
+        $where = $scope > 0 ? ' WHERE organization_id = ?' : '';
+        $params = $scope > 0 ? [$scope] : [];
+        $users = (int) db_scalar('SELECT COUNT(*) FROM users' . $where, $params);
+        $activeUsers = (int) db_scalar('SELECT COUNT(*) FROM users WHERE active = 1' . ($scope > 0 ? ' AND organization_id = ?' : ''), $params);
+        $admins = (int) db_scalar("SELECT COUNT(*) FROM users WHERE role IN ('admin','org_admin') AND active = 1" . ($scope > 0 ? ' AND organization_id = ?' : ''), $params);
+        $elections = db_all('SELECT * FROM elections' . $where, $params);
 
         $statusCounts = ['draft' => 0, 'scheduled' => 0, 'open' => 0, 'closed' => 0];
         foreach ($elections as $election) {
@@ -1564,7 +1758,11 @@ function api_routes(): array
         }
 
         $startOfDay = (new DateTimeImmutable('today', new DateTimeZone('UTC')))->format('Y-m-d H:i:s.v');
-        $ballotsToday = (int) db_scalar('SELECT COUNT(*) FROM participation WHERE voted_at >= ?', [$startOfDay]);
+        $ballotsToday = (int) db_scalar(
+            'SELECT COUNT(*) FROM participation p JOIN elections e ON e.id = p.election_id WHERE p.voted_at >= ?'
+            . ($scope > 0 ? ' AND e.organization_id = ?' : ''),
+            $scope > 0 ? [$startOfDay, $scope] : [$startOfDay],
+        );
 
         $activeElections = [];
         foreach ($elections as $election) {
@@ -1580,7 +1778,9 @@ function api_routes(): array
         $recentRows = db_all(
             'SELECT a.id, a.action, a.details, a.ip, a.created_at, u.name AS actor_name
              FROM audit_log a LEFT JOIN users u ON u.id = a.actor_id
+             ' . ($scope > 0 ? 'WHERE u.organization_id = ? ' : '') . '
              ORDER BY a.id DESC LIMIT 8',
+            $scope > 0 ? [$scope] : [],
         );
         $recentActivity = array_map(static function (array $row): array {
             $row['id'] = (int) $row['id'];
@@ -1593,7 +1793,11 @@ function api_routes(): array
             'users' => ['total' => $users, 'active' => $activeUsers, 'admins' => $admins],
             'elections' => array_merge(['total' => count($elections)], $statusCounts),
             'ballots' => [
-                'total' => (int) db_scalar('SELECT COUNT(*) FROM votes'),
+                'total' => (int) db_scalar(
+                    'SELECT COUNT(*) FROM votes v JOIN elections e ON e.id = v.election_id'
+                    . ($scope > 0 ? ' WHERE e.organization_id = ?' : ''),
+                    $params,
+                ),
                 'today' => $ballotsToday,
             ],
             'activeElections' => $activeElections,
@@ -1602,9 +1806,12 @@ function api_routes(): array
     });
 
     $admin('GET', '/api/admin/elections', static function (array $ctx): void {
+        $scope = org_scope($ctx['user']);
         $rows = db_all(
             "SELECT * FROM elections
+             " . ($scope > 0 ? 'WHERE organization_id = ? ' : '') . "
              ORDER BY CASE status WHEN 'open' THEN 0 WHEN 'draft' THEN 1 ELSE 2 END, created_at DESC",
+            $scope > 0 ? [$scope] : [],
         );
         $elections = array_map(
             static fn (array $row): array => serialize_election($row, ['id' => 0, 'role' => 'admin']),
@@ -1630,8 +1837,8 @@ function api_routes(): array
         $now = now_iso();
         $id = db_insert(
             'INSERT INTO elections
-               (title, description, status, results_visibility, max_choices, ballot_type, brand_color, logo_url, opens_at, closes_at, created_by, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+               (title, description, status, results_visibility, max_choices, ballot_type, brand_color, logo_url, opens_at, closes_at, created_by, organization_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $title,
                 $description,
@@ -1644,6 +1851,7 @@ function api_routes(): array
                 iso_to_sql($opensAt),
                 iso_to_sql($closesAt),
                 (int) $ctx['user']['id'],
+                user_organization_id($ctx['user']),
                 iso_to_sql($now),
                 iso_to_sql($now),
             ],
@@ -1665,8 +1873,8 @@ function api_routes(): array
         $now = now_iso();
         $newId = db_insert(
             'INSERT INTO elections
-               (title, description, status, results_visibility, max_choices, opens_at, closes_at, created_by, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+               (title, description, status, results_visibility, max_choices, opens_at, closes_at, created_by, organization_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $title,
                 $source['description'],
@@ -1676,6 +1884,7 @@ function api_routes(): array
                 $source['opens_at'],
                 $source['closes_at'],
                 (int) $ctx['user']['id'],
+                user_organization_id($ctx['user']),
                 iso_to_sql($now),
                 iso_to_sql($now),
             ],
@@ -1941,14 +2150,20 @@ function api_routes(): array
 
     $admin('GET', '/api/admin/users', static function (array $ctx): void {
         $search = mb_substr(trim((string) query_value($ctx['query'], 'q', '')), 0, 80);
+        $scope = org_scope($ctx['user']);
+        $orgCond = $scope > 0 ? 'organization_id = ? AND ' : '';
+        $scopeParams = $scope > 0 ? [$scope] : [];
         if ($search !== '') {
             $pattern = '%' . $search . '%';
             $rows = db_all(
-                'SELECT * FROM users WHERE name LIKE ? OR email LIKE ? ORDER BY created_at DESC LIMIT 200',
-                [$pattern, $pattern],
+                'SELECT * FROM users WHERE ' . $orgCond . '(name LIKE ? OR email LIKE ?) ORDER BY created_at DESC LIMIT 200',
+                array_merge($scopeParams, [$pattern, $pattern]),
             );
         } else {
-            $rows = db_all('SELECT * FROM users ORDER BY created_at DESC LIMIT 200');
+            $rows = db_all(
+                'SELECT * FROM users WHERE ' . $orgCond . '1 = 1 ORDER BY created_at DESC LIMIT 200',
+                $scopeParams,
+            );
         }
 
         $electionIds = array_map(static fn (array $row): int => (int) $row['id'], db_all('SELECT id FROM elections'));
@@ -1971,14 +2186,16 @@ function api_routes(): array
         $name = require_text($body['name'] ?? null, 2, 80, 'Full name');
         $email = normalize_email($body['email'] ?? null);
         $password = validate_password($body['password'] ?? null);
-        $role = array_key_exists('role', $body) ? one_of($body['role'], ['voter', 'admin', 'observer']) : 'voter';
+        $scope = org_scope($ctx['user']);
+        $allowedRoles = $scope > 0 ? ['voter', 'observer', 'org_admin'] : ['voter', 'admin', 'observer', 'org_admin'];
+        $role = array_key_exists('role', $body) ? one_of($body['role'], $allowedRoles) : 'voter';
         if (db_one('SELECT id FROM users WHERE email = ?', [$email]) !== null) {
             fail(409, 'An account with that email already exists.', 'email_taken');
         }
         $now = now_iso();
         $id = db_insert(
-            'INSERT INTO users (name, email, password_hash, role, active, created_at) VALUES (?, ?, ?, ?, 1, ?)',
-            [$name, $email, hash_password($password), $role, iso_to_sql($now)],
+            'INSERT INTO users (name, email, password_hash, role, active, organization_id, created_at) VALUES (?, ?, ?, ?, 1, ?, ?)',
+            [$name, $email, hash_password($password), $role, $scope > 0 ? $scope : null, iso_to_sql($now)],
         );
         $created = db_one('SELECT * FROM users WHERE id = ?', [$id]);
         audit((int) $ctx['user']['id'], 'user.create', ['userId' => $id, 'email' => $email, 'role' => $role], $ctx['ip']);
@@ -2016,9 +2233,10 @@ function api_routes(): array
             } catch (Throwable) {
                 $password = random_token(12) . 'A1!';
             }
+            $scope = org_scope($ctx['user']);
             $id = db_insert(
-                "INSERT INTO users (name, email, password_hash, role, active, created_at) VALUES (?, ?, ?, 'voter', 1, ?)",
-                [$name, $email, hash_password($password), iso_to_sql(now_iso())],
+                "INSERT INTO users (name, email, password_hash, role, active, organization_id, created_at) VALUES (?, ?, ?, 'voter', 1, ?, ?)",
+                [$name, $email, hash_password($password), $scope > 0 ? $scope : null, iso_to_sql(now_iso())],
             );
             $created++;
             audit((int) $ctx['user']['id'], 'user.import', ['userId' => $id, 'email' => $email], $ctx['ip']);
@@ -2034,7 +2252,9 @@ function api_routes(): array
 
         $body = $ctx['body'];
         $has = static fn (string $key): bool => array_key_exists($key, $body);
-        $role = $has('role') ? one_of($body['role'], ['voter', 'admin', 'observer']) : $target['role'];
+        $scope = org_scope($ctx['user']);
+        $allowedRoles = $scope > 0 ? ['voter', 'observer', 'org_admin'] : ['voter', 'admin', 'observer', 'org_admin'];
+        $role = $has('role') ? one_of($body['role'], $allowedRoles) : $target['role'];
         $active = $has('active') ? (js_bool($body['active']) ? 1 : 0) : (int) $target['active'];
 
         if ((int) $target['id'] === (int) $ctx['user']['id']) {
@@ -2071,14 +2291,20 @@ function api_routes(): array
         $filter = mb_substr(trim((string) query_value($ctx['query'], 'action', '')), 0, 60);
         $prefix = $filter !== '' ? $filter . '%' : '%';
 
+        $scope = org_scope($ctx['user']);
+        $scopeCond = $scope > 0 ? ' AND u.organization_id = ?' : '';
+        $scopeParams = $scope > 0 ? [$scope] : [];
         $rows = db_all(
             'SELECT a.id, a.action, a.details, a.ip, a.created_at, u.name AS actor_name
              FROM audit_log a LEFT JOIN users u ON u.id = a.actor_id
-             WHERE a.action LIKE ?
+             WHERE a.action LIKE ?' . $scopeCond . '
              ORDER BY a.id DESC LIMIT ' . $limit . ' OFFSET ' . $offset,
-            [$prefix],
+            array_merge([$prefix], $scopeParams),
         );
-        $total = (int) db_scalar('SELECT COUNT(*) FROM audit_log WHERE action LIKE ?', [$prefix]);
+        $total = (int) db_scalar(
+            'SELECT COUNT(*) FROM audit_log a LEFT JOIN users u ON u.id = a.actor_id WHERE a.action LIKE ?' . $scopeCond,
+            array_merge([$prefix], $scopeParams),
+        );
 
         $entries = array_map(static function (array $row): array {
             $row['id'] = (int) $row['id'];
@@ -2142,7 +2368,7 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
 
     try {
         $options = $match['options'];
-        if (!empty($options['admin']) && ($user === null || $user['role'] !== 'admin')) {
+        if (!empty($options['admin']) && !is_admin_user($user)) {
             if ($user === null) {
                 throw new HttpError(401, 'Sign in to continue.', 'auth_required');
             }
@@ -2154,6 +2380,31 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
                 throw new HttpError(403, 'Administrator access required.', 'forbidden');
             }
         }
+        // Organization administrators get a scoped subset of the admin API.
+        if (is_org_admin($user) && str_starts_with($pathname, '/api/admin/')) {
+            $allowed = preg_match('#^/api/admin/(overview|elections|users|audit|schema)(/.*)?$#', $pathname) === 1;
+            if (!$allowed) {
+                throw new HttpError(403, 'Platform administrator access required.', 'forbidden');
+            }
+            if (preg_match('#^/api/admin/elections/(\d+)(/|$)#', $pathname, $mm) === 1) {
+                $election = get_election($mm[1]);
+                if ($election === null || !can_manage_election($election, $user)) {
+                    throw new HttpError(404, 'Election not found.', 'not_found');
+                }
+            }
+            if (preg_match('#^/api/admin/candidates/(\d+)(/|$)#', $pathname, $mm) === 1) {
+                $cand = db_one('SELECT e.organization_id AS organization_id FROM candidates c JOIN elections e ON e.id = c.election_id WHERE c.id = ?', [(int) $mm[1]]);
+                if ($cand === null || (int) $cand['organization_id'] !== org_scope($user)) {
+                    throw new HttpError(404, 'Candidate not found.', 'not_found');
+                }
+            }
+            if (preg_match('#^/api/admin/users/(\d+)(/|$)#', $pathname, $mm) === 1) {
+                $member = db_one('SELECT organization_id FROM users WHERE id = ?', [(int) $mm[1]]);
+                if ($member === null || (int) $member['organization_id'] !== org_scope($user)) {
+                    throw new HttpError(404, 'User not found.', 'not_found');
+                }
+            }
+        }
         if (!empty($options['auth']) && $user === null) {
             throw new HttpError(401, 'Sign in to continue.', 'auth_required');
         }
@@ -2161,6 +2412,7 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
         $mutating = in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true);
         if ($mutating) {
             $exempt = $pathname === '/api/auth/login' || $pathname === '/api/auth/admin/login' || $pathname === '/api/auth/register'
+                || $pathname === '/api/organizations/register'
                 || $pathname === '/api/auth/forgot-password' || $pathname === '/api/auth/reset-password'
                 || $pathname === '/api/auth/verify-email' || $pathname === '/api/auth/mfa/challenge'
                 || preg_match('#^/api/elections/\d+/results/verify$#', $pathname) === 1;

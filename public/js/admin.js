@@ -6,7 +6,7 @@
 
 function adminOnly() {
   if (!state.user) return authPrompt('Sign in with an administrator account to manage elections.', '#/admin/login');
-  if (state.user.role !== 'admin') {
+  if (state.user.role !== 'admin' && state.user.role !== 'org_admin') {
     return el(
       'div',
       { class: 'auth-card' },
@@ -35,13 +35,15 @@ function adminOnly() {
 function adminNav(active) {
   const link = (href, label, key) =>
     el('a', { href, class: active === key ? 'active' : '' }, label);
+  const platform = state.user && state.user.role === 'admin';
   return el(
     'nav',
     { class: 'admin-nav', 'aria-label': 'Administration sections' },
     link('/admin', 'Overview', 'overview'),
+    platform ? link('/admin/organizations', 'Organizations', 'organizations') : link('/admin/org', 'Organization', 'org'),
     link('/admin/users', 'Voters', 'users'),
     link('/admin/audit', 'Audit log', 'audit'),
-    link('/admin/webhooks', 'Webhooks', 'webhooks'),
+    platform ? link('/admin/webhooks', 'Webhooks', 'webhooks') : null,
     link('/admin/schema', 'Schema', 'schema'),
   );
 }
@@ -1888,6 +1890,135 @@ async function viewAdminSchema() {
       adminHeader('Schema', 'Entity-relationship diagram of the live database.'),
       adminNav('schema'),
       el('div', { class: 'card stack' }, toolbar, container, legend),
+    ),
+  ];
+}
+
+async function viewAdminOrganization() {
+  const guard = adminOnly();
+  if (guard) return [guard];
+  let data;
+  try {
+    data = await api('GET', '/api/org');
+  } catch (error) {
+    return [el('div', { class: 'card stack' }, el('p', { class: 'form-error' }, error.message))];
+  }
+  const org = data.organization;
+  const errorBox = el('div', { class: 'form-error', role: 'alert' });
+
+  const name = el('input', { class: 'input', type: 'text', value: org.name, maxlength: '160' });
+  const domain = el('input', { class: 'input', type: 'text', value: org.domain || '', maxlength: '190' });
+  const mode = el('select', { class: 'select' },
+    el('option', { value: 'domain', selected: org.membershipMode === 'domain' ? 'selected' : null }, 'Domain auto-join'),
+    el('option', { value: 'invite', selected: org.membershipMode === 'invite' ? 'selected' : null }, 'Invite only'),
+  );
+  const save = el('button', { class: 'btn btn-primary', type: 'button' }, 'Save settings');
+  save.addEventListener('click', async () => {
+    errorBox.textContent = '';
+    setBusy(save, true, 'Saving…');
+    try {
+      await api('PATCH', '/api/org', { name: name.value, domain: domain.value, membershipMode: mode.value });
+      toast('Organization settings saved.', 'success');
+    } catch (error) { errorBox.textContent = error.message; }
+    finally { setBusy(save, false); }
+  });
+
+  const inviteEmail = el('input', { class: 'input', type: 'email', placeholder: 'member@example.edu' });
+  const inviteRole = el('select', { class: 'select' },
+    el('option', { value: 'voter' }, 'Voter'),
+    el('option', { value: 'observer' }, 'Observer'),
+    el('option', { value: 'org_admin' }, 'Organization admin'),
+  );
+  const inviteBtn = el('button', { class: 'btn btn-outline', type: 'button' }, 'Create invitation');
+  const inviteOutput = el('div', { class: 'small mono', style: { overflowWrap: 'anywhere' } });
+  inviteBtn.addEventListener('click', async () => {
+    errorBox.textContent = '';
+    setBusy(inviteBtn, true, 'Creating…');
+    try {
+      const result = await api('POST', '/api/org/invites', { email: inviteEmail.value, role: inviteRole.value });
+      inviteOutput.textContent = result.invite.link;
+      toast('Invitation created.', 'success');
+      inviteEmail.value = '';
+    } catch (error) { errorBox.textContent = error.message; }
+    finally { setBusy(inviteBtn, false); }
+  });
+
+  let invites = [];
+  try { invites = (await api('GET', '/api/org/invites')).invites || []; } catch (_) { /* read-only role */ }
+  const inviteRows = invites.map((inv) => el('div', { class: 'row', style: { gap: '12px', padding: '8px 0', borderBottom: '1px solid var(--border-primary)' } },
+    el('span', { class: 'grow' }, inv.email),
+    el('span', { class: 'badge' }, inv.role),
+    el('span', { class: 'small muted' }, inv.accepted ? 'Accepted' : 'Pending'),
+  ));
+
+  return [
+    el('div', { class: 'admin-shell' },
+      adminHeader('Organization', org.name),
+      adminNav('org'),
+      el('div', { class: 'card stack' },
+        errorBox,
+        el('h2', { style: { fontSize: '1.15rem' } }, 'Settings'),
+        el('div', { class: 'row', style: { gap: '12px', flexWrap: 'wrap' } },
+          el('div', { class: 'field grow' }, el('label', {}, 'Name'), name),
+          el('div', { class: 'field grow' }, el('label', {}, 'Email domain'), domain),
+          el('div', { class: 'field' }, el('label', {}, 'Membership'), mode),
+          save,
+        ),
+        el('div', { class: 'divider' }),
+        el('h2', { style: { fontSize: '1.15rem' } }, 'Members & invitations'),
+        el('p', { class: 'small muted' }, data.members + ' member(s) · ' + data.elections + ' election(s). ',
+          el('a', { href: '/admin/users' }, 'Manage voters')),
+        el('div', { class: 'row', style: { gap: '12px', flexWrap: 'wrap' } },
+          el('div', { class: 'field grow' }, el('label', {}, 'Invite by email'), inviteEmail),
+          el('div', { class: 'field' }, el('label', {}, 'Role'), inviteRole),
+          inviteBtn,
+        ),
+        inviteOutput,
+        ...inviteRows,
+      ),
+    ),
+  ];
+}
+
+async function viewAdminOrganizations() {
+  const guard = adminOnly();
+  if (guard) return [guard];
+  if (!state.user || state.user.role !== 'admin') {
+    return [el('div', { class: 'card' }, el('p', {}, 'Platform administrator access required.'))];
+  }
+  const data = await api('GET', '/api/admin/organizations');
+  const rows = (data.organizations || []).map((org) => {
+    const btn = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, org.status === 'active' ? 'Suspend' : 'Activate');
+    btn.addEventListener('click', async () => {
+      try {
+        await api('PATCH', '/api/admin/organizations/' + org.id, { status: org.status === 'active' ? 'suspended' : 'active' });
+        toast('Organization status updated.', 'success');
+        handleRoute();
+      } catch (error) { toast(error.message, 'error'); }
+    });
+    return el('tr', {},
+      el('td', {}, org.name, el('div', { class: 'small muted' }, '/' + org.slug)),
+      el('td', { class: 'mono' }, org.domain || '—'),
+      el('td', {}, org.membershipMode),
+      el('td', {}, String(org.memberCount)),
+      el('td', {}, String(org.electionCount)),
+      el('td', {}, el('span', { class: 'badge' }, org.status)),
+      el('td', {}, btn),
+    );
+  });
+  return [
+    el('div', { class: 'admin-shell' },
+      adminHeader('Organizations', 'Organizations registered on this platform.'),
+      adminNav('organizations'),
+      el('div', { class: 'card' },
+        el('table', { class: 'table' },
+          el('thead', {}, el('tr', {},
+            el('th', {}, 'Organization'), el('th', {}, 'Domain'), el('th', {}, 'Membership'),
+            el('th', {}, 'Members'), el('th', {}, 'Elections'), el('th', {}, 'Status'), el('th', {}, ''),
+          )),
+          el('tbody', {}, ...rows),
+        ),
+      ),
     ),
   ];
 }

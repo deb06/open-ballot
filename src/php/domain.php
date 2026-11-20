@@ -408,7 +408,163 @@ function public_user(array $row): array
         'mfaEnabled' => !empty($row['mfa_enabled']),
         'createdAt' => sql_to_iso($row['created_at']),
         'lastLoginAt' => sql_to_iso($row['last_login_at'] ?? null),
+        'organizationId' => isset($row['organization_id']) && $row['organization_id'] !== null ? (int) $row['organization_id'] : null,
+        'platformAdmin' => (string) ($row['role'] ?? '') === 'admin',
+        'orgAdmin' => (string) ($row['role'] ?? '') === 'org_admin',
     ];
+}
+
+/* ------------------------------------------------------------------ */
+/* Organizations                                                       */
+/* ------------------------------------------------------------------ */
+
+function email_domain(string $email): string
+{
+    $at = strrpos($email, '@');
+    return $at === false ? '' : strtolower(substr($email, $at + 1));
+}
+
+function organization_public(array $org): array
+{
+    return [
+        'id' => (int) $org['id'],
+        'name' => (string) $org['name'],
+        'slug' => (string) $org['slug'],
+        'domain' => $org['domain'] === null ? null : (string) $org['domain'],
+        'membershipMode' => (string) $org['membership_mode'],
+        'status' => (string) $org['status'],
+        'createdAt' => sql_to_iso($org['created_at']),
+    ];
+}
+
+function organization_by_id(?int $id): ?array
+{
+    if ($id === null || $id <= 0) {
+        return null;
+    }
+    return db_one('SELECT * FROM organizations WHERE id = ?', [$id]);
+}
+
+function organization_for_domain(string $domain): ?array
+{
+    if ($domain === '') {
+        return null;
+    }
+    return db_one(
+        "SELECT * FROM organizations WHERE lower(domain) = lower(?) AND status = 'active' AND membership_mode = 'domain' LIMIT 1",
+        [$domain],
+    );
+}
+
+function is_platform_admin(?array $user): bool
+{
+    return $user !== null && (string) ($user['role'] ?? '') === 'admin';
+}
+
+function user_organization_id(?array $user): ?int
+{
+    if ($user === null) {
+        return null;
+    }
+    $id = $user['organization_id'] ?? $user['organizationId'] ?? null;
+    return $id === null || $id === '' ? null : (int) $id;
+}
+
+function is_org_admin(?array $user): bool
+{
+    return $user !== null && (string) ($user['role'] ?? '') === 'org_admin'
+        && user_organization_id($user) !== null;
+}
+
+function is_admin_user(?array $user): bool
+{
+    return is_platform_admin($user) || is_org_admin($user);
+}
+
+/** null = platform admin (all orgs), -1 = denied, positive = scoped org id. */
+function org_scope(?array $user): int
+{
+    if (is_platform_admin($user)) {
+        return 0;
+    }
+    if (is_org_admin($user)) {
+        return (int) user_organization_id($user);
+    }
+    return -1;
+}
+
+function organization_for_user(?array $user): ?array
+{
+    if ($user === null) {
+        return null;
+    }
+    return organization_by_id(user_organization_id($user));
+}
+
+function can_manage_election(array $election, ?array $user): bool
+{
+    $scope = org_scope($user);
+    if ($scope === 0) {
+        return true;
+    }
+    if ($scope < 0) {
+        return false;
+    }
+    $owner = isset($election['organization_id']) && $election['organization_id'] !== null
+        ? (int) $election['organization_id']
+        : 0;
+    return $owner === $scope;
+}
+
+function invite_role_to_user_role(string $role): string
+{
+    return $role === 'org_admin' ? 'org_admin' : ($role === 'observer' ? 'observer' : 'voter');
+}
+
+/** Attach a user to a domain-verified organization when one claims their email domain. */
+function claim_domain_membership(int $userId, string $email): ?array
+{
+    $existing = db_one('SELECT organization_id FROM users WHERE id = ?', [$userId]);
+    if ($existing !== null && $existing['organization_id'] !== null) {
+        return organization_by_id((int) $existing['organization_id']);
+    }
+    $org = organization_for_domain(email_domain($email));
+    if ($org === null) {
+        return null;
+    }
+    db_exec('UPDATE users SET organization_id = ? WHERE id = ? AND organization_id IS NULL', [(int) $org['id'], $userId]);
+    return $org;
+}
+
+/** Accept a pending invite (optionally token-checked) and attach the user to its org. */
+function accept_invite_for_user(int $userId, string $email, ?string $token = null): ?array
+{
+    $sql = 'SELECT * FROM organization_invites WHERE lower(email) = lower(?) AND accepted_at IS NULL';
+    $params = [$email];
+    if ($token !== null && $token !== '') {
+        $sql .= ' AND token = ?';
+        $params[] = $token;
+    }
+    $sql .= ' ORDER BY id ASC LIMIT 1';
+    $invite = db_one($sql, $params);
+    if ($invite === null) {
+        return null;
+    }
+    if ($invite['expires_at'] !== null && strtotime((string) $invite['expires_at']) < time()) {
+        return null;
+    }
+    $org = organization_by_id((int) $invite['organization_id']);
+    if ($org === null || (string) $org['status'] !== 'active') {
+        return null;
+    }
+    db_transaction(static function () use ($userId, $invite, $org): void {
+        db_exec(
+            'UPDATE users SET organization_id = ?, role = ? WHERE id = ?',
+            [(int) $org['id'], invite_role_to_user_role((string) $invite['role']), $userId],
+        );
+        db_exec('UPDATE organization_invites SET accepted_at = ? WHERE id = ?', [iso_to_sql(now_iso()), (int) $invite['id']]);
+    });
+    return $org;
 }
 
 /* ------------------------------------------------------------------ */
@@ -427,7 +583,7 @@ function get_session(): ?array
     $id = sha256($token);
     $row = db_one(
         'SELECT s.id, s.csrf, s.expires_at,
-                u.id AS user_id, u.name, u.email, u.role, u.active, u.created_at
+                u.id AS user_id, u.name, u.email, u.role, u.active, u.created_at, u.organization_id
          FROM sessions s JOIN users u ON u.id = s.user_id
          WHERE s.id = ?',
         [$id],
@@ -452,6 +608,9 @@ function get_session(): ?array
             'role' => $row['role'],
             'active' => true,
             'createdAt' => sql_to_iso($row['created_at']),
+            'organizationId' => $row['organization_id'] === null ? null : (int) $row['organization_id'],
+            'platformAdmin' => (string) $row['role'] === 'admin',
+            'orgAdmin' => (string) $row['role'] === 'org_admin',
         ],
     ];
 }
