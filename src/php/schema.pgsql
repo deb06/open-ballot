@@ -167,6 +167,8 @@ CREATE INDEX IF NOT EXISTS idx_webauthn_challenges_expires ON webauthn_challenge
 
 CREATE TABLE IF NOT EXISTS notifications (
   id         SERIAL PRIMARY KEY,
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type       VARCHAR(40) NOT NULL,
   title      VARCHAR(160) NOT NULL,
   body       VARCHAR(500) NOT NULL DEFAULT '',
   link       VARCHAR(200) NULL,
