@@ -374,7 +374,14 @@ function db_migrate_final(): void
     db_add_column('vote_choices', 'rank', 'INT UNSIGNED NOT NULL DEFAULT 0', 'INT NOT NULL DEFAULT 0');
     db_add_column('users', 'organization_id', 'INT UNSIGNED NULL DEFAULT NULL', 'INT NULL');
     db_add_column('elections', 'organization_id', 'INT UNSIGNED NULL DEFAULT NULL', 'INT NULL');
+    db_add_column('elections', 'kind', "VARCHAR(10) NOT NULL DEFAULT 'election'", "VARCHAR(10) NOT NULL DEFAULT 'election'");
+    db_add_column('elections', 'slug', 'VARCHAR(80) NULL DEFAULT NULL', 'VARCHAR(80) NULL');
+    db_add_column('elections', 'allow_anonymous', 'TINYINT(1) NOT NULL DEFAULT 0', 'SMALLINT NOT NULL DEFAULT 0');
+    db_add_column('participation', 'voter_token', 'CHAR(64) NULL DEFAULT NULL', 'CHAR(64) NULL');
     $cfg = config('db');
+    if (($cfg['driver'] ?? 'mysql') !== 'pgsql') {
+        try { db()->exec('ALTER TABLE participation MODIFY COLUMN voter_id INT UNSIGNED NULL DEFAULT NULL'); } catch (Throwable) {}
+    }
     if (($cfg['driver'] ?? 'mysql') !== 'pgsql') {
         try {
             db()->exec("ALTER TABLE users MODIFY COLUMN role ENUM('voter','admin','observer','org_admin') NOT NULL DEFAULT 'voter'");
@@ -388,6 +395,9 @@ function db_migrate_final(): void
     }
     try { db()->exec('CREATE INDEX IF NOT EXISTS idx_users_organization ON users(organization_id)'); } catch (Throwable) {}
     try { db()->exec('CREATE INDEX IF NOT EXISTS idx_elections_organization ON elections(organization_id)'); } catch (Throwable) {}
+    try { db()->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_elections_slug ON elections(slug)'); } catch (Throwable) {}
+    try { db()->exec('CREATE INDEX IF NOT EXISTS idx_participation_token ON participation(voter_token)'); } catch (Throwable) {}
+    try { db()->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_participation_election_token ON participation(election_id, voter_token)'); } catch (Throwable) {}
 }
 
 function db_schema_installed(): bool
@@ -463,13 +473,6 @@ function db_seed(): void
             ],
         );
         error_log('[seed] Administrator account created: ' . $admin['email']);
-    }
-
-    // Demo elections exist only to make a local checkout useful. A public
-    // platform must start with an empty election catalogue so every election
-    // comes from a registered organization, not from the operator's dataset.
-    if (env_value('APP_ENV', 'local') === 'production') {
-        return;
     }
 
     $electionCount = (int) db_scalar('SELECT COUNT(*) FROM elections');

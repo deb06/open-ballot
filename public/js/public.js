@@ -1248,6 +1248,189 @@ function viewRegister() {
 }
 
 /* --------------------------------------------------------------------------
+   Public polls
+   -------------------------------------------------------------------------- */
+
+async function viewPolls() {
+  if (!state.user) {
+    go('#/login');
+    return el('div', {});
+  }
+  const list = el('div', { class: 'stack' }, el('p', { class: 'muted' }, 'Loading your polls…'));
+  try {
+    const data = await api('GET', '/api/polls/mine');
+    const cards = data.polls.map((poll) => el('a', {
+      class: 'card',
+      href: '/p/' + poll.slug,
+      style: { textDecoration: 'none', color: 'inherit' },
+    },
+      el('p', { class: 'eyebrow' }, poll.kind === 'poll' ? 'Poll' : 'Election'),
+      el('h2', { style: { fontSize: '1.2rem' } }, poll.title),
+      el('p', { class: 'small muted' }, poll.totalVotes + ' vote(s) · ' + poll.status),
+    ));
+    list.replaceChildren(
+      el('div', { class: 'row', style: { justifyContent: 'space-between', alignItems: 'center' } },
+        el('h1', { style: { fontSize: '2rem' } }, 'Your polls'),
+        el('a', { class: 'btn btn-primary', href: '/polls/new' }, 'Create a poll'),
+      ),
+      cards.length ? cards : el('p', { class: 'muted' }, 'You have not created any polls yet.'),
+    );
+  } catch (error) {
+    list.replaceChildren(el('p', { class: 'form-error' }, error.message));
+  }
+  return el('div', { class: 'stack', style: { maxWidth: '820px', margin: '32px auto' } }, list);
+}
+
+function viewPollNew() {
+  if (!state.user) {
+    go('#/login');
+    return el('div', {});
+  }
+  const errorBox = el('div', { class: 'form-error', role: 'alert' });
+  const title = el('input', { class: 'input', type: 'text', required: true, placeholder: 'What should we decide?', maxlength: '120' });
+  const description = el('textarea', { class: 'textarea', rows: '3', placeholder: 'A little context (optional)' });
+  const optionsBox = el('div', { class: 'stack' });
+  const addOption = (value = '') => {
+    const input = el('input', { class: 'input', type: 'text', value, placeholder: 'Option', maxlength: '80' });
+    optionsBox.append(input);
+    return input;
+  };
+  const first = addOption();
+  addOption();
+  const addBtn = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Add option');
+  addBtn.addEventListener('click', () => addOption());
+  const closesAt = el('input', { class: 'input', type: 'datetime-local' });
+  const visibility = el('select', { class: 'select' },
+    el('option', { value: 'after_vote' }, 'Show results after someone votes'),
+    el('option', { value: 'always' }, 'Show results immediately'),
+    el('option', { value: 'after_close' }, 'Show results when the poll closes'),
+    el('option', { value: 'hidden' }, 'Keep results private'),
+  );
+  const submit = el('button', { class: 'btn btn-primary btn-block btn-lg', type: 'submit' }, 'Create and get share link');
+  const share = el('div', { class: 'card stack', hidden: true });
+
+  const form = el('form', { class: 'stack', novalidate: true },
+    errorBox,
+    el('div', { class: 'field' }, el('label', {}, 'Question'), title),
+    el('div', { class: 'field' }, el('label', {}, 'Description'), description),
+    el('div', { class: 'field' }, el('label', {}, 'Options'), optionsBox, addBtn),
+    el('div', { class: 'row', style: { gap: '12px' } },
+      el('div', { class: 'field grow' }, el('label', {}, 'Closes at (optional)'), closesAt),
+      el('div', { class: 'field grow' }, el('label', {}, 'Results visibility'), visibility),
+    ),
+    submit,
+  );
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    errorBox.textContent = '';
+    setBusy(submit, true, 'Creating…');
+    try {
+      const options = [...optionsBox.querySelectorAll('input')].map((input) => input.value.trim()).filter(Boolean);
+      const body = {
+        title: title.value, description: description.value, options,
+        resultsVisibility: visibility.value,
+      };
+      if (closesAt.value) body.closesAt = new Date(closesAt.value).toISOString();
+      const data = await api('POST', '/api/polls', body);
+      share.hidden = false;
+      share.replaceChildren(
+        el('p', { class: 'eyebrow' }, 'Your poll is live'),
+        el('h2', { style: { fontSize: '1.3rem' } }, data.poll.title),
+        el('p', { class: 'small muted' }, 'Copy this link and share it with your audience. No sign-in is required to vote.'),
+        el('div', { class: 'row', style: { gap: '8px' } },
+          el('input', { class: 'input grow', readOnly: true, value: data.shareLink }),
+          el('button', {
+            class: 'btn btn-outline', type: 'button',
+            onclick: async () => {
+              try { await navigator.clipboard.writeText(data.shareLink); toast('Link copied.', 'success'); }
+              catch (_) { toast('Select and copy the link above.', 'error'); }
+            },
+          }, 'Copy link'),
+        ),
+        el('a', { class: 'btn btn-primary', href: '/p/' + data.poll.slug }, 'Open your poll'),
+      );
+      share.scrollIntoView({ behavior: 'smooth' });
+    } catch (error) {
+      errorBox.textContent = error.message;
+    } finally {
+      setBusy(submit, false);
+    }
+  });
+
+  return el('div', { class: 'stack', style: { maxWidth: '720px', margin: '32px auto' } },
+    el('h1', { style: { fontSize: '2rem' } }, 'Create a poll'),
+    el('p', { class: 'muted' }, 'One question, a few options, and a link anyone can vote from.'),
+    el('div', { class: 'card' }, form), share,
+  );
+}
+
+async function viewPoll(slug) {
+  const panel = el('div', { class: 'card stack' }, el('p', { class: 'muted' }, 'Loading poll…'));
+  try {
+    const data = await api('GET', '/api/polls/' + encodeURIComponent(slug));
+    const poll = data.poll;
+    const options = data.candidates || [];
+    const chosen = el('input', { type: 'radio', name: 'poll-option', value: '', style: { display: 'none' } });
+    const optionNodes = options.map((option) => {
+      const input = el('input', { type: 'radio', name: 'poll-option', value: String(option.id), id: 'opt-' + option.id });
+      input.addEventListener('change', () => { chosen.value = input.value; });
+      return el('label', { class: 'option-row', for: 'opt-' + option.id, style: { display: 'flex', gap: '10px', alignItems: 'center', padding: '12px', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius)', cursor: 'pointer' } }, input, el('span', {}, option.name));
+    });
+    const voteBtn = el('button', { class: 'btn btn-primary btn-block btn-lg', type: 'button' }, 'Cast your vote');
+    const errorBox = el('div', { class: 'form-error', role: 'alert' });
+
+    const showResult = (receipt) => {
+      panel.replaceChildren(
+        el('p', { class: 'eyebrow' }, poll.kind === 'poll' ? 'Poll · you have voted' : 'Election · you have voted'),
+        el('h1', { style: { fontSize: '2rem' } }, poll.title),
+        el('div', { class: 'card stack' },
+          el('p', { class: 'eyebrow' }, 'Ballot recorded'),
+          el('h2', { style: { fontSize: '1.3rem' } }, 'Your vote is counted'),
+          receipt ? el('p', {}, 'Receipt: ', el('span', { class: 'mono' }, receipt)) : null,
+          el('p', { class: 'small muted' }, 'Keep the receipt to verify your ballot without revealing your choice.'),
+          el('a', { class: 'btn btn-outline', href: '/verify' }, 'Verify a receipt'),
+        ),
+      );
+    };
+
+    voteBtn.addEventListener('click', async () => {
+      errorBox.textContent = '';
+      if (!chosen.value) { errorBox.textContent = 'Choose an option first.'; return; }
+      setBusy(voteBtn, true, 'Counting…');
+      try {
+        const res = await api('POST', '/api/polls/' + encodeURIComponent(slug) + '/vote', { candidateId: Number(chosen.value) });
+        showResult(res.receipt);
+      } catch (error) { errorBox.textContent = error.message; }
+      finally { setBusy(voteBtn, false); }
+    });
+
+    if (poll.status !== 'open') {
+      panel.replaceChildren(
+        el('p', { class: 'eyebrow' }, 'Poll'),
+        el('h1', { style: { fontSize: '2rem' } }, poll.title),
+        el('p', { class: 'muted' }, 'This poll is closed.'),
+        el('a', { class: 'btn btn-outline', href: '/api/polls/' + encodeURIComponent(slug) + '/results' }, 'View results'),
+      );
+    } else if (poll.hasVoted) {
+      showResult(null);
+    } else {
+      panel.replaceChildren(
+        el('p', { class: 'eyebrow' }, 'Poll'),
+        el('h1', { style: { fontSize: '2rem' } }, poll.title),
+        poll.description ? el('p', { class: 'muted' }, poll.description) : null,
+        el('div', { class: 'stack' }, ...optionNodes),
+        errorBox, voteBtn,
+        el('p', { class: 'small muted' }, 'One vote per browser. Voting is anonymous.'),
+      );
+    }
+  } catch (error) {
+    panel.replaceChildren(el('p', { class: 'form-error' }, error.message));
+  }
+  return el('div', { class: 'stack', style: { maxWidth: '720px', margin: '32px auto' } }, panel);
+}
+
+/* --------------------------------------------------------------------------
    Organizations
    -------------------------------------------------------------------------- */
 

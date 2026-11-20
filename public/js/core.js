@@ -790,6 +790,7 @@ function renderHeader() {
     ),
   );
 
+  actions.append(el('a', { class: 'btn btn-ghost btn-sm', href: '/polls/new' }, 'Create a poll'));
   if (state.user) {
     actions.append(
       notificationBell(),
@@ -927,6 +928,8 @@ function clearTimers() {
 async function viewFor(parts) {
   if (!parts.length) return viewHome();
   const [root, sub, id] = parts;
+  if (root === 'p' && sub) return viewPoll(sub);
+  if (root === 'polls') return sub === 'new' ? viewPollNew() : viewPolls();
   if (root === 'election' && sub) return viewElection(sub);
   if (root === 'verify') return viewVerify();
   if (root === 'login') return viewLogin();
@@ -1029,6 +1032,7 @@ let commandPaletteNode = null;
 function paletteItems() {
   const items = [
     { label: 'Home', hint: 'Browse elections', path: '/' },
+    { label: 'Create a poll', hint: 'Share a public vote', path: '/polls/new' },
     { label: 'Verify a ballot', hint: 'Check a receipt', path: '/verify' },
     { label: 'Help & FAQ', hint: 'Support', path: '/help' },
     { label: 'Privacy', hint: 'Legal', path: '/privacy' },

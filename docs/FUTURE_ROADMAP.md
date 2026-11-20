@@ -21,7 +21,7 @@ This document plans the next waves of work. Everything already shipped (Phases 1
 | UI Wave E (visual refresh concepts) | ✅ Editorial hero mosaic, glass-card borders, motion system (reduced-motion aware), control-room dashboard |
 | Accessibility | ✅ axe-core sweep: 0 WCAG 2.0/2.1 A+AA violations on all 12 audited routes |
 
-**Verification:** 44/44 smoke checks (including organization tenancy), zero console errors, zero axe violations, all routes browser-verified.
+**Verification:** 47/47 smoke checks (organization tenancy + public polls), zero console errors, zero axe violations, all routes browser-verified.
 
 ---
 
@@ -243,7 +243,7 @@ This document plans the next waves of work. Everything already shipped (Phases 1
 |---|---|
 | axe-core violations | 0 on all routes |
 | Lighthouse (Perf / A11y / BP / SEO) | ≥95 / 100 / 100 / 100 |
-| Smoke checks | 44/44 on every CI run |
+| Smoke checks | 47/47 on every CI run |
 | Dark/light parity | 100% of views |
 | Keyboard-complete flows | 100% of core flows |
 | Component duplication | 0 one-off tables/cards |

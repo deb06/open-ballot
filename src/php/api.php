@@ -135,6 +135,158 @@ function api_routes(): array
     });
 
     /* -------------------------------------------------------------- */
+    /* Public polls (same engine, shareable link, anonymous voters)     */
+    /* -------------------------------------------------------------- */
+
+    $add('POST', '/api/polls', static function (array $ctx): void {
+        if ($ctx['user'] === null) {
+            fail(401, 'Sign in to create a poll.', 'auth_required');
+        }
+        ensure_limit('poll-create:' . $ctx['ip'], 10, 3600, 'Too many polls created. Try again later.');
+        $body = $ctx['body'];
+        $title = require_text($body['title'] ?? null, 3, 120, 'Question');
+        $description = optional_text($body['description'] ?? null, 2000, 'Description');
+        $options = $body['options'] ?? null;
+        if (!is_array($options)) {
+            fail(400, 'Provide at least two options.', 'invalid_options');
+        }
+        $options = array_values(array_filter(array_map('trim', $options), static fn ($v): bool => is_string($v) && $v !== ''));
+        if (count($options) < 2 || count($options) > 12) {
+            fail(400, 'Provide between 2 and 12 options.', 'invalid_options');
+        }
+        foreach ($options as $option) {
+            if (mb_strlen($option) > 80) {
+                fail(400, 'Each option must be 80 characters or fewer.', 'invalid_options');
+            }
+        }
+        $closesAt = array_key_exists('closesAt', $body) ? parse_date($body['closesAt'], 'Closing time') : null;
+        if ($closesAt !== null && strtotime($closesAt) <= time()) {
+            fail(400, 'Closing time must be in the future.', 'invalid_date');
+        }
+        $visibility = array_key_exists('resultsVisibility', $body)
+            ? one_of($body['resultsVisibility'], ['always', 'after_vote', 'after_close', 'hidden'])
+            : 'after_vote';
+
+        $ballotType = in_array($body['ballotType'] ?? 'single', ['single', 'ranked'], true)
+            ? (string) $body['ballotType'] : 'single';
+        $base = strtolower((string) preg_replace('/[^a-z0-9]+/', '-', $title));
+        $base = trim($base, '-');
+        $slug = substr($base !== '' ? $base : 'poll', 0, 60) . '-' . bin2hex(random_bytes(3));
+        $now = now_iso();
+        $pollId = 0;
+        db_transaction(static function () use (&$pollId, $title, $description, $visibility, $closesAt, $slug, $ballotType, $body, $ctx, $now): void {
+            $pollId = db_insert(
+                'INSERT INTO elections
+                   (title, description, status, results_visibility, max_choices, ballot_type, kind, slug, allow_anonymous, opens_at, closes_at, created_by, organization_id, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, 1, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)',
+                [
+                    $title,
+                    $description,
+                    'open',
+                    $visibility,
+                    $ballotType,
+                    'poll',
+                    $slug,
+                    iso_to_sql($now),
+                    $closesAt === null ? null : iso_to_sql($closesAt),
+                    (int) $ctx['user']['id'],
+                    user_organization_id($ctx['user']),
+                    iso_to_sql($now),
+                    iso_to_sql($now),
+                ],
+            );
+            $position = 0;
+            foreach ($body['options'] as $option) {
+                $option = trim((string) $option);
+                if ($option === '') {
+                    continue;
+                }
+                db_insert(
+                    'INSERT INTO candidates (election_id, name, party, bio, position, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                    [$pollId, $option, '', '', $position++, iso_to_sql($now)],
+                );
+            }
+        });
+        audit((int) $ctx['user']['id'], 'poll.create', ['pollId' => $pollId, 'slug' => $slug], $ctx['ip']);
+        $row = get_election($pollId);
+        send_json(201, [
+            'poll' => serialize_election($row, $ctx['user']),
+            'candidates' => poll_candidates($pollId),
+            'shareLink' => env_value('APP_URL', 'http://127.0.0.1:3000') . '/p/' . $slug,
+        ]);
+    });
+
+    $add('GET', '/api/polls/mine', static function (array $ctx): void {
+        if ($ctx['user'] === null) {
+            fail(401, 'Sign in to see your polls.', 'auth_required');
+        }
+        $rows = db_all("SELECT * FROM elections WHERE kind = 'poll' AND created_by = ? ORDER BY created_at DESC", [(int) $ctx['user']['id']]);
+        send_json(200, ['polls' => array_map(static fn (array $r): array => serialize_election($r, $ctx['user']), $rows)]);
+    });
+
+    $add('GET', '/api/polls/:slug', static function (array $ctx): void {
+        $row = db_one("SELECT * FROM elections WHERE slug = ? AND kind = 'poll'", [$ctx['params']['slug']]);
+        if ($row === null) {
+            fail(404, 'Poll not found.', 'not_found');
+        }
+        $token = voter_token_for((int) $row['id']);
+        $voted = db_one('SELECT id FROM participation WHERE election_id = ? AND voter_token = ?', [(int) $row['id'], $token]) !== null;
+        $payload = serialize_election($row, null);
+        $payload['hasVoted'] = $voted;
+        send_json(200, ['poll' => $payload, 'candidates' => poll_candidates((int) $row['id'])]);
+    });
+
+    $add('POST', '/api/polls/:slug/vote', static function (array $ctx): void {
+        ensure_limit('poll-vote:' . $ctx['ip'], 30, 3600, 'Too many votes. Please wait a moment.');
+        $row = db_one("SELECT * FROM elections WHERE slug = ? AND kind = 'poll'", [$ctx['params']['slug']]);
+        if ($row === null) {
+            fail(404, 'Poll not found.', 'not_found');
+        }
+        if (effective_status($row) !== 'open') {
+            fail(403, 'This poll is no longer accepting votes.', 'closed');
+        }
+        $candidateId = (int) ($ctx['body']['candidateId'] ?? 0);
+        if (db_one('SELECT id FROM candidates WHERE id = ? AND election_id = ?', [$candidateId, (int) $row['id']]) === null) {
+            fail(400, 'Choose an option from this poll.', 'invalid_option');
+        }
+        $token = voter_token_for((int) $row['id']);
+        $code = new_receipt_code();
+        $hash = receipt_hash($code);
+        $voteId = random_token(16);
+        try {
+            db_transaction(static function () use ($row, $candidateId, $token, $voteId, $hash): void {
+                db_exec(
+                    'INSERT INTO participation (election_id, voter_id, voter_token, voted_at) VALUES (?, NULL, ?, ?)',
+                    [(int) $row['id'], $token, iso_to_sql(now_iso())],
+                );
+                db_exec(
+                    'INSERT INTO votes (id, election_id, candidate_id, receipt_hash) VALUES (?, ?, ?, ?)',
+                    [$voteId, (int) $row['id'], $candidateId, $hash],
+                );
+                db_exec('INSERT INTO vote_choices (vote_id, candidate_id, rank) VALUES (?, ?, 0)', [$voteId, $candidateId]);
+            });
+        } catch (PDOException $error) {
+            if (db_is_duplicate($error)) {
+                fail(409, 'You have already voted in this poll.', 'already_voted');
+            }
+            throw $error;
+        }
+        audit(null, 'poll.vote', ['pollId' => (int) $row['id']], $ctx['ip']);
+        send_json(201, ['receipt' => $code, 'poll' => serialize_election(get_election((int) $row['id']), null)]);
+    });
+
+    $add('GET', '/api/polls/:slug/results', static function (array $ctx): void {
+        $row = db_one("SELECT * FROM elections WHERE slug = ? AND kind = 'poll'", [$ctx['params']['slug']]);
+        if ($row === null) {
+            fail(404, 'Poll not found.', 'not_found');
+        }
+        if (!results_are_visible($row, null, false)) {
+            fail(403, 'Results are not public for this poll yet.', 'results_hidden');
+        }
+        send_json(200, ['poll' => serialize_election($row, null), 'results' => election_results((int) $row['id'])]);
+    });
+
+    /* -------------------------------------------------------------- */
     /* Organizations                                                   */
     /* -------------------------------------------------------------- */
 
@@ -2415,7 +2567,8 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
                 || $pathname === '/api/organizations/register'
                 || $pathname === '/api/auth/forgot-password' || $pathname === '/api/auth/reset-password'
                 || $pathname === '/api/auth/verify-email' || $pathname === '/api/auth/mfa/challenge'
-                || preg_match('#^/api/elections/\d+/results/verify$#', $pathname) === 1;
+                || preg_match('#^/api/elections/\d+/results/verify$#', $pathname) === 1
+                || preg_match('#^/api/polls/[^/]+/vote$#', $pathname) === 1;
             if (!$exempt) {
                 if ($session === null) {
                     throw new HttpError(401, 'Sign in to continue.', 'auth_required');

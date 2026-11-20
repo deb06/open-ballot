@@ -57,6 +57,17 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
 - Verified live: org register → org read → domain member auto-join → scoped election create/list →
   platform endpoint denied (403). Temporary test org was deleted afterwards.
 
+## Public polls (individuals, no organization needed)
+- Any signed-in user creates a poll via `POST /api/polls` — same election engine with `kind='poll'`, a
+  unique `slug`, `allow_anonymous=1`, and options stored as candidates.
+- Share link `/p/<slug>` is returned at creation. Anyone with the link votes without an account.
+- One vote per browser: `voter_token_for()` sets an `ob_vote_<id>` cookie and stores only a keyed hash in
+  `participation.voter_token` (with `voter_id = NULL`). Never store the raw cookie value.
+- Poll endpoints: `GET /api/polls/:slug`, `POST /api/polls/:slug/vote`, `GET /api/polls/:slug/results`,
+  `GET /api/polls/mine`. Pages: `/polls`, `/polls/new`, `/p/:slug`.
+- `participation.voter_id` is nullable (org elections still use it); keep the anonymous and account
+  flows separate so ballot privacy is preserved.
+
 ## Visual identity — anti-"AI slop" (important, already fixed)
 - Flat institutional brass accent `#d9a441`. NO violet `#8b7bff`, NO violet→cyan gradient.
 - Solid page background, hairline borders, no glass overlays or big shadows, radius 10px.
@@ -65,7 +76,7 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
 - Favicon, PWA icons and OG image regenerated to match. Preserve this direction.
 
 ## Verification (all green)
-- `npm test` → 44/44 smoke checks (includes 6 organization tenancy checks).
+- `npm test` → 47/47 smoke checks (6 organization tenancy + 3 public-poll checks).
 - axe-core: 0 WCAG A/AA violations on 12 audited routes in BOTH themes.
 - Zero browser console errors.
 - CI: `scripts/lib.ps1` pins PHP 8.5.13 + SHA256 (8.5.12 URL 404s — do not downgrade).

@@ -54,7 +54,10 @@ CREATE TABLE IF NOT EXISTS elections (
   created_at         TIMESTAMP(3) NOT NULL,
   updated_at         TIMESTAMP(3) NOT NULL,
   merkle_root        VARCHAR(64) NULL,
-  organization_id    INT NULL REFERENCES organizations(id) ON DELETE SET NULL
+  organization_id    INT NULL REFERENCES organizations(id) ON DELETE SET NULL,
+  kind               VARCHAR(10) NOT NULL DEFAULT 'election' CHECK (kind IN ('election','poll')),
+  slug               VARCHAR(80) NULL UNIQUE,
+  allow_anonymous    SMALLINT NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_elections_status ON elections(status);
 CREATE INDEX IF NOT EXISTS idx_elections_created ON elections(created_at);
@@ -87,9 +90,11 @@ CREATE INDEX IF NOT EXISTS idx_vote_choices_candidate ON vote_choices(candidate_
 CREATE TABLE IF NOT EXISTS participation (
   id          SERIAL PRIMARY KEY,
   election_id INT NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
-  voter_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  voter_id    INT NULL REFERENCES users(id) ON DELETE CASCADE,
+  voter_token CHAR(64) NULL,
   voted_at    TIMESTAMP(3) NOT NULL,
-  UNIQUE (election_id, voter_id)
+  UNIQUE (election_id, voter_id),
+  UNIQUE (election_id, voter_token)
 );
 CREATE INDEX IF NOT EXISTS idx_participation_election ON participation(election_id);
 CREATE INDEX IF NOT EXISTS idx_participation_voter ON participation(voter_id);

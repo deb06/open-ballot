@@ -367,6 +367,8 @@ function serialize_election(array $row, ?array $viewer): array
         'resultsVisibility' => $row['results_visibility'],
         'maxChoices' => (int) ($row['max_choices'] ?? 1),
         'ballotType' => (string) ($row['ballot_type'] ?? 'single'),
+        'kind' => (string) ($row['kind'] ?? 'election'),
+        'slug' => $row['slug'] ?? null,
         'brandColor' => $row['brand_color'] ?? null,
         'logoUrl' => $row['logo_url'] ?? null,
         'opensAt' => sql_to_iso($row['opens_at']),
@@ -412,6 +414,33 @@ function public_user(array $row): array
         'platformAdmin' => (string) ($row['role'] ?? '') === 'admin',
         'orgAdmin' => (string) ($row['role'] ?? '') === 'org_admin',
     ];
+}
+
+/* ------------------------------------------------------------------ */
+/* Public polls                                                         */
+/* ------------------------------------------------------------------ */
+
+function poll_candidates(int $pollId): array
+{
+    $rows = db_all('SELECT id, name, party, bio FROM candidates WHERE election_id = ? ORDER BY position ASC, id ASC', [$pollId]);
+    return array_map(static fn (array $r): array => [
+        'id' => (int) $r['id'],
+        'name' => (string) $r['name'],
+        'party' => (string) $r['party'],
+        'bio' => (string) $r['bio'],
+    ], $rows);
+}
+
+/** Stable, poll-scoped anonymous voter identity stored only as a keyed hash. */
+function voter_token_for(int $electionId): string
+{
+    $name = 'ob_vote_' . $electionId;
+    $token = $_COOKIE[$name] ?? '';
+    if (!is_string($token) || preg_match('/^[a-f0-9]{64}$/', $token) !== 1) {
+        $token = random_token(32);
+        set_cookie($name, $token, 60 * 60 * 24 * 365);
+    }
+    return hmac('poll-voter:' . $electionId . ':' . $token);
 }
 
 /* ------------------------------------------------------------------ */

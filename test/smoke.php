@@ -103,6 +103,8 @@ final class Client
 {
     public string $base;
     public string $cookie = '';
+    /** @var array<int,string> */
+    public array $extraCookies = [];
     public ?string $csrf = null;
 
     public function __construct(string $base)
@@ -121,8 +123,9 @@ final class Client
             $headers[] = 'Content-Type: application/json';
             $raw = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         }
-        if ($this->cookie !== '') {
-            $headers[] = 'Cookie: ' . $this->cookie;
+        $cookies = array_filter(array_merge([$this->cookie], $this->extraCookies));
+        if ($cookies !== []) {
+            $headers[] = 'Cookie: ' . implode('; ', $cookies);
         }
         if (($options['csrf'] ?? true) !== false && $this->csrf !== null && $method !== 'GET') {
             $headers[] = 'X-CSRF-Token: ' . ($options['csrfToken'] ?? $this->csrf);
@@ -134,6 +137,8 @@ final class Client
                 $cookie = explode(';', trim(substr($line, strlen('Set-Cookie:'))))[0];
                 if (str_starts_with($cookie, 'ob_session=')) {
                     $this->cookie = $cookie;
+                } elseif (str_starts_with($cookie, 'ob_vote_')) {
+                    $this->extraCookies[] = $cookie;
                 }
             }
         }
@@ -615,6 +620,7 @@ try {
             'password' => 'NewVoterPass#2',
         ]);
         assert_same(200, $relogin['status']);
+        $voter->csrf = (string) $relogin['data']['csrf'];
     });
 
     step('rejects malformed JSON bodies', static function () use ($base): void {
@@ -722,6 +728,50 @@ try {
         assert_same(200, $res['status'], $res['text']);
         $ids = array_column($res['data']['organizations'], 'id');
         assert_true(in_array($orgId, $ids, true), 'Registered organization missing from platform list.');
+    });
+
+    /* Public polls */
+
+    $pollSlug = '';
+    $pollOptionId = 0;
+    step('creates a shareable public poll', static function () use ($voter, &$pollSlug, &$pollOptionId): void {
+        $res = $voter->request('POST', '/api/polls', [
+            'title' => 'Best team lunch spot?',
+            'description' => 'One quick question for everyone.',
+            'options' => ['Cafeteria', 'Food truck', 'Pizza place'],
+            'resultsVisibility' => 'always',
+        ]);
+        assert_same(201, $res['status'], $res['text']);
+        assert_same('poll', $res['data']['poll']['kind']);
+        $pollSlug = (string) $res['data']['poll']['slug'];
+        $pollOptionId = (int) ($res['data']['candidates'][0]['id'] ?? 0);
+        assert_true(str_contains($res['data']['shareLink'], '/p/' . $pollSlug));
+    });
+
+    step('lists polls created by the signed-in user', static function () use ($voter, $pollSlug): void {
+        $res = $voter->request('GET', '/api/polls/mine');
+        assert_same(200, $res['status'], $res['text']);
+        $slugs = array_column($res['data']['polls'], 'slug');
+        assert_true(in_array($pollSlug, $slugs, true), 'Created poll missing from owner list.');
+    });
+
+    step('lets an anonymous visitor vote once with a share link', static function () use ($base, $pollSlug, $pollOptionId): void {
+        $visitor = new Client($base);
+        $view = $visitor->request('GET', '/api/polls/' . $pollSlug);
+        assert_same(200, $view['status'], $view['text']);
+        assert_same(false, $view['data']['poll']['hasVoted']);
+
+        $vote = $visitor->request('POST', '/api/polls/' . $pollSlug . '/vote', ['candidateId' => $pollOptionId]);
+        assert_same(201, $vote['status'], $vote['text']);
+        assert_true(!empty($vote['data']['receipt']), 'Expected a receipt code.');
+
+        $again = $visitor->request('POST', '/api/polls/' . $pollSlug . '/vote', ['candidateId' => $pollOptionId]);
+        assert_same(409, $again['status'], 'The same browser must not vote twice.');
+
+        $after = $visitor->request('GET', '/api/polls/' . $pollSlug);
+        assert_same(true, $after['data']['poll']['hasVoted']);
+        $results = $visitor->request('GET', '/api/polls/' . $pollSlug . '/results');
+        assert_same(200, $results['status'], $results['text']);
     });
 
     echo "\n  {$passed} checks passed.\n\n";
