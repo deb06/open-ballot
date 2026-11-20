@@ -32,9 +32,6 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(circle at 50% 0%, black, transparent 75%);
   z-index: -1;
 }
 
@@ -51,15 +48,25 @@ h3 { font-size: 1.2rem; }
 h4 { font-size: 1rem; }
 
 /* Editorial display type for public-facing pages only. */
-body[data-area="public"] h1 {
+body[data-area="public"] h1,
+body[data-area="public"] h2,
+body[data-area="public"] h3 {
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: -0.035em;
-  line-height: 1.05;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
-body[data-area="public"] h1 em {
+body[data-area="public"] h1 {
+  font-size: clamp(2.6rem, 5vw, 4rem);
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+}
+body[data-area="public"] h2 { font-size: clamp(1.7rem, 3vw, 2.2rem); }
+body[data-area="public"] h3 { font-size: 1.35rem; }
+body[data-area="public"] h1 em,
+body[data-area="public"] h2 em {
   font-style: italic;
-  color: var(--accent-bright);
+  color: var(--accent);
 }
 
 p { margin: 0 0 1em; color: var(--text-secondary); }
@@ -176,7 +183,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   display: grid;
   place-items: center;
   border-radius: 11px;
-  background: linear-gradient(145deg, rgba(217, 164, 65, 0.22), rgba(217, 164, 65, 0.12));
+  background: var(--accent-soft);
   border: 1px solid rgba(217, 164, 65, 0.35);
   color: var(--accent-bright);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
@@ -223,7 +230,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   bottom: 2px;
   height: 2px;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: var(--accent);
 }
 
 .header-actions {
@@ -277,7 +284,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-size: 1.45rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  background: linear-gradient(145deg, rgba(217, 164, 65, 0.25), rgba(217, 164, 65, 0.14));
+  background: var(--accent-soft);
   border: 1px solid rgba(217, 164, 65, 0.35);
   color: #dcd6ff;
   flex-shrink: 0;
@@ -371,7 +378,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
    -------------------------------------------------------------------------- */
 
 .card {
-  background: linear-gradient(160deg, var(--panel-strong), rgba(255, 255, 255, 0.018));
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: clamp(20px, 3vw, 28px);
@@ -423,7 +430,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   width: 22px;
   height: 2px;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: var(--accent);
 }
 
 .divider {
@@ -448,10 +455,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hero h1 { margin-bottom: 18px; }
 .hero h1 em {
   font-style: normal;
-  background: linear-gradient(100deg, #f0c978 10%, #d9a441 90%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--accent);
 }
 .hero-sub {
   font-size: clamp(1.02rem, 1.6vw, 1.14rem);
@@ -468,9 +472,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   gap: 14px;
   padding: 26px;
   border-radius: var(--radius-lg);
-  background:
-    radial-gradient(120% 120% at 100% 0%, rgba(217, 164, 65, 0.22), transparent 60%),
-    linear-gradient(160deg, var(--panel-strong), var(--panel));
+  background: var(--surface-2);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow);
   overflow: hidden;
@@ -480,8 +482,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   position: absolute;
   inset: auto -30% -55% 30%;
   height: 260px;
-  background: radial-gradient(closest-side, rgba(217, 164, 65, 0.22), transparent);
-  pointer-events: none;
+  display: none;
 }
 .hero-art-head {
   display: flex;
@@ -511,7 +512,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hero-art-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: var(--accent);
   animation: grow 1.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -572,7 +573,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   gap: 14px;
   padding: 22px;
   border-radius: var(--radius);
-  background: linear-gradient(165deg, var(--panel-strong), rgba(255, 255, 255, 0.015));
+  background: var(--panel);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-sm);
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
@@ -586,7 +587,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   inset: 0 auto auto 0;
   width: 100%;
   height: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: var(--accent);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -820,7 +821,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .candidate:has(input:checked) {
   border-color: rgba(217, 164, 65, 0.65);
-  background: linear-gradient(140deg, rgba(217, 164, 65, 0.13), rgba(217, 164, 65, 0.05));
+  background: var(--accent-soft);
   box-shadow: 0 0 0 3px rgba(217, 164, 65, 0.12);
 }
 .candidate:has(input:checked) .choice { border-color: var(--accent-bright); }
@@ -840,7 +841,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   place-items: center;
   font-weight: 700;
   font-size: 1rem;
-  background: linear-gradient(145deg, rgba(217, 164, 65, 0.22), rgba(217, 164, 65, 0.12));
+  background: var(--accent-soft);
   border: 1px solid rgba(217, 164, 65, 0.28);
   color: #d9d2ff;
   flex-shrink: 0;
@@ -891,12 +892,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .bar-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: var(--accent);
   transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
   min-width: 0;
 }
 .result-row.leader .bar-fill {
-  background: linear-gradient(90deg, #f0c978, #d9a441);
+  background: var(--accent);
   box-shadow: 0 0 18px rgba(217, 164, 65, 0.5);
 }
 .result-row.leader .result-name::after {
@@ -1039,8 +1040,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   gap: 16px;
   padding: clamp(20px, 3vw, 28px);
   border-radius: var(--radius);
-  background:
-    radial-gradient(120% 120% at 100% 0%, rgba(52, 211, 153, 0.12), transparent 60%),
+  background: var(--surface-2);
+  /* flat surface */
     var(--panel);
   border: 1px solid rgba(52, 211, 153, 0.3);
 }
@@ -1257,7 +1258,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   position: absolute;
   inset: 0 0 auto;
   height: 3px;
-  background: linear-gradient(90deg, var(--brand-400), var(--accent));
+  background: var(--accent);
 }
 .election-hero-title {
   margin: 14px 0 6px;
@@ -1313,7 +1314,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
   position: absolute;
   inset: auto -20% -60% 40%;
   height: 120px;
-  background: radial-gradient(closest-side, rgba(217, 164, 65, 0.16), transparent);
 }
 .stat-card .stat-value { font-size: 1.7rem; }
 .stat-card .stat-label { display: flex; align-items: center; gap: 6px; }
@@ -1605,7 +1605,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .danger-zone {
   border-color: rgba(248, 113, 113, 0.28);
-  background: linear-gradient(165deg, rgba(248, 113, 113, 0.07), transparent);
+  background: var(--danger-soft);
 }
 
 .kbd {
@@ -1735,16 +1735,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 [data-theme="light"] .admin-nav button.active,
 [data-theme="light"] .admin-nav a.active {
-  background: linear-gradient(135deg, var(--brand-300), var(--accent));
+  background: var(--accent);
   color: #0b0716;
 }
 
 [data-theme="light"] .site-header { box-shadow: 0 1px 0 rgba(16, 24, 40, 0.04); }
 
 [data-theme="light"] .hero-art {
-  background:
-    radial-gradient(120% 120% at 100% 0%, rgba(122, 102, 242, 0.16), transparent 60%),
-    linear-gradient(160deg, #ffffff, #f4f6fb);
+  background: var(--surface-1);
 }
 
 [data-theme="light"] .receipt-code { color: var(--brand-700); }

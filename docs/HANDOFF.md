@@ -82,6 +82,14 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
   24h, then sets `poll_subscriptions.reminded_at` so it is not repeated. Point an external scheduler at it.
 - `send_mail()` writes to `data/mail.log` when no local MTA exists and counts that as delivered.
 
+## Visual identity — current direction (civic editorial + Swiss grid)
+- Public: editorial serif hierarchy (h1/h2/h3), warm paper/ink surfaces, flat brass accent `#d9a441`,
+  hairline rules, restrained radii (3/5/8/10/12px), no gradients or shadows.
+- Admin: same neutral surfaces, denser control-room layout, mono labels for metadata.
+- Dark surfaces are warm near-black (`#0c0c0a`), light surfaces warm paper (`#f5f3ec`).
+- Functional gradients remain only where they carry meaning (progress donut, sparklines, skeleton shimmer).
+- 0 axe WCAG A/AA violations in both themes after this refinement.
+
 ## Visual identity — anti-"AI slop" (important, already fixed)
 - Flat institutional brass accent `#d9a441`. NO violet `#8b7bff`, NO violet→cyan gradient.
 - Solid page background, hairline borders, no glass overlays or big shadows, radius 10px.

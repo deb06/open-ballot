@@ -4,7 +4,7 @@
    Runs before first paint to avoid a flash of the wrong theme, and keeps the
    browser chrome (theme-color) in sync. */
 (function () {
-  var THEME_COLORS = { dark: '#0b0e14', light: '#f6f7fb' };
+  var THEME_COLORS = { dark: '#0c0c0a', light: '#f5f3ec' };
 
   function resolve(theme) {
     if (theme === 'system') {

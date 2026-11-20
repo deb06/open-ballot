@@ -60,13 +60,13 @@
   /* --------------------------------------------------------------------------
      Surfaces (dark theme — default)
      -------------------------------------------------------------------------- */
-  --bg: #080b12;
-  --bg-elevated: #0d1220;
-  --surface-1: #0b0e17;
-  --surface-2: #11172a;
-  --surface-3: #171f36;
-  --panel: rgba(255, 255, 255, 0.035);
-  --panel-strong: rgba(255, 255, 255, 0.055);
+  --bg: #0c0c0a;
+  --bg-elevated: #11110e;
+  --surface-1: #121210;
+  --surface-2: #191914;
+  --surface-3: #211f19;
+  --panel: rgba(255, 255, 255, 0.028);
+  --panel-strong: rgba(255, 255, 255, 0.05);
   --panel-hover: rgba(255, 255, 255, 0.075);
 
   --line: rgba(255, 255, 255, 0.09);
@@ -74,20 +74,20 @@
   --line-hover: rgba(255, 255, 255, 0.24);
 
   /* component surfaces */
-  --header-bg: rgba(8, 11, 18, 0.78);
-  --nav-bg: #111726;
-  --input-bg: rgba(4, 6, 12, 0.55);
-  --input-bg-focus: rgba(4, 6, 12, 0.8);
-  --inset-bg: rgba(4, 6, 12, 0.6);
-  --backdrop: rgba(4, 6, 12, 0.72);
-  --modal-bg: linear-gradient(165deg, #131a2b, #0d1220);
-  --surface-gradient: linear-gradient(160deg, var(--panel-strong), rgba(255, 255, 255, 0.018));
+  --header-bg: rgba(12, 12, 10, 0.86);
+  --nav-bg: #171713;
+  --input-bg: rgba(0, 0, 0, 0.32);
+  --input-bg-focus: rgba(0, 0, 0, 0.5);
+  --inset-bg: rgba(0, 0, 0, 0.34);
+  --backdrop: rgba(6, 6, 4, 0.74);
+  --modal-bg: #161612;
+  --surface-gradient: var(--panel);
 
-  --text: #e9edf7;
-  --text-secondary: #b6c0d4;
-  --text-muted: #8b96ad;
-  --text-faint: #5d6880;
-  --text-inverse: #0a0d16;
+  --text: #f2efe6;
+  --text-secondary: #c8c4b8;
+  --text-muted: #9b9689;
+  --text-faint: #6b675d;
+  --text-inverse: #0c0c0a;
   /* legacy aliases used by styles.css */
   --muted: var(--text-muted);
   --faint: var(--text-faint);
@@ -117,20 +117,20 @@
   /* --------------------------------------------------------------------------
      Radius
      -------------------------------------------------------------------------- */
-  --radius-xs: 6px;
-  --radius-sm: 11px;
-  --radius: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 22px;
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
   --radius-pill: 999px;
 
   /* --------------------------------------------------------------------------
      Shadows / elevation
      -------------------------------------------------------------------------- */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-sm: 0 10px 30px -14px rgba(0, 0, 0, 0.6);
-  --shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 18px 44px -20px rgba(0, 0, 0, 0.55);
+  --shadow-xs: none;
+  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.4);
+  --shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 4px 0 rgba(0, 0, 0, 0.3);
   --ring: 0 0 0 3px rgba(217, 164, 65, 0.35);
   --shadow-focus-ring: 0 0 0 3px rgba(217, 164, 65, 0.4);
 
@@ -234,32 +234,32 @@
    Light theme
    -------------------------------------------------------------------------- */
 [data-theme="light"] {
-  --bg: #f6f7fb;
-  --bg-elevated: #ffffff;
-  --surface-1: #ffffff;
-  --surface-2: #f1f3f9;
-  --surface-3: #e8ebf3;
-  --panel: rgba(17, 24, 39, 0.03);
-  --panel-strong: rgba(17, 24, 39, 0.05);
-  --panel-hover: rgba(17, 24, 39, 0.08);
+  --bg: #f5f3ec;
+  --bg-elevated: #fffdf7;
+  --surface-1: #fffdf7;
+  --surface-2: #f0ede4;
+  --surface-3: #e5e1d5;
+  --panel: rgba(40, 34, 22, 0.025);
+  --panel-strong: rgba(40, 34, 22, 0.05);
+  --panel-hover: rgba(40, 34, 22, 0.08);
 
-  --line: rgba(17, 24, 39, 0.1);
-  --line-strong: rgba(17, 24, 39, 0.18);
-  --line-hover: rgba(17, 24, 39, 0.3);
+  --line: rgba(40, 34, 22, 0.14);
+  --line-strong: rgba(40, 34, 22, 0.24);
+  --line-hover: rgba(40, 34, 22, 0.34);
 
-  --header-bg: rgba(255, 255, 255, 0.82);
-  --nav-bg: #ffffff;
-  --input-bg: #ffffff;
+  --header-bg: rgba(250, 248, 242, 0.9);
+  --nav-bg: #fffdf7;
+  --input-bg: #fffefb;
   --input-bg-focus: #ffffff;
-  --inset-bg: rgba(17, 24, 39, 0.035);
-  --backdrop: rgba(15, 23, 42, 0.42);
-  --modal-bg: linear-gradient(165deg, #ffffff, #f7f8fc);
-  --surface-gradient: linear-gradient(160deg, #ffffff, #f7f8fc);
+  --inset-bg: rgba(40, 34, 22, 0.035);
+  --backdrop: rgba(28, 24, 16, 0.46);
+  --modal-bg: #fffdf7;
+  --surface-gradient: var(--surface-1);
 
-  --text: #141a2a;
-  --text-secondary: #3d465c;
-  --text-muted: #667085;
-  --text-faint: #98a2b3;
+  --text: #1b1a16;
+  --text-secondary: #444138;
+  --text-muted: #6e695d;
+  --text-faint: #999286;
   --text-inverse: #ffffff;
 
   --accent: var(--brand-600);
