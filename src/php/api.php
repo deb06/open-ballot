@@ -322,6 +322,87 @@ function api_routes(): array
         send_json(200, ['subscribed' => false]);
     });
 
+    $add('POST', '/api/polls/:slug/clone', static function (array $ctx): void {
+        if ($ctx['user'] === null) {
+            fail(401, 'Sign in to copy a poll.', 'auth_required');
+        }
+        $source = db_one("SELECT * FROM elections WHERE slug = ? AND kind = 'poll'", [$ctx['params']['slug']]);
+        if ($source === null) {
+            fail(404, 'Poll not found.', 'not_found');
+        }
+        if ((int) $source['created_by'] !== (int) $ctx['user']['id'] && !is_platform_admin($ctx['user'])) {
+            fail(403, 'Only the poll creator can copy it.', 'forbidden');
+        }
+        $base = strtolower((string) preg_replace('/[^a-z0-9]+/', '-', (string) $source['title']));
+        $base = trim($base, '-');
+        $slug = substr($base !== '' ? $base : 'poll', 0, 55) . '-copy-' . bin2hex(random_bytes(3));
+        $now = now_iso();
+        $newId = db_insert(
+            'INSERT INTO elections
+               (title, description, status, results_visibility, max_choices, ballot_type, kind, slug, allow_anonymous, closes_at, created_by, organization_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)',
+            [
+                (string) $source['title'] . ' (copy)',
+                (string) $source['description'],
+                'open',
+                (string) $source['results_visibility'],
+                (int) $source['max_choices'],
+                (string) ($source['ballot_type'] ?? 'single'),
+                'poll',
+                $slug,
+                $source['closes_at'],
+                (int) $ctx['user']['id'],
+                user_organization_id($ctx['user']),
+                iso_to_sql($now),
+                iso_to_sql($now),
+            ],
+        );
+        $options = db_all('SELECT name, party, bio, position FROM candidates WHERE election_id = ? ORDER BY position, id', [(int) $source['id']]);
+        foreach ($options as $option) {
+            db_insert(
+                'INSERT INTO candidates (election_id, name, party, bio, position, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                [$newId, $option['name'], $option['party'], $option['bio'], $option['position'], iso_to_sql($now)],
+            );
+        }
+        audit((int) $ctx['user']['id'], 'poll.clone', ['from' => (int) $source['id'], 'to' => $newId], $ctx['ip']);
+        send_json(201, [
+            'poll' => serialize_election(get_election($newId), $ctx['user']),
+            'shareLink' => env_value('APP_URL', 'http://127.0.0.1:3000') . '/p/' . $slug,
+        ]);
+    });
+
+    $add('GET', '/api/polls/:slug/results.csv', static function (array $ctx): void {
+        $row = db_one("SELECT * FROM elections WHERE slug = ? AND kind = 'poll'", [$ctx['params']['slug']]);
+        if ($row === null) {
+            fail(404, 'Poll not found.', 'not_found');
+        }
+        if (!results_are_visible($row, null, false)) {
+            fail(403, 'Results are not public for this poll yet.', 'results_hidden');
+        }
+        $results = election_results((int) $row['id']);
+        $sanitize = static function (string $value): string {
+            $value = preg_match('/^[=+\-@]/', $value) === 1 ? "'" . $value : $value;
+            return str_replace(["\r", "\n"], ' ', $value);
+        };
+        $handle = fopen('php://temp', 'w+');
+        fputcsv($handle, ['option', 'votes', 'percent']);
+        foreach ($results['candidates'] as $candidate) {
+            fputcsv($handle, [$sanitize((string) $candidate['name']), (int) $candidate['votes'], (float) $candidate['share']]);
+        }
+        rewind($handle);
+        $csv = (string) stream_get_contents($handle);
+        fclose($handle);
+        if (headers_sent()) {
+            return;
+        }
+        http_response_code(200);
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="open-ballot-results.csv"');
+        header('Cache-Control: no-store');
+        header('Content-Length: ' . strlen($csv));
+        echo $csv;
+    });
+
     $add('POST', '/api/polls/:slug/report', static function (array $ctx): void {
         ensure_limit('poll-report:' . $ctx['ip'], 10, 3600, 'Too many reports submitted. Try again later.');
         $row = db_one("SELECT * FROM elections WHERE slug = ? AND kind = 'poll'", [$ctx['params']['slug']]);
@@ -570,6 +651,41 @@ function api_routes(): array
         }
         db_exec('DELETE FROM organization_invites WHERE id = ? AND organization_id = ?', [(int) $ctx['params']['id'], (int) user_organization_id($ctx['user'])]);
         send_json(200, ['ok' => true]);
+    });
+
+    $add('GET', '/api/orgs', static function (array $ctx): void {
+        $rows = db_all(
+            'SELECT o.*, (SELECT COUNT(*) FROM users u WHERE u.organization_id = o.id AND u.active = 1) AS member_count,
+                    (SELECT COUNT(*) FROM elections e WHERE e.organization_id = o.id AND e.status <> \'draft\') AS election_count
+             FROM organizations o WHERE o.status = \'active\' ORDER BY o.name ASC LIMIT 200',
+        );
+        send_json(200, ['organizations' => array_map(static fn (array $r): array => organization_public($r) + [
+            'memberCount' => (int) $r['member_count'],
+            'electionCount' => (int) $r['election_count'],
+        ], $rows)]);
+    });
+
+    $add('GET', '/api/orgs/:slug', static function (array $ctx): void {
+        $org = db_one("SELECT * FROM organizations WHERE slug = ? AND status = 'active'", [$ctx['params']['slug']]);
+        if ($org === null) {
+            fail(404, 'Organization not found.', 'not_found');
+        }
+        send_json(200, ['organization' => organization_public($org) + [
+            'memberCount' => (int) db_scalar('SELECT COUNT(*) FROM users WHERE organization_id = ? AND active = 1', [(int) $org['id']]),
+            'electionCount' => (int) db_scalar("SELECT COUNT(*) FROM elections WHERE organization_id = ? AND status <> 'draft'", [(int) $org['id']]),
+        ]]);
+    });
+
+    $add('GET', '/api/orgs/:slug/elections', static function (array $ctx): void {
+        $org = db_one("SELECT id FROM organizations WHERE slug = ? AND status = 'active'", [$ctx['params']['slug']]);
+        if ($org === null) {
+            fail(404, 'Organization not found.', 'not_found');
+        }
+        $rows = db_all(
+            "SELECT * FROM elections WHERE organization_id = ? AND status <> 'draft' AND kind = 'election' ORDER BY created_at DESC LIMIT 100",
+            [(int) $org['id']],
+        );
+        send_json(200, ['elections' => array_map(static fn (array $r): array => serialize_election($r, null), $rows)]);
     });
 
     $add('GET', '/api/admin/organizations', static function (array $ctx): void {

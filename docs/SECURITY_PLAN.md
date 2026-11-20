@@ -38,7 +38,8 @@ Security is treated as a continuous, phased program covering **users**, the **ap
 - Periodic re-test schedule and sign-off checklist.
 
 ## Current verification
-`npm test` → 55/55 smoke checks (security headers, password hashing/upgrade, observer boundaries).
+`npm test` → 59/59 smoke checks (security headers, password hashing/upgrade, observer boundaries,
+idle session expiry).
 Live: clean database (1 platform admin, 0 elections, 0 ballots), health OK.
 
 ### Residual / operator-owned items

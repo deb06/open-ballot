@@ -790,6 +790,7 @@ function renderHeader() {
     ),
   );
 
+  actions.append(el('a', { class: 'btn btn-ghost btn-sm', href: '/orgs' }, 'Organizations'));
   actions.append(el('a', { class: 'btn btn-ghost btn-sm', href: '/polls/new' }, 'Create a poll'));
   if (state.user) {
     actions.append(
@@ -928,6 +929,8 @@ function clearTimers() {
 async function viewFor(parts) {
   if (!parts.length) return viewHome();
   const [root, sub, id] = parts;
+  if (root === 'orgs') return viewOrganizations();
+  if (root === 'org' && sub) return viewOrganization(sub);
   if (root === 'p' && sub) return viewPoll(sub);
   if (root === 'polls') return sub === 'new' ? viewPollNew() : viewPolls();
   if (root === 'election' && sub) return viewElection(sub);
@@ -976,7 +979,8 @@ function authOnly() {
 
 function autoBreadcrumbs(parts) {
   const ROOT = {
-    election: 'Elections', verify: 'Verify ballot', login: 'Sign in', register: 'Create account',
+    election: 'Elections', orgs: 'Organizations', org: 'Organization', p: 'Poll',
+    verify: 'Verify ballot', login: 'Sign in', register: 'Create account',
     account: 'Account', passkeys: 'Passkeys', help: 'Help', privacy: 'Privacy',
     status: 'Status', audit: 'Audit chain', admin: 'Admin',
   };

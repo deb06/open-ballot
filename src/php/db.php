@@ -378,6 +378,7 @@ function db_migrate_final(): void
     db_add_column('elections', 'slug', 'VARCHAR(80) NULL DEFAULT NULL', 'VARCHAR(80) NULL');
     db_add_column('elections', 'allow_anonymous', 'TINYINT(1) NOT NULL DEFAULT 0', 'SMALLINT NOT NULL DEFAULT 0');
     db_add_column('participation', 'voter_token', 'CHAR(64) NULL DEFAULT NULL', 'CHAR(64) NULL');
+    db_add_column('sessions', 'last_seen_at', 'DATETIME(3) NULL DEFAULT NULL', 'TIMESTAMP(3) NULL');
     $cfg = config('db');
     if (($cfg['driver'] ?? 'mysql') !== 'pgsql') {
         try { db()->exec('ALTER TABLE participation MODIFY COLUMN voter_id INT UNSIGNED NULL DEFAULT NULL'); } catch (Throwable) {}

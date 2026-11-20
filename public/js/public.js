@@ -861,6 +861,20 @@ function receiptQr(code) {
   return holder;
 }
 
+function shareQr(url) {
+  if (typeof qrcode !== 'function') return null;
+  try {
+    const qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    const holder = el('div', { class: 'receipt-qr', title: 'Scan to open this poll' });
+    holder.innerHTML = qr.createSvgTag({ cellSize: 3, margin: 6, scalable: true, alt: 'Poll link' });
+    return holder;
+  } catch (_) {
+    return null;
+  }
+}
+
 function showReceiptDialog(result, election) {
   const receiptData = { code: result.receipt, castAt: result.castAt, electionTitle: election.title };
 
@@ -1248,6 +1262,57 @@ function viewRegister() {
 }
 
 /* --------------------------------------------------------------------------
+   Organization directory
+   -------------------------------------------------------------------------- */
+
+async function viewOrganizations() {
+  const panel = el('div', { class: 'stack' }, el('p', { class: 'muted' }, 'Loading organizations…'));
+  try {
+    const data = await api('GET', '/api/orgs');
+    const cards = (data.organizations || []).map((org) => el('a', {
+      class: 'card', href: '/org/' + org.slug, style: { textDecoration: 'none', color: 'inherit' },
+    },
+      el('p', { class: 'eyebrow' }, 'Organization'),
+      el('h2', { style: { fontSize: '1.25rem' } }, org.name),
+      org.domain ? el('p', { class: 'small mono' }, '@' + org.domain) : null,
+      el('p', { class: 'small muted' }, org.memberCount + ' member(s) · ' + org.electionCount + ' election(s)'),
+    ));
+    panel.replaceChildren(
+      el('h1', { style: { fontSize: '2.2rem' } }, 'Organizations'),
+      el('p', { class: 'muted' }, 'Groups running transparent elections on Open Ballot.'),
+      cards.length ? el('div', { class: 'grid' }, ...cards) : el('p', { class: 'muted' }, 'No organizations have registered yet.'),
+    );
+  } catch (error) {
+    panel.replaceChildren(el('p', { class: 'form-error' }, error.message));
+  }
+  return el('div', { class: 'stack', style: { maxWidth: '960px', margin: '32px auto' } }, panel);
+}
+
+async function viewOrganization(slug) {
+  const panel = el('div', { class: 'stack' }, el('p', { class: 'muted' }, 'Loading organization…'));
+  try {
+    const data = await api('GET', '/api/orgs/' + encodeURIComponent(slug));
+    const org = data.organization;
+    const elections = await api('GET', '/api/orgs/' + encodeURIComponent(slug) + '/elections');
+    panel.replaceChildren(
+      el('p', { class: 'eyebrow' }, 'Organization profile'),
+      el('h1', { style: { fontSize: '2.4rem' } }, org.name),
+      org.domain ? el('p', { class: 'mono' }, '@' + org.domain) : null,
+      el('div', { class: 'row', style: { gap: '24px', flexWrap: 'wrap' } },
+        el('div', {}, el('strong', {}, String(org.memberCount)), el('span', { class: 'small muted' }, ' members')),
+        el('div', {}, el('strong', {}, String(org.electionCount)), el('span', { class: 'small muted' }, ' elections')),
+      ),
+      el('h2', { style: { fontSize: '1.5rem', marginTop: '16px' } }, 'Published elections'),
+      (elections.elections || []).length ? el('div', { class: 'grid' }, ...elections.elections.map(electionCard))
+        : el('p', { class: 'muted' }, 'No published elections yet.'),
+    );
+  } catch (error) {
+    panel.replaceChildren(el('p', { class: 'form-error' }, error.message));
+  }
+  return el('div', { class: 'stack', style: { maxWidth: '1024px', margin: '32px auto' } }, panel);
+}
+
+/* --------------------------------------------------------------------------
    Public polls
    -------------------------------------------------------------------------- */
 
@@ -1338,6 +1403,7 @@ function viewPollNew() {
         el('p', { class: 'eyebrow' }, 'Your poll is live'),
         el('h2', { style: { fontSize: '1.3rem' } }, data.poll.title),
         el('p', { class: 'small muted' }, 'Copy this link and share it with your audience. No sign-in is required to vote.'),
+        shareQr(data.shareLink),
         el('div', { class: 'row', style: { gap: '8px' } },
           el('input', { class: 'input grow', readOnly: true, value: data.shareLink }),
           el('button', {
@@ -1431,7 +1497,7 @@ async function viewPoll(slug) {
 
   const reportToggle = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Report this poll');
   const reportError = el('div', { class: 'form-error', role: 'alert' });
-  const reportReason = el('select', { class: 'select' },
+  const reportReason = el('select', { class: 'select', 'aria-label': 'Reason for reporting this poll' },
     el('option', { value: 'spam' }, 'Spam or advertising'),
     el('option', { value: 'misleading' }, 'Misleading question'),
     el('option', { value: 'harassment' }, 'Harassment or hate'),
@@ -1459,7 +1525,31 @@ async function viewPoll(slug) {
     } catch (error) { reportError.textContent = error.message; }
     finally { setBusy(reportSubmit, false); }
   });
-  const extras = [reportToggle, reportForm];
+  const shareUrl = location.origin + '/p/' + encodeURIComponent(slug);
+  const extras = [
+    el('button', {
+      class: 'btn btn-ghost btn-sm', type: 'button',
+      onclick: async () => {
+        try { await navigator.clipboard.writeText(shareUrl); toast('Poll link copied.', 'success'); }
+        catch (_) { toast('Copy the URL from your address bar.', 'error'); }
+      },
+    }, 'Copy poll link'),
+    poll && poll.resultsVisible
+      ? el('a', { class: 'btn btn-ghost btn-sm', href: '/api/polls/' + encodeURIComponent(slug) + '/results.csv' }, 'Download results (CSV)')
+      : null,
+  ];
+  if (state.user && poll && poll.createdBy === state.user.id) {
+    const clone = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Copy this poll');
+    clone.addEventListener('click', async () => {
+      try {
+        const copy = await api('POST', '/api/polls/' + encodeURIComponent(slug) + '/clone');
+        toast('Poll copied.', 'success');
+        go('#/p/' + copy.poll.slug);
+      } catch (error) { toast(error.message, 'error'); }
+    });
+    extras.push(clone);
+  }
+  extras.push(reportToggle, reportForm);
   if (state.user) {
     const subscribed = !!(poll && poll.subscribed);
     const remind = el('button', {

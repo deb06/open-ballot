@@ -159,6 +159,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   csrf       VARCHAR(64) NOT NULL,
   created_at DATETIME(3) NOT NULL,
   expires_at DATETIME(3) NOT NULL,
+  last_seen_at DATETIME(3) NULL DEFAULT NULL,
   ip         VARCHAR(45) NULL DEFAULT NULL,
   user_agent VARCHAR(300) NULL DEFAULT NULL,
   PRIMARY KEY (id),

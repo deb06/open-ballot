@@ -373,6 +373,7 @@ function serialize_election(array $row, ?array $viewer): array
         'kind' => (string) ($row['kind'] ?? 'election'),
         'slug' => $row['slug'] ?? null,
         'organizationId' => isset($row['organization_id']) && $row['organization_id'] !== null ? (int) $row['organization_id'] : null,
+        'createdBy' => isset($row['created_by']) && $row['created_by'] !== null ? (int) $row['created_by'] : null,
         'brandColor' => $row['brand_color'] ?? null,
         'logoUrl' => $row['logo_url'] ?? null,
         'opensAt' => sql_to_iso($row['opens_at']),
@@ -629,7 +630,7 @@ function get_session(): ?array
 
     $id = sha256($token);
     $row = db_one(
-        'SELECT s.id, s.csrf, s.expires_at,
+        'SELECT s.id, s.csrf, s.expires_at, s.last_seen_at,
                 u.id AS user_id, u.name, u.email, u.role, u.active, u.created_at, u.organization_id
          FROM sessions s JOIN users u ON u.id = s.user_id
          WHERE s.id = ?',
@@ -643,6 +644,18 @@ function get_session(): ?array
         db_exec('DELETE FROM sessions WHERE id = ?', [$id]);
         return null;
     }
+
+    // Sliding idle timeout: a session expires after a period of inactivity
+    // even when its absolute lifetime is still valid.
+    $idleSeconds = max(300, (int) env_value('SESSION_IDLE_HOURS', '24') * 3600);
+    $lastSeen = $row['last_seen_at'] === null ? 0 : sql_timestamp($row['last_seen_at']);
+    if ($lastSeen > 0 && $lastSeen + $idleSeconds <= time()) {
+        db_exec('DELETE FROM sessions WHERE id = ?', [$id]);
+        clear_cookie((string) config('session_cookie'));
+        audit((int) $row['user_id'], 'security.session_expired', ['reason' => 'idle'], ($_SERVER['REMOTE_ADDR'] ?? null));
+        return null;
+    }
+    db_exec('UPDATE sessions SET last_seen_at = ? WHERE id = ?', [iso_to_sql(now_iso()), $id]);
 
     return [
         'id' => $row['id'],
@@ -671,14 +684,15 @@ function create_session(array $user, string $ip): string
     $ttl = (int) config('session_ttl');
 
     db_exec(
-        'INSERT INTO sessions (id, user_id, csrf, created_at, expires_at, ip, user_agent)
-         VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO sessions (id, user_id, csrf, created_at, expires_at, last_seen_at, ip, user_agent)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [
             $id,
             (int) $user['id'],
             $csrf,
             iso_to_sql(now_iso_at($createdAt)),
             iso_to_sql(now_iso_at($createdAt + $ttl)),
+            iso_to_sql(now_iso_at($createdAt)),
             $ip,
             mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 300),
         ],

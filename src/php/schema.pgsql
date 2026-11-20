@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   csrf       VARCHAR(64) NOT NULL,
   created_at TIMESTAMP(3) NOT NULL,
   expires_at TIMESTAMP(3) NOT NULL,
+  last_seen_at TIMESTAMP(3) NULL,
   ip         VARCHAR(45) NULL,
   user_agent VARCHAR(300) NULL
 );

@@ -641,8 +641,9 @@ try {
     $orgAdmin = new Client($base);
     $orgId = 0;
     $orgCsrf = '';
+    $orgSlug = '';
 
-    step('registers an organization with its administrator', static function () use ($orgAdmin, $tag, $orgDomain, &$orgId, &$orgCsrf): void {
+    step('registers an organization with its administrator', static function () use ($orgAdmin, $tag, $orgDomain, &$orgId, &$orgCsrf, &$orgSlug): void {
         $res = $orgAdmin->request('POST', '/api/organizations/register', [
             'organizationName' => 'Test College ' . $tag,
             'slug' => 'college-' . $tag,
@@ -656,6 +657,7 @@ try {
         assert_same('org_admin', $res['data']['user']['role']);
         assert_same('active', $res['data']['organization']['status']);
         $orgId = (int) $res['data']['organization']['id'];
+        $orgSlug = (string) $res['data']['organization']['slug'];
         $orgCsrf = (string) $res['data']['csrf'];
         $orgAdmin->csrf = $orgCsrf;
     });
@@ -906,22 +908,49 @@ try {
         }
         $legacy = password_hash('NewVoterPass#2', PASSWORD_BCRYPT, ['cost' => 10]);
         db_exec("UPDATE users SET password_hash = ? WHERE email = 'voter@example.test'", [$legacy]);
-        $login = http_request('POST', $base . '/api/auth/login',
-            json_encode(['email' => 'voter@example.test', 'password' => 'NewVoterPass#2']),
-            ['Content-Type: application/json'],
-        );
+        $login = $voter->request('POST', '/api/auth/login', [
+            'email' => 'voter@example.test', 'password' => 'NewVoterPass#2',
+        ]);
         assert_same(200, $login['status'], $login['text']);
-        $data = json_decode($login['text'], true);
-        $voter->cookie = '';
-        $voter->csrf = null;
-        foreach ($login['headers'] as $line) {
-            if (stripos($line, 'Set-Cookie:') === 0 && str_starts_with(trim(substr($line, 11)), 'ob_session=')) {
-                $voter->cookie = explode(';', trim(substr($line, 11)))[0];
-            }
-        }
-        if (isset($data['csrf'])) { $voter->csrf = (string) $data['csrf']; }
+        $voter->csrf = (string) $login['data']['csrf'];
         $upgraded = (string) db_scalar("SELECT password_hash FROM users WHERE email = 'voter@example.test'");
         assert_true(str_starts_with($upgraded, '$argon2id$'), 'Hash was not upgraded on login.');
+    });
+
+    /* Next-phase features */
+
+    step('exposes a public organization directory and profile', static function () use ($base, $orgSlug): void {
+        $res = http_request('GET', $base . '/api/orgs', null, ['Accept: application/json']);
+        assert_same(200, $res['status'], $res['text']);
+        $data = json_decode($res['text'], true);
+        $slugs = array_column($data['organizations'], 'slug');
+        assert_true(in_array($orgSlug, $slugs, true), 'Registered org missing from directory.');
+    });
+
+    step('poll owner can clone and export results', static function () use ($voter, $pollSlug): void {
+        $clone = $voter->request('POST', '/api/polls/' . $pollSlug . '/clone');
+        assert_same(201, $clone['status'], $clone['text']);
+        assert_true(str_contains((string) $clone['data']['shareLink'], '/p/'), 'Clone did not return a share link.');
+        $csv = $voter->request('GET', '/api/polls/' . $pollSlug . '/results.csv');
+        assert_same(200, $csv['status'], $csv['text']);
+    });
+
+    step('serves security.txt and updated sitemap', static function () use ($base): void {
+        $sec = http_request('GET', $base . '/.well-known/security.txt', null, []);
+        assert_same(200, $sec['status']);
+        assert_true(str_contains($sec['text'], 'Contact:'), 'security.txt missing Contact.');
+        $map = http_request('GET', $base . '/sitemap.xml', null, []);
+        assert_same(200, $map['status']);
+        assert_true(str_contains($map['text'], '/orgs'), 'sitemap missing organization directory.');
+    });
+
+    step('expires idle sessions', static function () use ($voter): void {
+        $userId = (int) db_scalar("SELECT id FROM users WHERE email = 'voter@example.test'");
+        assert_true($userId > 0, 'Voter not found.');
+        db_exec('UPDATE sessions SET last_seen_at = ? WHERE user_id = ?', [iso_to_sql(now_iso_at(time() - 48 * 3600)), $userId]);
+        $res = $voter->request('GET', '/api/auth/me');
+        assert_same(200, $res['status'], $res['text']);
+        assert_same(null, $res['data']['user'], 'Idle session was not expired.');
     });
 
     echo "\n  {$passed} checks passed.\n\n";
