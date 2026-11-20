@@ -209,8 +209,6 @@ function api_routes(): array
         });
         audit((int) $ctx['user']['id'], 'poll.create', ['pollId' => $pollId, 'slug' => $slug], $ctx['ip']);
         $shareLink = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/p/' . $slug);
-        telegram_notify('<b>New poll</b>: ' . htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-            . "\n" . htmlspecialchars($shareLink, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
         $row = get_election($pollId);
         send_json(201, [
             'poll' => serialize_election($row, $ctx['user']),
@@ -343,8 +341,6 @@ function api_routes(): array
         $user = public_user(db_one('SELECT * FROM users WHERE id = ?', [$adminId]));
         $csrf = create_session($user, $ctx['ip']);
         audit($adminId, 'organization.register', ['organizationId' => $orgId, 'slug' => $slug], $ctx['ip']);
-        telegram_notify('<b>New organization</b>: ' . htmlspecialchars($orgName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-            . ' (' . htmlspecialchars($slug, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')');
         send_json(201, ['organization' => organization_public($org), 'user' => $user, 'csrf' => $csrf]);
     });
 

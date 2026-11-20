@@ -62,11 +62,6 @@ services:
         sync: false
       - key: OAUTH_GOOGLE_SECRET
         sync: false
-      # Optional Telegram bot notifications (best-effort, disabled when unset).
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: TELEGRAM_CHAT_ID
-        sync: false
 
 databases:
   - name: open-ballot-db

@@ -68,13 +68,6 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
 - `participation.voter_id` is nullable (org elections still use it); keep the anonymous and account
   flows separate so ballot privacy is preserved.
 
-## Telegram notifications (optional)
-- `src/php/telegram.php` sends best-effort Bot API messages; no-op unless `TELEGRAM_BOT_TOKEN` and
-  `TELEGRAM_CHAT_ID` are set (both declared `sync: false` in `render.yaml`).
-- Hooks: new organization registration and new public poll creation. Delivery failures are swallowed so
-  they never break a user request. No voter data or receipts are sent.
-- An n8n relay (using the n8n public-API JWT) is not wired yet — it needs a workflow/webhook id.
-
 ## Visual identity — anti-"AI slop" (important, already fixed)
 - Flat institutional brass accent `#d9a441`. NO violet `#8b7bff`, NO violet→cyan gradient.
 - Solid page background, hairline borders, no glass overlays or big shadows, radius 10px.

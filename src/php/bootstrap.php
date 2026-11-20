@@ -59,5 +59,4 @@ require_once __DIR__ . '/domain.php';
 require_once __DIR__ . '/validation.php';
 require_once __DIR__ . '/pdf.php';
 require_once __DIR__ . '/oauth.php';
-require_once __DIR__ . '/telegram.php';
 require_once __DIR__ . '/api.php';
