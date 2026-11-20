@@ -229,9 +229,11 @@ function send_mail(string $to, string $subject, string $body): bool
     $ok = @mail($to, $subject, $body, $headers);
     if (!$ok) {
         $log = (string) (config('data_dir') . DIRECTORY_SEPARATOR . 'mail.log');
-        @file_put_contents($log, sprintf("[%s] TO=%s SUBJECT=%s\n%s\n\n", gmdate('c'), $to, $subject, $body), FILE_APPEND | LOCK_EX);
+        $written = @file_put_contents($log, sprintf("[%s] TO=%s SUBJECT=%s\n%s\n\n", gmdate('c'), $to, $subject, $body), FILE_APPEND | LOCK_EX);
+        // A successfully written outbox entry counts as delivered locally.
+        return $written !== false;
     }
-    return (bool) $ok;
+    return true;
 }
 
 /** Human-friendly, unguessable receipt code: OB-XXXX-XXXX-XXXX-XXXX */

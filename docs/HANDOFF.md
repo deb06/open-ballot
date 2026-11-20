@@ -75,6 +75,13 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
   `PATCH /api/admin/polls/:id/reports/:reportId`, `PATCH /api/admin/polls/:id` (close/reopen).
 - Admin UI at `/admin/polls`. No voter or receipt data is exposed to moderators.
 
+## Poll reminders
+- Signed-in voters opt in with `POST /api/polls/:slug/subscribe` (and `DELETE` to opt out); poll payload
+  exposes `subscribed` for the current user.
+- `GET /api/cron/poll-reminders?secret=<CRON_SECRET>` emails each subscriber once for polls closing within
+  24h, then sets `poll_subscriptions.reminded_at` so it is not repeated. Point an external scheduler at it.
+- `send_mail()` writes to `data/mail.log` when no local MTA exists and counts that as delivered.
+
 ## Visual identity — anti-"AI slop" (important, already fixed)
 - Flat institutional brass accent `#d9a441`. NO violet `#8b7bff`, NO violet→cyan gradient.
 - Solid page background, hairline borders, no glass overlays or big shadows, radius 10px.
@@ -83,7 +90,7 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
 - Favicon, PWA icons and OG image regenerated to match. Preserve this direction.
 
 ## Verification (all green)
-- `npm test` → 50/50 smoke checks (6 org tenancy + 3 poll + 3 moderation/report checks).
+- `npm test` → 51/51 smoke checks (6 org tenancy + 3 poll + 3 moderation + 1 reminder/cron check).
 - axe-core: 0 WCAG A/AA violations on 12 audited routes in BOTH themes.
 - Zero browser console errors.
 - CI: `scripts/lib.ps1` pins PHP 8.5.13 + SHA256 (8.5.12 URL 404s — do not downgrade).

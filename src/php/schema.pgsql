@@ -74,6 +74,14 @@ CREATE TABLE IF NOT EXISTS poll_reports (
 );
 CREATE INDEX IF NOT EXISTS idx_poll_reports_poll ON poll_reports(poll_id);
 
+CREATE TABLE IF NOT EXISTS poll_subscriptions (
+  poll_id     INT NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
+  user_id     INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reminded_at TIMESTAMP(3) NULL,
+  created_at  TIMESTAMP(3) NOT NULL,
+  PRIMARY KEY (poll_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS candidates (
   id          SERIAL PRIMARY KEY,
   election_id INT NOT NULL REFERENCES elections(id) ON DELETE CASCADE,

@@ -91,6 +91,16 @@ CREATE TABLE IF NOT EXISTS poll_reports (
   CONSTRAINT fk_poll_reports_poll FOREIGN KEY (poll_id) REFERENCES elections (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS poll_subscriptions (
+  poll_id     INT UNSIGNED NOT NULL,
+  user_id     INT UNSIGNED NOT NULL,
+  reminded_at DATETIME(3) NULL DEFAULT NULL,
+  created_at  DATETIME(3) NOT NULL,
+  PRIMARY KEY (poll_id, user_id),
+  CONSTRAINT fk_poll_subs_poll FOREIGN KEY (poll_id) REFERENCES elections (id) ON DELETE CASCADE,
+  CONSTRAINT fk_poll_subs_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS candidates (
   id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   election_id INT UNSIGNED NOT NULL,

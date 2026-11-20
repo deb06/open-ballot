@@ -234,6 +234,8 @@ function api_routes(): array
         $voted = db_one('SELECT id FROM participation WHERE election_id = ? AND voter_token = ?', [(int) $row['id'], $token]) !== null;
         $payload = serialize_election($row, null);
         $payload['hasVoted'] = $voted;
+        $payload['subscribed'] = $ctx['user'] === null ? false
+            : db_one('SELECT poll_id FROM poll_subscriptions WHERE poll_id = ? AND user_id = ?', [(int) $row['id'], (int) $ctx['user']['id']]) !== null;
         send_json(200, ['poll' => $payload, 'candidates' => poll_candidates((int) $row['id'])]);
     });
 
@@ -285,6 +287,39 @@ function api_routes(): array
             fail(403, 'Results are not public for this poll yet.', 'results_hidden');
         }
         send_json(200, ['poll' => serialize_election($row, null), 'results' => election_results((int) $row['id'])]);
+    });
+
+    $add('POST', '/api/polls/:slug/subscribe', static function (array $ctx): void {
+        if ($ctx['user'] === null) {
+            fail(401, 'Sign in to get a reminder.', 'auth_required');
+        }
+        $row = db_one("SELECT * FROM elections WHERE slug = ? AND kind = 'poll'", [$ctx['params']['slug']]);
+        if ($row === null) {
+            fail(404, 'Poll not found.', 'not_found');
+        }
+        $exists = db_one(
+            'SELECT poll_id FROM poll_subscriptions WHERE poll_id = ? AND user_id = ?',
+            [(int) $row['id'], (int) $ctx['user']['id']],
+        );
+        if ($exists === null) {
+            db_exec(
+                'INSERT INTO poll_subscriptions (poll_id, user_id, created_at) VALUES (?, ?, ?)',
+                [(int) $row['id'], (int) $ctx['user']['id'], iso_to_sql(now_iso())],
+            );
+        }
+        send_json(201, ['subscribed' => true]);
+    });
+
+    $add('DELETE', '/api/polls/:slug/subscribe', static function (array $ctx): void {
+        if ($ctx['user'] === null) {
+            fail(401, 'Sign in to manage reminders.', 'auth_required');
+        }
+        $row = db_one("SELECT id FROM elections WHERE slug = ? AND kind = 'poll'", [$ctx['params']['slug']]);
+        if ($row === null) {
+            fail(404, 'Poll not found.', 'not_found');
+        }
+        db_exec('DELETE FROM poll_subscriptions WHERE poll_id = ? AND user_id = ?', [(int) $row['id'], (int) $ctx['user']['id']]);
+        send_json(200, ['subscribed' => false]);
     });
 
     $add('POST', '/api/polls/:slug/report', static function (array $ctx): void {
@@ -1462,6 +1497,42 @@ function api_routes(): array
         $sent = 0;
         foreach ($users as $u) { if (send_mail((string) $u['email'], 'Open Ballot election digest', $body)) $sent += 1; }
         send_json(200, ['sent' => $sent, 'elections' => count($recent)]);
+    });
+
+    $add('GET', '/api/cron/poll-reminders', static function (array $ctx): void {
+        $secret = env_value('CRON_SECRET');
+        if ($secret === null || !hash_equals($secret, as_text($ctx['query']['secret'] ?? null))) {
+            fail(401, 'Invalid cron secret.', 'unauthorized');
+        }
+        $soon = iso_to_sql(now_iso_at(time() + 24 * 3600));
+        $polls = db_all(
+            "SELECT id, title, slug, closes_at FROM elections
+             WHERE kind = 'poll' AND status = 'open' AND closes_at IS NOT NULL AND closes_at <= ?",
+            [$soon],
+        );
+        $sent = 0;
+        foreach ($polls as $poll) {
+            $subscribers = db_all(
+                'SELECT u.email, s.user_id FROM poll_subscriptions s JOIN users u ON u.id = s.user_id
+                 WHERE s.poll_id = ? AND s.reminded_at IS NULL AND u.active = 1',
+                [(int) $poll['id']],
+            );
+            if (!$subscribers) {
+                continue;
+            }
+            $link = env_value('APP_URL', 'http://127.0.0.1:3000') . '/p/' . (string) ($poll['slug'] ?? '');
+            $body = 'This poll closes soon: ' . $poll['title'] . "\n\n" . $link
+                . "\n\nYou are receiving this because you asked for a reminder.";
+            foreach ($subscribers as $subscriber) {
+                if (send_mail((string) $subscriber['email'], 'Poll closing soon — Open Ballot', $body)) {
+                    $sent += 1;
+                }
+                db_exec('UPDATE poll_subscriptions SET reminded_at = ? WHERE poll_id = ? AND user_id = ?', [
+                    iso_to_sql(now_iso()), (int) $poll['id'], (int) $subscriber['user_id'],
+                ]);
+            }
+        }
+        send_json(200, ['sent' => $sent, 'polls' => count($polls)]);
     });
 
     /* ------------------------------------------------------------------ */

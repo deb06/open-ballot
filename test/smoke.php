@@ -24,6 +24,7 @@ putenv('DATA_DIR=' . $tempDir);
 putenv('DB_NAME=open_ballot_test');
 putenv('ADMIN_PASSWORD=TestAdmin#123');
 putenv('ADMIN_EMAIL=admin@openballot.local');
+putenv('CRON_SECRET=TestCron#123');
 
 require $root . '/src/php/bootstrap.php';
 
@@ -815,6 +816,38 @@ try {
         $reopen = $admin->request('PATCH', '/api/admin/polls/' . $pollId, ['action' => 'reopen']);
         assert_same(200, $reopen['status'], $reopen['text']);
         assert_same('open', $reopen['data']['poll']['status']);
+    });
+
+    /* Poll reminders */
+
+    step('poll reminder opt-in and cron delivery', static function () use ($voter, $base): void {
+        $created = $voter->request('POST', '/api/polls', [
+            'title' => 'Reminder check poll',
+            'description' => 'Closes soon',
+            'options' => ['A', 'B'],
+            'resultsVisibility' => 'always',
+            'closesAt' => gmdate('Y-m-d\TH:i:s\Z', time() + 3600),
+        ]);
+        assert_same(201, $created['status'], $created['text']);
+        $slug = (string) $created['data']['poll']['slug'];
+
+        $sub = $voter->request('POST', '/api/polls/' . $slug . '/subscribe');
+        assert_same(201, $sub['status'], $sub['text']);
+        // The test database can retain subscriptions across runs; make this
+        // poll eligible for a reminder again.
+        db_exec('UPDATE poll_subscriptions SET reminded_at = NULL WHERE poll_id = ?', [(int) $created['data']['poll']['id']]);
+        $view = $voter->request('GET', '/api/polls/' . $slug);
+        assert_same(true, $view['data']['poll']['subscribed']);
+
+        $denied = http_request('GET', $base . '/api/cron/poll-reminders?secret=wrong', null, ['Accept: application/json']);
+        assert_same(401, $denied['status']);
+        $cron = http_request('GET', $base . '/api/cron/poll-reminders?secret=' . urlencode('TestCron#123'), null, ['Accept: application/json']);
+        assert_same(200, $cron['status'], $cron['text']);
+        $body = json_decode($cron['text'], true);
+        assert_true((int) ($body['sent'] ?? 0) >= 1, 'Expected at least one reminder email.');
+
+        $unsub = $voter->request('DELETE', '/api/polls/' . $slug . '/subscribe');
+        assert_same(200, $unsub['status'], $unsub['text']);
     });
 
     echo "\n  {$passed} checks passed.\n\n";

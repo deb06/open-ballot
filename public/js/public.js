@@ -1367,9 +1367,10 @@ function viewPollNew() {
 
 async function viewPoll(slug) {
   const panel = el('div', { class: 'card stack' }, el('p', { class: 'muted' }, 'Loading poll…'));
+  let poll = null;
   try {
     const data = await api('GET', '/api/polls/' + encodeURIComponent(slug));
-    const poll = data.poll;
+    poll = data.poll;
     const options = data.candidates || [];
     const chosen = el('input', { type: 'radio', name: 'poll-option', value: '', style: { display: 'none' } });
     const optionNodes = options.map((option) => {
@@ -1458,7 +1459,26 @@ async function viewPoll(slug) {
     } catch (error) { reportError.textContent = error.message; }
     finally { setBusy(reportSubmit, false); }
   });
-  panel.append(el('div', { class: 'stack', style: { marginTop: '20px' } }, reportToggle, reportForm));
+  const extras = [reportToggle, reportForm];
+  if (state.user) {
+    const subscribed = !!(poll && poll.subscribed);
+    const remind = el('button', {
+      class: 'btn btn-ghost btn-sm', type: 'button',
+    }, subscribed ? 'Reminder is on — turn off' : 'Email me before this poll closes');
+    remind.addEventListener('click', async () => {
+      try {
+        if (subscribed) {
+          await api('DELETE', '/api/polls/' + encodeURIComponent(slug) + '/subscribe');
+        } else {
+          await api('POST', '/api/polls/' + encodeURIComponent(slug) + '/subscribe');
+        }
+        toast(subscribed ? 'Reminder turned off.' : 'Reminder set — we will email you before it closes.', 'success');
+        handleRoute();
+      } catch (error) { toast(error.message, 'error'); }
+    });
+    extras.push(remind);
+  }
+  panel.append(el('div', { class: 'stack', style: { marginTop: '20px' } }, ...extras));
 
   return el('div', { class: 'stack', style: { maxWidth: '720px', margin: '32px auto' } }, panel);
 }
