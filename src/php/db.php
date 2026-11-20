@@ -465,6 +465,13 @@ function db_seed(): void
         error_log('[seed] Administrator account created: ' . $admin['email']);
     }
 
+    // Demo elections exist only to make a local checkout useful. A public
+    // platform must start with an empty election catalogue so every election
+    // comes from a registered organization, not from the operator's dataset.
+    if (env_value('APP_ENV', 'local') === 'production') {
+        return;
+    }
+
     $electionCount = (int) db_scalar('SELECT COUNT(*) FROM elections');
     if ($electionCount > 0) {
         return;
