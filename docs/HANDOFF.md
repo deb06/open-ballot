@@ -68,6 +68,13 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
 - `participation.voter_id` is nullable (org elections still use it); keep the anonymous and account
   flows separate so ballot privacy is preserved.
 
+## Poll moderation
+- `poll_reports` table: one report per poll per anonymous reporter token; reasons spam/misleading/
+  harassment/other. `POST /api/polls/:slug/report` is public and CSRF-exempt.
+- Platform-admin only: `GET /api/admin/polls`, `GET /api/admin/polls/:id/reports`,
+  `PATCH /api/admin/polls/:id/reports/:reportId`, `PATCH /api/admin/polls/:id` (close/reopen).
+- Admin UI at `/admin/polls`. No voter or receipt data is exposed to moderators.
+
 ## Visual identity — anti-"AI slop" (important, already fixed)
 - Flat institutional brass accent `#d9a441`. NO violet `#8b7bff`, NO violet→cyan gradient.
 - Solid page background, hairline borders, no glass overlays or big shadows, radius 10px.
@@ -76,7 +83,7 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
 - Favicon, PWA icons and OG image regenerated to match. Preserve this direction.
 
 ## Verification (all green)
-- `npm test` → 47/47 smoke checks (6 organization tenancy + 3 public-poll checks).
+- `npm test` → 50/50 smoke checks (6 org tenancy + 3 poll + 3 moderation/report checks).
 - axe-core: 0 WCAG A/AA violations on 12 audited routes in BOTH themes.
 - Zero browser console errors.
 - CI: `scripts/lib.ps1` pins PHP 8.5.13 + SHA256 (8.5.12 URL 404s — do not downgrade).

@@ -774,6 +774,49 @@ try {
         assert_same(200, $results['status'], $results['text']);
     });
 
+    /* Poll reporting and moderation */
+
+    step('lets a visitor report a poll once', static function () use ($base, $pollSlug): void {
+        $visitor = new Client($base);
+        $res = $visitor->request('POST', '/api/polls/' . $pollSlug . '/report', [
+            'reason' => 'spam', 'details' => 'Test report',
+        ]);
+        assert_same(201, $res['status'], $res['text']);
+        $again = $visitor->request('POST', '/api/polls/' . $pollSlug . '/report', [
+            'reason' => 'spam', 'details' => 'Test report',
+        ]);
+        assert_same(409, $again['status'], 'A browser must not report the same poll twice.');
+    });
+
+    $pollId = 0;
+    step('platform admin sees reported polls and their reports', static function () use ($admin, $pollSlug, &$pollId): void {
+        $list = $admin->request('GET', '/api/admin/polls');
+        assert_same(200, $list['status'], $list['text']);
+        $match = null;
+        foreach ($list['data']['polls'] as $poll) {
+            if ($poll['slug'] === $pollSlug) { $match = $poll; break; }
+        }
+        assert_true($match !== null, 'Reported poll missing from moderation list.');
+        assert_true((int) $match['openReports'] >= 1, 'Report was not counted.');
+        $pollId = (int) $match['id'];
+
+        $reports = $admin->request('GET', '/api/admin/polls/' . $pollId . '/reports');
+        assert_same(200, $reports['status'], $reports['text']);
+        assert_true(count($reports['data']['reports']) >= 1, 'Expected at least one report.');
+        $reportId = (int) $reports['data']['reports'][0]['id'];
+        $resolved = $admin->request('PATCH', '/api/admin/polls/' . $pollId . '/reports/' . $reportId, ['status' => 'resolved']);
+        assert_same(200, $resolved['status'], $resolved['text']);
+    });
+
+    step('platform admin can close and reopen a poll', static function () use ($admin, $pollId): void {
+        $close = $admin->request('PATCH', '/api/admin/polls/' . $pollId, ['action' => 'close']);
+        assert_same(200, $close['status'], $close['text']);
+        assert_same('closed', $close['data']['poll']['status']);
+        $reopen = $admin->request('PATCH', '/api/admin/polls/' . $pollId, ['action' => 'reopen']);
+        assert_same(200, $reopen['status'], $reopen['text']);
+        assert_same('open', $reopen['data']['poll']['status']);
+    });
+
     echo "\n  {$passed} checks passed.\n\n";
     $stopServer();
     exit(0);

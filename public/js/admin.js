@@ -41,6 +41,7 @@ function adminNav(active) {
     { class: 'admin-nav', 'aria-label': 'Administration sections' },
     link('/admin', 'Overview', 'overview'),
     platform ? link('/admin/organizations', 'Organizations', 'organizations') : link('/admin/org', 'Organization', 'org'),
+    platform ? link('/admin/polls', 'Polls', 'polls') : null,
     link('/admin/users', 'Voters', 'users'),
     link('/admin/audit', 'Audit log', 'audit'),
     platform ? link('/admin/webhooks', 'Webhooks', 'webhooks') : null,
@@ -2019,6 +2020,81 @@ async function viewAdminOrganizations() {
           el('tbody', {}, ...rows),
         ),
       ),
+    ),
+  ];
+}
+
+async function viewAdminPolls() {
+  const guard = adminOnly();
+  if (guard) return [guard];
+  if (!state.user || state.user.role !== 'admin') {
+    return [el('div', { class: 'card' }, el('p', {}, 'Platform administrator access required.'))];
+  }
+  const data = await api('GET', '/api/admin/polls');
+  const detail = el('div', { class: 'card stack' }, el('p', { class: 'muted' }, 'Select a poll to review its reports.'));
+
+  const loadReports = async (poll) => {
+    const res = await api('GET', '/api/admin/polls/' + poll.id + '/reports');
+    const rows = res.reports.map((report) => {
+      const resolve = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Resolve');
+      const dismiss = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Dismiss');
+      const update = async (status) => {
+        try {
+          await api('PATCH', '/api/admin/polls/' + poll.id + '/reports/' + report.id, { status });
+          toast('Report updated.', 'success');
+          handleRoute();
+        } catch (error) { toast(error.message, 'error'); }
+      };
+      resolve.addEventListener('click', () => update('resolved'));
+      dismiss.addEventListener('click', () => update('dismissed'));
+      return el('div', { class: 'row', style: { gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--border-primary)', flexWrap: 'wrap' } },
+        el('span', { class: 'badge' }, report.status),
+        el('span', { class: 'grow' }, report.reason, report.details ? el('span', { class: 'small muted' }, ' — ' + report.details) : null),
+        resolve, dismiss,
+      );
+    });
+    detail.replaceChildren(
+      el('p', { class: 'eyebrow' }, 'Reports'),
+      el('h2', { style: { fontSize: '1.2rem' } }, poll.title),
+      rows.length ? rows : el('p', { class: 'muted' }, 'No reports for this poll.'),
+    );
+  };
+
+  const rows = (data.polls || []).map((poll) => {
+    const review = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Reports (' + poll.openReports + ')');
+    review.addEventListener('click', () => loadReports(poll).catch((e) => toast(e.message, 'error')));
+    const toggle = el('button', { class: 'btn btn-outline btn-sm', type: 'button' }, poll.status === 'closed' ? 'Reopen' : 'Close');
+    toggle.addEventListener('click', async () => {
+      try {
+        await api('PATCH', '/api/admin/polls/' + poll.id, { action: poll.status === 'closed' ? 'reopen' : 'close' });
+        toast('Poll status updated.', 'success');
+        handleRoute();
+      } catch (error) { toast(error.message, 'error'); }
+    });
+    return el('tr', {},
+      el('td', {}, poll.title, el('div', { class: 'small muted' }, 'by ' + poll.creator)),
+      el('td', {}, String(poll.totalVotes)),
+      el('td', {}, el('span', { class: 'badge' }, poll.status)),
+      el('td', {}, String(poll.openReports)),
+      el('td', {}, el('a', { class: 'btn btn-ghost btn-sm', href: '/p/' + poll.slug }, 'Open')),
+      el('td', {}, review, toggle),
+    );
+  });
+
+  return [
+    el('div', { class: 'admin-shell' },
+      adminHeader('Polls', 'Public polls created by members of the platform.'),
+      adminNav('polls'),
+      el('div', { class: 'card' },
+        el('table', { class: 'table' },
+          el('thead', {}, el('tr', {},
+            el('th', {}, 'Poll'), el('th', {}, 'Votes'), el('th', {}, 'Status'),
+            el('th', {}, 'Open reports'), el('th', {}, ''), el('th', {}, 'Moderation'),
+          )),
+          el('tbody', {}, ...rows),
+        ),
+      ),
+      detail,
     ),
   ];
 }

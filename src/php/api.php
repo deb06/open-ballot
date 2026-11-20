@@ -287,6 +287,97 @@ function api_routes(): array
         send_json(200, ['poll' => serialize_election($row, null), 'results' => election_results((int) $row['id'])]);
     });
 
+    $add('POST', '/api/polls/:slug/report', static function (array $ctx): void {
+        ensure_limit('poll-report:' . $ctx['ip'], 10, 3600, 'Too many reports submitted. Try again later.');
+        $row = db_one("SELECT * FROM elections WHERE slug = ? AND kind = 'poll'", [$ctx['params']['slug']]);
+        if ($row === null) {
+            fail(404, 'Poll not found.', 'not_found');
+        }
+        $reason = one_of($ctx['body']['reason'] ?? 'other', ['spam', 'misleading', 'harassment', 'other']);
+        $details = optional_text($ctx['body']['details'] ?? null, 500, 'Details');
+        $token = voter_token_for((int) $row['id']);
+        try {
+            db_exec(
+                'INSERT INTO poll_reports (poll_id, reporter_token, reason, details, created_at) VALUES (?, ?, ?, ?, ?)',
+                [(int) $row['id'], $token, $reason, $details, iso_to_sql(now_iso())],
+            );
+        } catch (PDOException $error) {
+            if (db_is_duplicate($error)) {
+                fail(409, 'You have already reported this poll.', 'already_reported');
+            }
+            throw $error;
+        }
+        audit(null, 'poll.report', ['pollId' => (int) $row['id'], 'reason' => $reason], $ctx['ip']);
+        send_json(201, ['ok' => true]);
+    });
+
+    $admin('GET', '/api/admin/polls', static function (array $ctx): void {
+        if (!is_platform_admin($ctx['user'])) {
+            fail(403, 'Platform administrator access required.', 'forbidden');
+        }
+        $rows = db_all(
+            'SELECT e.*, u.name AS creator_name,
+                    (SELECT COUNT(*) FROM poll_reports r WHERE r.poll_id = e.id AND r.status = \'open\') AS open_reports
+             FROM elections e LEFT JOIN users u ON u.id = e.created_by
+             WHERE e.kind = \'poll\'
+             ORDER BY open_reports DESC, e.created_at DESC',
+        );
+        send_json(200, ['polls' => array_map(static fn (array $r): array => serialize_election($r, $ctx['user']) + [
+            'creator' => $r['creator_name'] ?? 'Unknown',
+            'openReports' => (int) $r['open_reports'],
+        ], $rows)]);
+    });
+
+    $admin('GET', '/api/admin/polls/:id/reports', static function (array $ctx): void {
+        if (!is_platform_admin($ctx['user'])) {
+            fail(403, 'Platform administrator access required.', 'forbidden');
+        }
+        $id = (int) $ctx['params']['id'];
+        if (db_one("SELECT id FROM elections WHERE id = ? AND kind = 'poll'", [$id]) === null) {
+            fail(404, 'Poll not found.', 'not_found');
+        }
+        $rows = db_all('SELECT * FROM poll_reports WHERE poll_id = ? ORDER BY created_at DESC', [$id]);
+        send_json(200, ['reports' => array_map(static fn (array $r): array => [
+            'id' => (int) $r['id'],
+            'reason' => (string) $r['reason'],
+            'details' => (string) $r['details'],
+            'status' => (string) $r['status'],
+            'createdAt' => sql_to_iso($r['created_at']),
+        ], $rows)]);
+    });
+
+    $admin('PATCH', '/api/admin/polls/:id/reports/:reportId', static function (array $ctx): void {
+        if (!is_platform_admin($ctx['user'])) {
+            fail(403, 'Platform administrator access required.', 'forbidden');
+        }
+        $status = one_of($ctx['body']['status'] ?? 'resolved', ['resolved', 'dismissed']);
+        db_exec(
+            'UPDATE poll_reports SET status = ? WHERE id = ? AND poll_id = ?',
+            [$status, (int) $ctx['params']['reportId'], (int) $ctx['params']['id']],
+        );
+        audit((int) $ctx['user']['id'], 'poll.report_update', ['pollId' => (int) $ctx['params']['id'], 'status' => $status], $ctx['ip']);
+        send_json(200, ['ok' => true]);
+    });
+
+    $admin('PATCH', '/api/admin/polls/:id', static function (array $ctx): void {
+        if (!is_platform_admin($ctx['user'])) {
+            fail(403, 'Platform administrator access required.', 'forbidden');
+        }
+        $id = (int) $ctx['params']['id'];
+        $poll = db_one("SELECT * FROM elections WHERE id = ? AND kind = 'poll'", [$id]);
+        if ($poll === null) {
+            fail(404, 'Poll not found.', 'not_found');
+        }
+        $action = one_of($ctx['body']['action'] ?? 'close', ['close', 'reopen']);
+        if ($action === 'close') {
+            db_exec("UPDATE elections SET status = 'closed', closes_at = ? WHERE id = ?", [iso_to_sql(now_iso()), $id]);
+        } else {
+            db_exec("UPDATE elections SET status = 'open', closes_at = NULL WHERE id = ?", [$id]);
+        }
+        audit((int) $ctx['user']['id'], 'poll.moderate', ['pollId' => $id, 'action' => $action], $ctx['ip']);
+        send_json(200, ['poll' => serialize_election(get_election($id), $ctx['user'])]);
+    });
+
     /* -------------------------------------------------------------- */
     /* Organizations                                                   */
     /* -------------------------------------------------------------- */
@@ -2569,7 +2660,7 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
                 || $pathname === '/api/auth/forgot-password' || $pathname === '/api/auth/reset-password'
                 || $pathname === '/api/auth/verify-email' || $pathname === '/api/auth/mfa/challenge'
                 || preg_match('#^/api/elections/\d+/results/verify$#', $pathname) === 1
-                || preg_match('#^/api/polls/[^/]+/vote$#', $pathname) === 1;
+                || preg_match('#^/api/polls/[^/]+/(vote|report)$#', $pathname) === 1;
             if (!$exempt) {
                 if ($session === null) {
                     throw new HttpError(401, 'Sign in to continue.', 'auth_required');

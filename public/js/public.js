@@ -1427,6 +1427,39 @@ async function viewPoll(slug) {
   } catch (error) {
     panel.replaceChildren(el('p', { class: 'form-error' }, error.message));
   }
+
+  const reportToggle = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Report this poll');
+  const reportError = el('div', { class: 'form-error', role: 'alert' });
+  const reportReason = el('select', { class: 'select' },
+    el('option', { value: 'spam' }, 'Spam or advertising'),
+    el('option', { value: 'misleading' }, 'Misleading question'),
+    el('option', { value: 'harassment' }, 'Harassment or hate'),
+    el('option', { value: 'other' }, 'Something else'),
+  );
+  const reportDetails = el('textarea', { class: 'textarea', rows: '3', maxlength: '500', placeholder: 'Optional details' });
+  const reportSubmit = el('button', { class: 'btn btn-outline btn-sm', type: 'submit' }, 'Submit report');
+  const reportForm = el('form', { class: 'card stack', hidden: true, style: { marginTop: '16px' } },
+    reportError,
+    el('div', { class: 'field' }, el('label', {}, 'Reason'), reportReason),
+    el('div', { class: 'field' }, el('label', {}, 'Details'), reportDetails),
+    reportSubmit,
+  );
+  reportToggle.addEventListener('click', () => { reportForm.hidden = !reportForm.hidden; });
+  reportForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    reportError.textContent = '';
+    setBusy(reportSubmit, true, 'Sending…');
+    try {
+      await api('POST', '/api/polls/' + encodeURIComponent(slug) + '/report', {
+        reason: reportReason.value, details: reportDetails.value,
+      });
+      toast('Thanks — your report was sent to the platform moderators.', 'success');
+      reportForm.hidden = true;
+    } catch (error) { reportError.textContent = error.message; }
+    finally { setBusy(reportSubmit, false); }
+  });
+  panel.append(el('div', { class: 'stack', style: { marginTop: '20px' } }, reportToggle, reportForm));
+
   return el('div', { class: 'stack', style: { maxWidth: '720px', margin: '32px auto' } }, panel);
 }
 

@@ -1,7 +1,7 @@
 # Open Ballot
 
 [![CI](https://github.com/deb06/open-ballot/actions/workflows/docs.yml/badge.svg)](https://github.com/deb06/open-ballot/actions/workflows/docs.yml)
-[![Smoke tests](https://img.shields.io/badge/smoke%20tests-47%2F47-brightgreen)](test/smoke.php)
+[![Smoke tests](https://img.shields.io/badge/smoke%20tests-50%2F50-brightgreen)](test/smoke.php)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A secure, anonymous and receipt-verifiable online voting platform. Generated on {{DATE}} from commit `{{COMMIT}}`.

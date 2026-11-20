@@ -62,6 +62,18 @@ CREATE TABLE IF NOT EXISTS elections (
 CREATE INDEX IF NOT EXISTS idx_elections_status ON elections(status);
 CREATE INDEX IF NOT EXISTS idx_elections_created ON elections(created_at);
 
+CREATE TABLE IF NOT EXISTS poll_reports (
+  id             SERIAL PRIMARY KEY,
+  poll_id        INT NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
+  reporter_token CHAR(64) NULL,
+  reason         VARCHAR(40) NOT NULL,
+  details        VARCHAR(500) NOT NULL DEFAULT '',
+  status         VARCHAR(16) NOT NULL DEFAULT 'open' CHECK (status IN ('open','resolved','dismissed')),
+  created_at     TIMESTAMP(3) NOT NULL,
+  UNIQUE (poll_id, reporter_token)
+);
+CREATE INDEX IF NOT EXISTS idx_poll_reports_poll ON poll_reports(poll_id);
+
 CREATE TABLE IF NOT EXISTS candidates (
   id          SERIAL PRIMARY KEY,
   election_id INT NOT NULL REFERENCES elections(id) ON DELETE CASCADE,

@@ -77,6 +77,20 @@ CREATE TABLE IF NOT EXISTS elections (
   CONSTRAINT fk_elections_creator FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS poll_reports (
+  id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  poll_id        INT UNSIGNED NOT NULL,
+  reporter_token CHAR(64) NULL DEFAULT NULL,
+  reason         VARCHAR(40) NOT NULL,
+  details        VARCHAR(500) NOT NULL DEFAULT '',
+  status         ENUM('open','resolved','dismissed') NOT NULL DEFAULT 'open',
+  created_at     DATETIME(3) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_poll_reports_reporter (poll_id, reporter_token),
+  KEY idx_poll_reports_poll (poll_id),
+  CONSTRAINT fk_poll_reports_poll FOREIGN KEY (poll_id) REFERENCES elections (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS candidates (
   id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   election_id INT UNSIGNED NOT NULL,

@@ -955,6 +955,7 @@ async function viewFor(parts) {
     if (!sub) return viewAdminOverview();
     if (sub === 'org') return viewAdminOrganization();
     if (sub === 'organizations') return viewAdminOrganizations();
+    if (sub === 'polls') return viewAdminPolls();
     if (sub === 'election' && id) return viewAdminElection(id);
     if (sub === 'users') return viewAdminUsers();
     if (sub === 'audit') return viewAdminAudit();
@@ -1054,6 +1055,7 @@ function paletteItems() {
     items.push(
       { label: 'Admin overview', hint: 'Dashboard', path: '/admin' },
       { label: 'Voters', hint: 'Admin · register', path: '/admin/users' },
+      { label: 'Polls', hint: 'Admin · moderation', path: '/admin/polls' },
       { label: 'Audit log', hint: 'Admin', path: '/admin/audit' },
       { label: 'Webhooks', hint: 'Admin', path: '/admin/webhooks' },
       { label: 'Schema', hint: 'Admin · ERD', path: '/admin/schema' },
