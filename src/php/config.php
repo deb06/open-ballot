@@ -34,6 +34,9 @@ if ($databaseUrl !== null && $databaseUrl !== '') {
         $scheme = strtolower((string) ($parts['scheme'] ?? ''));
         if (str_starts_with($scheme, 'postgres')) {
             $dbConfig['driver'] = 'pgsql';
+            // A URL without an explicit port must use the Postgres default,
+            // not the local MySQL port that DB_DRIVER defaults to.
+            $dbConfig['port'] = 5432;
         }
         if (isset($parts['host'])) $dbConfig['host'] = (string) $parts['host'];
         if (isset($parts['port'])) $dbConfig['port'] = (int) $parts['port'];
