@@ -50,7 +50,12 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
   (also adopted at login for older accounts); `'invite'` requires an `organization_invites` token.
 - Org admins get a scoped subset of the admin API: `/api/admin/{overview,elections,users,audit,schema}`
   plus `/api/org*`; platform-only areas (webhooks, API keys, org list) stay `admin`-only.
-- Any schema change must keep `schema.sql`, `schema.pgsql` and `db_migrate_final()` aligned.
+- Any schema change must keep `schema.sql`, `schema.pgsql` and `db_migrate_final()` aligned. IMPORTANT:
+  never create an index on a new column inside the schema script itself — `db_add_column()` runs after
+  `db_run_script()`, so on an existing DB the index would fail before the column exists. Create such
+  indexes in `db_migrate_final()` instead.
+- Verified live: org register → org read → domain member auto-join → scoped election create/list →
+  platform endpoint denied (403). Temporary test org was deleted afterwards.
 
 ## Visual identity — anti-"AI slop" (important, already fixed)
 - Flat institutional brass accent `#d9a441`. NO violet `#8b7bff`, NO violet→cyan gradient.
