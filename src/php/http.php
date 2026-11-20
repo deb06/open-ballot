@@ -52,7 +52,9 @@ function security_headers(): void
     header('Cross-Origin-Opener-Policy: same-origin');
     header('Cross-Origin-Resource-Policy: same-origin');
     header('X-Permitted-Cross-Domain-Policies: none');
-    header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()');
+    header('X-DNS-Prefetch-Control: off');
+    header('Origin-Agent-Cluster: ?1');
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=()');
     if (request_is_secure()) {
         header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
     }
@@ -60,6 +62,8 @@ function security_headers(): void
         'Content-Security-Policy: ' . implode('; ', [
             "default-src 'self'",
             "script-src 'self' 'sha256-1vtGRdulwnqb8Ao0s4+BpbUIXEoo6+kouLUx5lAQyl8='",
+            "object-src 'none'",
+            "upgrade-insecure-requests",
             "style-src 'self'",
             "img-src 'self' data:",
             "font-src 'self'",

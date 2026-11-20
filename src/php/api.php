@@ -2061,7 +2061,7 @@ function api_routes(): array
     });
 
     $admin('GET', '/api/admin/overview', static function (array $ctx): void {
-        $scope = org_scope($ctx['user']);
+        $scope = viewer_scope($ctx['user']);
         $where = $scope > 0 ? ' WHERE organization_id = ?' : '';
         $params = $scope > 0 ? [$scope] : [];
         $users = (int) db_scalar('SELECT COUNT(*) FROM users' . $where, $params);
@@ -2123,7 +2123,7 @@ function api_routes(): array
     });
 
     $admin('GET', '/api/admin/elections', static function (array $ctx): void {
-        $scope = org_scope($ctx['user']);
+        $scope = viewer_scope($ctx['user']);
         $rows = db_all(
             "SELECT * FROM elections
              " . ($scope > 0 ? 'WHERE organization_id = ? ' : '') . "
@@ -2467,7 +2467,7 @@ function api_routes(): array
 
     $admin('GET', '/api/admin/users', static function (array $ctx): void {
         $search = mb_substr(trim((string) query_value($ctx['query'], 'q', '')), 0, 80);
-        $scope = org_scope($ctx['user']);
+        $scope = viewer_scope($ctx['user']);
         $orgCond = $scope > 0 ? 'organization_id = ? AND ' : '';
         $scopeParams = $scope > 0 ? [$scope] : [];
         if ($search !== '') {
@@ -2608,7 +2608,7 @@ function api_routes(): array
         $filter = mb_substr(trim((string) query_value($ctx['query'], 'action', '')), 0, 60);
         $prefix = $filter !== '' ? $filter . '%' : '%';
 
-        $scope = org_scope($ctx['user']);
+        $scope = viewer_scope($ctx['user']);
         $scopeCond = $scope > 0 ? ' AND u.organization_id = ?' : '';
         $scopeParams = $scope > 0 ? [$scope] : [];
         $rows = db_all(

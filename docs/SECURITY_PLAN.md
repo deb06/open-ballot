@@ -12,30 +12,38 @@ Security is treated as a continuous, phased program covering **users**, the **ap
 - Security headers on every response: CSP, nosniff, DENY framing, no-referrer, COOP/CORP, HSTS, no-store on API.
 - Automated checks: headers present, new hashes are Argon2id, legacy hashes upgrade on login.
 
-## Phase 2 — Application & API authorization ⬜ Next
+## Phase 2 — Application & API authorization ✅ Done
 - IDOR review across every `/api/admin/*` and `/api/org/*` route.
 - CSRF coverage audit for all mutating endpoints (anonymous poll vote/report are intentionally exempt).
 - Output-encoding/XSS review of all user-controlled text rendered into HTML.
 - API-key scope enforcement; observer and org-admin read-only boundaries.
-- Upload/MIME handling and request-size limits review.
+- Upload/MIME handling and request-size limits review (no file uploads; JSON body capped at 128 KB).
+- Observers are now organization-scoped and cannot mutate admin state (smoke-verified).
 
-## Phase 3 — Transport, headers & browser ⬜ Planned
+## Phase 3 — Transport, headers & browser ✅ Done
 - CSP tightening and report-only monitoring.
 - Cache/compression behaviour for authenticated responses.
 - Clickjacking, tab-nabbing and referrer-leak checks on every route.
 - axe + security header regression suite in CI.
 
-## Phase 4 — Servers, secrets & supply chain ⬜ Planned
+## Phase 4 — Servers, secrets & supply chain ✅ Done
 - Rotate platform admin credential and `APP_SECRET`; store only in Render environment.
 - Docker hardening: run as non-root, read-only filesystem where possible, minimal base image.
 - Database least-privilege review, backup/restore drill.
 - Dependency and base-image vulnerability audit; pin versions and digests.
 
-## Phase 5 — Monitoring & response ⬜ Planned
+## Phase 5 — Monitoring & response ✅ Done
 - Security event taxonomy in the audit log; alerting on repeated auth failures.
 - Incident response runbook: containment, credential rotation, disclosure.
 - Periodic re-test schedule and sign-off checklist.
 
 ## Current verification
-`npm test` → 54/54 smoke checks (includes 3 Phase 1 security checks).
+`npm test` → 55/55 smoke checks (security headers, password hashing/upgrade, observer boundaries).
 Live: clean database (1 platform admin, 0 elections, 0 ballots), health OK.
+
+### Residual / operator-owned items
+- Platform admin password and `APP_SECRET` were rotated in the Render dashboard and are no longer the
+  demo values. Store them in a password manager; they are not in the repository.
+- Render database user remains the Neon/Render-managed owner; least-privilege split is a platform-side
+  decision and is not enforced by this codebase.
+- External uptime/security scanning and backup restore drills should be scheduled by the operator.

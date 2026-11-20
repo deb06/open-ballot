@@ -221,6 +221,9 @@ function ensure_limit(string $key, int $max, int $windowSeconds, string $message
 {
     $result = rate_limit($key, $max, $windowSeconds);
     if (!$result['ok']) {
+        // Record the throttled action (not the raw key, which can contain an
+        // email address) so repeated abuse is visible in the audit trail.
+        audit(null, 'security.rate_limit', ['action' => explode(':', $key, 2)[0]], ($_SERVER['REMOTE_ADDR'] ?? null));
         throw new HttpError(429, $message, 'rate_limited', [
             'Retry-After' => (string) $result['retryAfter'],
         ]);
@@ -369,6 +372,7 @@ function serialize_election(array $row, ?array $viewer): array
         'ballotType' => (string) ($row['ballot_type'] ?? 'single'),
         'kind' => (string) ($row['kind'] ?? 'election'),
         'slug' => $row['slug'] ?? null,
+        'organizationId' => isset($row['organization_id']) && $row['organization_id'] !== null ? (int) $row['organization_id'] : null,
         'brandColor' => $row['brand_color'] ?? null,
         'logoUrl' => $row['logo_url'] ?? null,
         'opensAt' => sql_to_iso($row['opens_at']),
@@ -528,6 +532,20 @@ function organization_for_user(?array $user): ?array
         return null;
     }
     return organization_by_id(user_organization_id($user));
+}
+
+/** Like org_scope(), but also scopes read-only observers to their organization. */
+function viewer_scope(?array $user): int
+{
+    $scope = org_scope($user);
+    if ($scope >= 0) {
+        return $scope;
+    }
+    if ($user !== null && (string) ($user['role'] ?? '') === 'observer') {
+        $orgId = user_organization_id($user);
+        return $orgId === null ? -1 : $orgId;
+    }
+    return -1;
 }
 
 function can_manage_election(array $election, ?array $user): bool

@@ -15,6 +15,13 @@ COPY . /app
 # Install WebAuthn library (used by passkey endpoints once verification is wired).
 RUN composer require web-auth/webauthn-lib --no-interaction --optimize-autoloader 2>/dev/null || true
 
+# Run as an unprivileged user; only the data directory needs write access.
+RUN addgroup -S app && adduser -S -G app app \
+ && mkdir -p /app/data \
+ && chown -R app:app /app/data \
+ && chmod 775 /app/data
+USER app
+
 ENV PORT=8080
 # Serve health checks from an idle worker while another waits on a remote DB.
 ENV PHP_CLI_SERVER_WORKERS=4

@@ -850,13 +850,43 @@ try {
         assert_same(200, $unsub['status'], $unsub['text']);
     });
 
+    /* Security phase 2 — observer boundaries */
+
+    step('observers can read scoped admin data but cannot mutate', static function () use ($base, $orgAdmin, $orgId): void {
+        $invite = $orgAdmin->request('POST', '/api/org/invites', [
+            'email' => 'observer-' . bin2hex(random_bytes(3)) . '@example.test', 'role' => 'observer',
+        ]);
+        assert_same(201, $invite['status'], $invite['text']);
+        parse_str((string) parse_url($invite['data']['invite']['link'], PHP_URL_QUERY) ?: '', $query);
+        $token = (string) ($query['token'] ?? '');
+        $email = (string) $invite['data']['invite']['email'];
+
+        $observer = new Client($base);
+        $joined = $observer->request('POST', '/api/auth/register', [
+            'name' => 'Org Observer', 'email' => $email, 'password' => 'Observer#2026!', 'inviteToken' => $token,
+        ]);
+        assert_same(201, $joined['status'], $joined['text']);
+        assert_same('observer', $joined['data']['user']['role']);
+        assert_same($orgId, (int) $joined['data']['user']['organizationId']);
+
+        $list = $observer->request('GET', '/api/admin/elections');
+        assert_same(200, $list['status'], $list['text']);
+        foreach ($list['data']['elections'] as $election) {
+            assert_true(($election['organizationId'] ?? null) === null
+                || (int) $election['organizationId'] === $orgId, 'Observer saw another organization’s election.');
+        }
+        $denied = $observer->request('POST', '/api/admin/elections', ['title' => 'Nope', 'description' => 'Nope']);
+        assert_same(403, $denied['status'], 'Observers must not be able to mutate.');
+    });
+
     /* Security phase 1 — credentials and transport */
 
     step('serves hardening headers on API responses', static function () use ($base): void {
         $res = http_request('GET', $base . '/api/health', null, ['Accept: application/json']);
         $headers = implode("\n", $res['headers']);
         foreach (['Content-Security-Policy:', 'X-Content-Type-Options: nosniff', 'X-Frame-Options: DENY',
-                  'Referrer-Policy: no-referrer', 'Cache-Control: no-store'] as $needle) {
+                  'Referrer-Policy: no-referrer', 'Cache-Control: no-store', 'X-DNS-Prefetch-Control: off',
+                  'object-src \'none\'', 'upgrade-insecure-requests'] as $needle) {
             assert_true(str_contains($headers, $needle), 'Missing header: ' . $needle);
         }
     });
