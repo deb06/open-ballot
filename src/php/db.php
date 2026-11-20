@@ -381,6 +381,8 @@ function db_migrate_final(): void
     $cfg = config('db');
     if (($cfg['driver'] ?? 'mysql') !== 'pgsql') {
         try { db()->exec('ALTER TABLE participation MODIFY COLUMN voter_id INT UNSIGNED NULL DEFAULT NULL'); } catch (Throwable) {}
+    } else {
+        try { db()->exec('ALTER TABLE participation ALTER COLUMN voter_id DROP NOT NULL'); } catch (Throwable) {}
     }
     if (($cfg['driver'] ?? 'mysql') !== 'pgsql') {
         try {
