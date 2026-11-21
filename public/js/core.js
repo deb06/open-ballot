@@ -839,48 +839,40 @@ function openElectionSearch() {
 function renderHeader() {
   const actions = document.getElementById('header-actions');
   if (!actions) return;
-  actions.replaceChildren();
 
-  actions.append(
-    el('button', {
-      class: 'btn btn-ghost btn-sm btn-icon',
-      type: 'button',
-      'aria-label': 'Switch language',
-      title: 'Language / Idioma',
-      onclick: () => {
-        if (!window.I18n) return;
-        window.I18n.setLang(window.I18n.current() === 'en' ? 'es' : 'en');
-      },
-    }, el('span', { class: 'lang-label' }, (window.I18n && window.I18n.current() === 'es') ? 'ES' : 'EN')),
-    el(
-      'button',
-      {
-        class: 'btn btn-ghost btn-sm btn-icon header-search',
-        type: 'button',
-        onclick: openElectionSearch,
-        'aria-label': 'Search elections',
-        title: 'Search elections',
-      },
-      el('span', { html: icons.search }),
-    ),
-    el(
-      'button',
-      {
-        class: 'btn btn-ghost btn-sm btn-icon',
-        type: 'button',
-        id: 'theme-toggle',
-        onclick: toggleTheme,
-        'aria-label': 'Switch theme',
-      },
-      el('span', { html: document.documentElement.getAttribute('data-theme') === 'light' ? icons.moon : icons.sun }),
-    ),
-  );
+  // Icon utilities are part of the static HTML shell so they are visible even
+  // if a stale script bundle is cached. Just wire their handlers here.
+  const langBtn = document.getElementById('lang-toggle');
+  if (langBtn) {
+    langBtn.onclick = () => {
+      if (!window.I18n) return;
+      window.I18n.setLang(window.I18n.current() === 'en' ? 'es' : 'en');
+    };
+    const label = document.getElementById('lang-label');
+    if (label) label.textContent = (window.I18n && window.I18n.current() === 'es') ? 'ES' : 'EN';
+  }
+  const searchBtn = document.getElementById('header-search');
+  if (searchBtn) searchBtn.onclick = openElectionSearch;
+  const themeBtn = document.getElementById('theme-toggle');
+  if (themeBtn) themeBtn.onclick = toggleTheme;
 
-  actions.append(el('a', { class: 'btn btn-ghost btn-sm', href: '/orgs' }, 'Organizations'));
-  actions.append(el('a', { class: 'btn btn-ghost btn-sm', href: '/polls/new' }, 'Create a poll'));
+  const notifSlot = document.getElementById('notif-slot');
+  if (notifSlot) {
+    notifSlot.replaceChildren();
+    if (state.user) notifSlot.append(notificationBell());
+  }
+
+  let links = document.getElementById('header-links');
+  if (!links) {
+    links = el('span', { class: 'header-links', id: 'header-links' });
+    actions.append(links);
+  }
+  links.replaceChildren();
+
+  links.append(el('a', { class: 'btn btn-ghost btn-sm', href: '/orgs' }, 'Organizations'));
+  links.append(el('a', { class: 'btn btn-ghost btn-sm', href: '/polls/new' }, 'Create a poll'));
   if (state.user) {
-    actions.append(
-      notificationBell(),
+    links.append(
       el(
         'a',
         { class: 'btn btn-ghost btn-sm', href: '/account', title: state.user.email },
@@ -901,7 +893,7 @@ function renderHeader() {
       ),
     );
   } else {
-    actions.append(
+    links.append(
       el('a', { class: 'btn btn-ghost btn-sm', href: '/login' }, 'Sign in'),
       el('a', { class: 'btn btn-ghost btn-sm', href: '/register-organization' }, 'Register organization'),
       el('a', { class: 'btn btn-primary btn-sm', href: '/register' }, 'Create account'),

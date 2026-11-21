@@ -2,8 +2,8 @@
    Open Ballot — design system
    ========================================================================== */
 
-@import url('/styles/tokens.css?v=3');
-@import url('/styles/components.css?v=3');
+@import url('/styles/tokens.css?v=4');
+@import url('/styles/components.css?v=4');
 
 *,
 *::before,
@@ -240,6 +240,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   align-items: center;
   gap: 10px;
 }
+.header-links { display: flex; align-items: center; gap: 10px; }
+#notif-slot { display: inline-flex; align-items: center; }
 
 .nav-toggle {
   display: none;
@@ -1678,6 +1680,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   /* Keep the icon-only utilities (theme, search, language) available on mobile. */
   /* Keep icon toggles (theme, search, notifications, language) in the header;
      text actions live in the navigation drawer on small screens. */
+  .header-links { display: none; }
   .header-actions > .btn-ghost:not(.btn-icon),
   .header-actions > .btn-primary { display: none; }
   .form-grid { grid-template-columns: 1fr; }
