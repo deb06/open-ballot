@@ -913,6 +913,8 @@ function renderHeader() {
   if (navEl) {
     navEl.querySelector('.mobile-actions')?.remove();
     const links = [
+      { label: 'Search elections', action: openElectionSearch },
+      { label: document.documentElement.getAttribute('data-theme') === 'light' ? 'Switch to dark theme' : 'Switch to light theme', action: toggleTheme },
       { href: '/orgs', label: 'Organizations' },
       { href: '/polls/new', label: 'Create a poll' },
       ...(state.user

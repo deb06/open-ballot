@@ -1708,6 +1708,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   }
 }
 
+/* Icon utilities are never hidden, at any breakpoint. */
+.header-search,
+#theme-toggle,
+.notif-button { display: inline-flex !important; visibility: visible !important; }
+
 @media print {
   .site-header, .site-footer, .ballot-actions, .toasts, .modal-backdrop { display: none !important; }
   body { background: #fff; color: #000; }

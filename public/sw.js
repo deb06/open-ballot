@@ -13,7 +13,7 @@
    Bump CACHE_VERSION whenever the precache list changes.
    ========================================================================== */
 
-const CACHE_VERSION = 'openballot-v1';
+const CACHE_VERSION = 'openballot-v2';
 const PRECACHE = [
   '/',
   '/index.html',
