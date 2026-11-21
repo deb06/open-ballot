@@ -338,6 +338,55 @@ function smtp_send(string $host, int $port, string $user, string $pass, string $
     return $ok;
 }
 
+/**
+ * Generic JSON email API (e.g. Brevo). Configure EMAIL_API_URL, EMAIL_API_KEY
+ * and optionally EMAIL_API_TEMPLATE with {from}/{to}/{subject}/{body} placeholders.
+ */
+function email_api_send(string $from, string $to, string $subject, string $body): bool
+{
+    $url = env_value('EMAIL_API_URL');
+    if ($url === null || $url === '') {
+        return false;
+    }
+    $default = json_encode([
+        'from' => ['email' => $from, 'name' => 'Open Ballot'],
+        'to' => [['email' => $to]],
+        'subject' => $subject,
+        'textContent' => $body,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($default === false) {
+        return false;
+    }
+    $template = env_value('EMAIL_API_TEMPLATE');
+    $payload = $template !== null && $template !== ''
+        ? strtr($template, [
+            '{from}' => json_encode($from),
+            '{to}' => json_encode($to),
+            '{subject}' => json_encode($subject),
+            '{body}' => json_encode($body),
+        ])
+        : $default;
+    $key = (string) (env_value('EMAIL_API_KEY') ?? '');
+    $headers = "Content-Type: application/json\r\n";
+    if ($key !== '') {
+        $headers .= "api-key: {$key}\r\nAuthorization: Bearer {$key}\r\n";
+    }
+    $context = stream_context_create(['http' => [
+        'method' => 'POST',
+        'header' => $headers,
+        'content' => $payload,
+        'timeout' => 10,
+        'ignore_errors' => true,
+    ]]);
+    $response = @file_get_contents($url, false, $context);
+    $status = $http_response_header[0] ?? '';
+    if (!str_contains($status, ' 2')) {
+        error_log('[email-api] delivery failed: ' . $status . ' ' . substr((string) $response, 0, 300));
+        return false;
+    }
+    return true;
+}
+
 /** Send via Resend's HTTPS API. Returns false on any non-2xx response. */
 function resend_send(string $apiKey, string $from, string $to, string $subject, string $body): bool
 {
@@ -369,6 +418,11 @@ function resend_send(string $apiKey, string $from, string $to, string $subject, 
 function send_mail(string $to, string $subject, string $body): bool
 {
     $from = (string) (env_value('SMTP_FROM') ?? config('mail.from') ?? 'no-reply@openballot.local');
+
+    // A generic JSON email API (Brevo, etc.) takes priority when configured.
+    if (env_value('EMAIL_API_URL') !== null) {
+        return email_api_send($from, $to, $subject, $body);
+    }
 
     // Prefer Resend's HTTP API when a key is configured — more reliable than
     // SMTP and reports real delivery errors.

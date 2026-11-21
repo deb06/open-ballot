@@ -53,6 +53,13 @@ services:
       - key: SESSION_IDLE_HOURS
         value: "24"
       # Real email delivery. Without these, mail() only writes data/mail.log.
+      # Generic JSON email API (e.g. Brevo). Takes priority over SMTP when set.
+      - key: EMAIL_API_URL
+        sync: false
+      - key: EMAIL_API_KEY
+        sync: false
+      - key: EMAIL_API_TEMPLATE
+        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
