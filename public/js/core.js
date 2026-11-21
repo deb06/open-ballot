@@ -1321,17 +1321,21 @@ async function boot() {
   handleRoute();
 }
 
-function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
-  const secure = location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname);
-  if (!secure) return;
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      /* offline support is optional */
-    });
-  });
+// The service worker could serve a stale HTML shell after deploys, hiding
+// newly added UI. Retire it and clear its caches on every load.
+function retireServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => registrations.forEach((registration) => registration.unregister()))
+      .catch(() => {});
+  }
+  if (window.caches && caches.keys) {
+    caches.keys()
+      .then((keys) => keys.forEach((key) => caches.delete(key)))
+      .catch(() => {});
+  }
 }
 
-registerServiceWorker();
+retireServiceWorker();
 
 window.addEventListener('DOMContentLoaded', boot);

@@ -13,7 +13,7 @@
    Bump CACHE_VERSION whenever the precache list changes.
    ========================================================================== */
 
-const CACHE_VERSION = 'openballot-v4';
+const CACHE_VERSION = 'openballot-v5';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -21,15 +21,15 @@ const PRECACHE = [
   '/favicon.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
-  '/styles.css?v=4',
-  '/styles/tokens.css?v=4',
-  '/styles/components.css?v=4',
-  '/js/theme.js?v=4',
-  '/js/core.js?v=4',
-  '/js/components.js?v=4',
-  '/js/public.js?v=4',
-  '/js/admin.js?v=4',
-  '/js/design.js?v=4',
+  '/styles.css?v=5',
+  '/styles/tokens.css?v=5',
+  '/styles/components.css?v=5',
+  '/js/theme.js?v=5',
+  '/js/core.js?v=5',
+  '/js/components.js?v=5',
+  '/js/public.js?v=5',
+  '/js/admin.js?v=5',
+  '/js/design.js?v=5',
 ];
 
 self.addEventListener('install', (event) => {
