@@ -263,9 +263,92 @@ function totp_verify(string $secret, string $code, int $window = 1): bool
     return false;
 }
 
+/**
+ * Minimal SMTP delivery with STARTTLS + AUTH. Used when SMTP_HOST is set;
+ * otherwise mail()/the local outbox log is used. Returns false on any failure
+ * so the caller can fall back safely.
+ */
+function smtp_send(string $host, int $port, string $user, string $pass, string $from, string $to, string $subject, string $body): bool
+{
+    $clean = static fn (string $v): string => str_replace(["\r", "\n"], '', $v);
+    $host = $clean($host); $from = $clean($from); $to = $clean($to); $subject = $clean($subject);
+
+    $socket = @stream_socket_client('tcp://' . $host . ':' . $port, $errno, $errstr, 8);
+    if ($socket === false) { return false; }
+    stream_set_timeout($socket, 8);
+
+    $read = static function () use ($socket): string {
+        $line = fgets($socket, 4096);
+        return $line === false ? '' : $line;
+    };
+    $send = static function (string $line) use ($socket): void {
+        fwrite($socket, $line . "\r\n");
+    };
+    $expect = static function (int|array $expected) use ($read): bool {
+        for ($i = 0; $i < 12; $i += 1) {
+            $line = $read();
+            if ($line === '') { return false; }
+            if (preg_match('/^\d{3}/', $line) === 1) {
+                $code = (int) substr($line, 0, 3);
+                return is_array($expected) ? in_array($code, $expected, true) : $code === $expected;
+            }
+        }
+        return false;
+    };
+
+    if (!$expect(220)) { fclose($socket); return false; }
+    $send('EHLO open-ballot.local');
+    if (!$expect(250)) { fclose($socket); return false; }
+
+    $tls = env_value('SMTP_TLS', '1') !== '0';
+    if ($tls) {
+        $send('STARTTLS');
+        if (!$expect(220)) { fclose($socket); return false; }
+        if (!@stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) { fclose($socket); return false; }
+        $send('EHLO open-ballot.local');
+        if (!$expect(250)) { fclose($socket); return false; }
+    }
+
+    if ($user !== '' && $pass !== '') {
+        $send('AUTH PLAIN ' . base64_encode("\0" . $user . "\0" . $pass));
+        if (!$expect(235)) {
+            $send('AUTH LOGIN');
+            if (!$expect(334)) { fclose($socket); return false; }
+            $send(base64_encode($user));
+            if (!$expect(334)) { fclose($socket); return false; }
+            $send(base64_encode($pass));
+            if (!$expect(235)) { fclose($socket); return false; }
+        }
+    }
+
+    $send('MAIL FROM:<' . $from . '>');
+    if (!$expect(250)) { fclose($socket); return false; }
+    $send('RCPT TO:<' . $to . '>');
+    if (!$expect([250, 251])) { fclose($socket); return false; }
+    $send('DATA');
+    if (!$expect(354)) { fclose($socket); return false; }
+
+    $headers = 'From: ' . $from . "\r\nTo: " . $to . "\r\nSubject: " . $subject
+        . "\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n";
+    $payload = preg_replace('/^\./m', '..', $body) ?? $body;
+    $send(str_replace("\n", "\r\n", str_replace("\r\n", "\n", $headers . "\r\n" . $payload)) . "\r\n.");
+    $ok = $expect(250);
+    $send('QUIT');
+    fclose($socket);
+    return $ok;
+}
+
 function send_mail(string $to, string $subject, string $body): bool
 {
-    $from = (string) (config('mail.from') ?? 'no-reply@openballot.local');
+    $from = (string) (env_value('SMTP_FROM') ?? config('mail.from') ?? 'no-reply@openballot.local');
+    $smtpHost = env_value('SMTP_HOST');
+    if ($smtpHost !== null && $smtpHost !== '') {
+        if (smtp_send($smtpHost, (int) env_value('SMTP_PORT', '587'), (string) (env_value('SMTP_USER') ?? ''),
+            (string) (env_value('SMTP_PASS') ?? ''), $from, $to, $subject, $body)) {
+            return true;
+        }
+    }
+
     $headers = "From: {$from}\r\nContent-Type: text/plain; charset=UTF-8\r\n";
     $ok = @mail($to, $subject, $body, $headers);
     if (!$ok) {

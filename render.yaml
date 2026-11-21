@@ -52,6 +52,17 @@ services:
         value: production
       - key: SESSION_IDLE_HOURS
         value: "24"
+      # Real email delivery. Without these, mail() only writes data/mail.log.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
       - key: SENTRY_DSN
         sync: false
       - key: CRON_SECRET

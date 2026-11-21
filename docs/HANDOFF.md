@@ -68,6 +68,13 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
 - `participation.voter_id` is nullable (org elections still use it); keep the anonymous and account
   flows separate so ballot privacy is preserved.
 
+## Email & SMS delivery
+- Email verification **logic** works (hashed single-use tokens, verify/resend endpoints, optional gate).
+- **Delivery does not work until SMTP is configured** — see `docs/EMAIL_AND_SMS.md`. Render has no MTA,
+  so `mail()` falls back to an in-container `data/mail.log` that users never see. Set `SMTP_HOST`,
+  `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` in Render to send real mail.
+- SMS verification does not exist at all (no phone field or provider).
+
 ## Poll moderation
 - `poll_reports` table: one report per poll per anonymous reporter token; reasons spam/misleading/
   harassment/other. `POST /api/polls/:slug/report` is public and CSRF-exempt.
