@@ -1669,7 +1669,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .primary-nav a.active::after { display: none; }
   .primary-nav a.active { background: var(--accent-soft); color: var(--text); }
   .header-actions { margin-left: auto; }
-  .header-actions .btn-ghost { display: none; }
+  /* Keep the icon-only utilities (theme, search, language) available on mobile. */
+  .header-actions .btn-ghost:not(#theme-toggle):not(.header-search) { display: none; }
   .form-grid { grid-template-columns: 1fr; }
   .form-grid .span-2 { grid-column: auto; }
   .results-summary { grid-template-columns: 1fr; justify-items: start; }
