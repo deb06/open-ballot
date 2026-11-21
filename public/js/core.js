@@ -42,14 +42,16 @@ function applyTheme(theme) {
   }
   const toggle = document.getElementById('theme-toggle');
   if (toggle) {
-    toggle.setAttribute('aria-label', `Theme: ${pref} (click to change)`);
-    toggle.innerHTML = pref === 'system' ? icons.sparkle : pref === 'light' ? icons.moon : icons.sun;
+    const target = next === 'light' ? 'dark' : 'light';
+    toggle.setAttribute('aria-label', 'Switch to ' + target + ' theme');
+    toggle.setAttribute('title', 'Switch to ' + target + ' theme');
+    toggle.innerHTML = next === 'light' ? icons.moon : icons.sun;
   }
 }
 
 function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme-pref') || 'dark';
-  applyTheme(current === 'dark' ? 'light' : current === 'light' ? 'system' : 'dark');
+  const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  applyTheme(current === 'light' ? 'dark' : 'light');
 }
 
 /* --------------------------------------------------------------------------
