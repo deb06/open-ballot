@@ -1269,23 +1269,47 @@ async function viewOrganizations() {
   const panel = el('div', { class: 'stack' }, el('p', { class: 'muted' }, 'Loading organizations…'));
   try {
     const data = await api('GET', '/api/orgs');
-    const cards = (data.organizations || []).map((org) => el('a', {
-      class: 'card', href: '/org/' + org.slug, style: { textDecoration: 'none', color: 'inherit' },
+    const orgs = data.organizations || [];
+
+    const header = el('div', { class: 'row-between', style: { alignItems: 'flex-end', gap: '20px', flexWrap: 'wrap' } },
+      el('div', {},
+        el('p', { class: 'eyebrow' }, 'Directory'),
+        el('h1', { style: { fontSize: '2.3rem', marginBottom: '8px' } }, 'Organizations'),
+        el('p', { class: 'muted', style: { margin: 0, maxWidth: '58ch' } },
+          'Groups running transparent elections on Open Ballot. Their published elections are open to everyone.'),
+      ),
+      el('a', { class: 'btn btn-outline', href: '/register-organization' }, 'Register your organization'),
+    );
+
+    const rows = orgs.map((org) => el('a', {
+      class: 'org-row', href: '/org/' + org.slug,
     },
-      el('p', { class: 'eyebrow' }, 'Organization'),
-      el('h2', { style: { fontSize: '1.25rem' } }, org.name),
-      org.domain ? el('p', { class: 'small mono' }, '@' + org.domain) : null,
-      el('p', { class: 'small muted' }, org.memberCount + ' member(s) · ' + org.electionCount + ' election(s)'),
+      el('span', { class: 'org-row-icon', 'aria-hidden': 'true', html: icons.users }),
+      el('span', { class: 'grow' },
+        el('span', { class: 'org-row-name' }, org.name),
+        org.domain ? el('span', { class: 'small muted', style: { display: 'block' } }, '@' + org.domain) : null,
+      ),
+      el('span', { class: 'org-row-stats small muted' },
+        org.memberCount + ' ' + plural(org.memberCount, 'member') + ' · ' + org.electionCount + ' ' + plural(org.electionCount, 'election'),
+      ),
+      el('span', { class: 'inline-icon', html: icons.arrow, 'aria-hidden': 'true' }),
     ));
+
     panel.replaceChildren(
-      el('h1', { style: { fontSize: '2.2rem' } }, 'Organizations'),
-      el('p', { class: 'muted' }, 'Groups running transparent elections on Open Ballot.'),
-      cards.length ? el('div', { class: 'grid' }, ...cards) : el('p', { class: 'muted' }, 'No organizations have registered yet.'),
+      header,
+      orgs.length
+        ? el('div', { class: 'org-list' }, ...rows)
+        : el('div', { class: 'empty-state' },
+            el('div', { class: 'icon', html: icons.users }),
+            el('h2', { style: { fontSize: '1.35rem' } }, 'No organizations yet'),
+            el('p', {}, 'Be the first to register an organization and run verifiable elections for your members.'),
+            el('a', { class: 'btn btn-primary', href: '/register-organization' }, 'Register your organization'),
+          ),
     );
   } catch (error) {
     panel.replaceChildren(el('p', { class: 'form-error' }, error.message));
   }
-  return el('div', { class: 'stack', style: { maxWidth: '960px', margin: '32px auto' } }, panel);
+  return el('div', { class: 'stack', style: { maxWidth: '920px', margin: '32px auto' } }, panel);
 }
 
 async function viewOrganization(slug) {

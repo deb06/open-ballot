@@ -222,6 +222,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .primary-nav a:hover { color: var(--text); background: var(--panel); }
 .primary-nav a.active { color: var(--text); }
+.mobile-actions { display: none; }
 .primary-nav a.active::after {
   content: "";
   position: absolute;
@@ -1649,6 +1650,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @media (max-width: 760px) {
   .header-inner { gap: 12px; }
   .nav-toggle { display: block; }
+  .mobile-actions {
+    display: flex; flex-direction: column; gap: 2px;
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line);
+  }
+  .mobile-actions .btn { justify-content: flex-start; text-align: left; padding: 11px 14px; }
   .primary-nav {
     position: absolute;
     top: calc(var(--header-h) + 8px);
@@ -1670,7 +1676,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .primary-nav a.active { background: var(--accent-soft); color: var(--text); }
   .header-actions { margin-left: auto; }
   /* Keep the icon-only utilities (theme, search, language) available on mobile. */
-  .header-actions .btn-ghost:not(#theme-toggle):not(.header-search):not(.notif-button) { display: none; }
+  /* Keep icon toggles (theme, search, notifications, language) in the header;
+     text actions live in the navigation drawer on small screens. */
+  .header-actions > .btn-ghost:not(.btn-icon),
+  .header-actions > .btn-primary { display: none; }
   .form-grid { grid-template-columns: 1fr; }
   .form-grid .span-2 { grid-column: auto; }
   .results-summary { grid-template-columns: 1fr; justify-items: start; }

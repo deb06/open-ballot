@@ -516,6 +516,29 @@
 .palette-item-label { font-weight: var(--weight-medium); }
 .palette-empty { padding: 24px; text-align: center; }
 
+/* Organization directory --------------------------------------------------- */
+.org-list { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.org-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 4px; border-bottom: 1px solid var(--line);
+  color: var(--text); text-decoration: none;
+  transition: background var(--duration-fast) var(--ease);
+}
+.org-row:hover { background: var(--panel); }
+.org-row-icon {
+  width: 38px; height: 38px; flex: 0 0 38px;
+  display: grid; place-items: center;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-xs);
+  color: var(--accent);
+}
+.org-row-icon svg { width: 20px; height: 20px; }
+.org-row-name { font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em; }
+.org-row-stats { white-space: nowrap; }
+.org-row .inline-icon svg { width: 18px; height: 18px; color: var(--text-faint); }
+@media (max-width: 620px) {
+  .org-row-stats { display: none; }
+}
+
 /* Auto breadcrumbs --------------------------------------------------------- */
 .auto-breadcrumbs { margin-bottom: var(--space-5); }
 

@@ -908,6 +908,30 @@ function renderHeader() {
     );
   }
 
+  // On small screens the text links move into the navigation drawer.
+  const navEl = document.getElementById('primary-nav');
+  if (navEl) {
+    navEl.querySelector('.mobile-actions')?.remove();
+    const links = [
+      { href: '/orgs', label: 'Organizations' },
+      { href: '/polls/new', label: 'Create a poll' },
+      ...(state.user
+        ? [
+            { href: '/account', label: 'Account' },
+            ...(['admin', 'org_admin'].includes(state.user.role) ? [{ href: '/admin', label: 'Admin' }] : []),
+            { label: 'Sign out', action: signOut },
+          ]
+        : [
+            { href: '/login', label: 'Sign in' },
+            { href: '/register-organization', label: 'Register organization' },
+            { href: '/register', label: 'Create account', primary: true },
+          ]),
+    ];
+    navEl.append(el('div', { class: 'mobile-actions' }, ...links.map((link) => link.action
+      ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: link.action }, link.label)
+      : el('a', { class: `btn ${link.primary ? 'btn-primary' : 'btn-ghost'} btn-sm`, href: link.href }, link.label))));
+  }
+
   const adminLink = document.querySelector('[data-nav="admin"]');
   if (adminLink) adminLink.hidden = !(state.user && ['admin', 'org_admin'].includes(state.user.role));
 }
