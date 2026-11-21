@@ -392,6 +392,25 @@ try {
         assert_same($candidateId, $res['data']['candidate']['id']);
     });
 
+    step('creates an in-app notification for the ballot and can mark it read', static function () use ($voter): void {
+        $list = $voter->request('GET', '/api/notifications');
+        assert_same(200, $list['status'], $list['text']);
+        assert_true((int) $list['data']['unread'] >= 1, 'Vote did not create an unread notification.');
+        $types = array_column($list['data']['notifications'], 'type');
+        assert_true(in_array('vote.recorded', $types, true), 'Missing vote.recorded notification.');
+        $id = 0;
+        foreach ($list['data']['notifications'] as $note) {
+            if ($note['type'] === 'vote.recorded') { $id = (int) $note['id']; break; }
+        }
+        assert_true($id > 0, 'Notification id missing.');
+        $read = $voter->request('POST', '/api/notifications/' . $id . '/read');
+        assert_same(200, $read['status'], $read['text']);
+        $all = $voter->request('POST', '/api/notifications/read-all');
+        assert_same(200, $all['status'], $all['text']);
+        $after = $voter->request('GET', '/api/notifications');
+        assert_same(0, (int) $after['data']['unread']);
+    });
+
     step('enforces one ballot per voter', static function () use ($voter, &$demoElectionId): void {
         $detail = $voter->request('GET', '/api/elections/' . $demoElectionId);
         $candidateId = $detail['data']['candidates'][0]['id'];

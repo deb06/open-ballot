@@ -650,6 +650,8 @@ function errorView(error) {
    -------------------------------------------------------------------------- */
 
 let notificationState = { unread: 0, items: [], loaded: false };
+let notifKeyHandlerAttached = false;
+let notificationPollTimer = null;
 
 async function refreshNotifications() {
   if (!state.user) return;
@@ -704,7 +706,15 @@ function paintNotificationPanel() {
                   }
                 },
               }, 'Mark read'),
-          note.link ? el('a', { class: 'btn btn-ghost btn-sm', href: note.link, onclick: () => { document.getElementById('notif-panel').hidden = true; } }, 'Open') : null,
+          note.link ? el('a', {
+            class: 'btn btn-ghost btn-sm', href: note.link,
+            onclick: async () => {
+              document.getElementById('notif-panel').hidden = true;
+              if (!note.read_at) {
+                try { await api('POST', `/api/notifications/${note.id}/read`); } catch (_) { /* best effort */ }
+              }
+            },
+          }, 'Open') : null,
         ),
       ),
     ),
@@ -726,7 +736,7 @@ function notificationBell() {
   );
   panel.addEventListener('click', (event) => event.stopPropagation());
 
-  const badge = el('span', { class: 'notif-badge', id: 'notif-badge', hidden: false }, '0');
+  const badge = el('span', { class: 'notif-badge', id: 'notif-badge', hidden: true }, '0');
   const button = el('button', {
     class: 'btn btn-ghost btn-sm btn-icon notif-button',
     type: 'button',
@@ -749,6 +759,18 @@ function notificationBell() {
   });
 
   setTimeout(() => { if (state.user) refreshNotifications(); }, 300);
+  if (!notifKeyHandlerAttached) {
+    notifKeyHandlerAttached = true;
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      const open = document.getElementById('notif-panel');
+      if (open && !open.hidden) {
+        open.hidden = true;
+        const bell = document.querySelector('.notif-button');
+        if (bell) { bell.setAttribute('aria-expanded', 'false'); bell.focus(); }
+      }
+    });
+  }
   return el('div', { class: 'notif-wrap' }, button, panel);
 }
 
@@ -1259,6 +1281,11 @@ async function boot() {
     }
   });
   renderHeader();
+  if (!notificationPollTimer) {
+    notificationPollTimer = setInterval(() => {
+      if (state.user && document.visibilityState === 'visible') refreshNotifications();
+    }, 60000);
+  }
   await refreshMe();
   window.addEventListener('popstate', handleRoute);
   // Backwards compatibility: convert old #/bookmarks and links to real paths.

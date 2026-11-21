@@ -695,7 +695,7 @@
   border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 10px;
 }
 .hero-artifact .artifact-line { display: flex; gap: 12px; padding: 2px 0; }
-.hero-artifact .artifact-key { color: var(--text-faint); min-width: 104px; }
+.hero-artifact .artifact-key { color: var(--text-muted); min-width: 104px; }
 .hero-artifact .artifact-value { color: var(--accent-bright); word-break: break-all; }
 
 /* E2 — refined quiet surfaces (flat, hairline borders) -------------------- */

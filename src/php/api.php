@@ -305,6 +305,10 @@ function api_routes(): array
             throw $error;
         }
         audit(null, 'poll.vote', ['pollId' => (int) $row['id']], $ctx['ip']);
+        if ($ctx['user'] !== null) {
+            notify((int) $ctx['user']['id'], 'poll.vote', 'Your vote was recorded',
+                'Keep your receipt to verify your vote at any time.', '/verify?code=' . $code);
+        }
         send_json(201, ['receipt' => $code, 'poll' => serialize_election(get_election((int) $row['id']), null)]);
     });
 
@@ -796,6 +800,8 @@ function api_routes(): array
         $csrf = create_session($user, $ctx['ip']);
         if (!$trusted) {
             send_login_alert($user, $ctx['ip'], device_name((string) ($_SERVER['HTTP_USER_AGENT'] ?? '')));
+            notify((int) $row['id'], 'security.login', 'New sign-in to your account',
+                'A new device signed in. If this was not you, change your password.', '/account');
         }
         audit((int) $row['id'], 'auth.login', [], $ctx['ip']);
         send_json(200, ['user' => $user, 'csrf' => $csrf]);
@@ -1218,6 +1224,8 @@ function api_routes(): array
         }
 
         audit((int) $ctx['user']['id'], 'vote.cast', ['electionId' => $electionId], $ctx['ip']);
+        notify((int) $ctx['user']['id'], 'vote.recorded', 'Your ballot was recorded',
+            'Keep your receipt to verify your vote at any time.', '/verify?code=' . $receipt);
         fire_webhooks('vote.cast', ['electionId' => $electionId]);
 
         send_json(201, [
@@ -1675,6 +1683,8 @@ function api_routes(): array
                 if (send_mail((string) $subscriber['email'], 'Poll closing soon — Open Ballot', $body)) {
                     $sent += 1;
                 }
+                notify((int) $subscriber['user_id'], 'poll.closing', 'A poll you follow closes soon',
+                    (string) $poll['title'], '/p/' . (string) ($poll['slug'] ?? ''));
                 db_exec('UPDATE poll_subscriptions SET reminded_at = ? WHERE poll_id = ? AND user_id = ?', [
                     iso_to_sql(now_iso()), (int) $poll['id'], (int) $subscriber['user_id'],
                 ]);

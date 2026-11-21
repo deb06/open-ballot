@@ -402,6 +402,22 @@ function audit(?int $actorId, string $action, array $details = [], ?string $ip =
     );
 }
 
+/** Create an in-app notification for a user. Best-effort: never breaks the action. */
+function notify(?int $userId, string $type, string $title, string $body = '', ?string $link = null): void
+{
+    if ($userId === null || $userId <= 0) {
+        return;
+    }
+    try {
+        db_exec(
+            'INSERT INTO notifications (user_id, type, title, body, link, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [$userId, mb_substr($type, 0, 40), mb_substr($title, 0, 160), mb_substr($body, 0, 500), $link, iso_to_sql(now_iso())],
+        );
+    } catch (Throwable) {
+        // Notifications are advisory; failure must not undo the primary action.
+    }
+}
+
 function public_user(array $row): array
 {
     return [
