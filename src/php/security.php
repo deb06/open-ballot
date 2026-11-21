@@ -338,9 +338,51 @@ function smtp_send(string $host, int $port, string $user, string $pass, string $
     return $ok;
 }
 
+/** Send via Resend's HTTPS API. Returns false on any non-2xx response. */
+function resend_send(string $apiKey, string $from, string $to, string $subject, string $body): bool
+{
+    $payload = json_encode([
+        'from' => $from,
+        'to' => [$to],
+        'subject' => $subject,
+        'text' => $body,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($payload === false) {
+        return false;
+    }
+    $context = stream_context_create(['http' => [
+        'method' => 'POST',
+        'header' => "Authorization: Bearer {$apiKey}\r\nContent-Type: application/json\r\n",
+        'content' => $payload,
+        'timeout' => 10,
+        'ignore_errors' => true,
+    ]]);
+    $response = @file_get_contents('https://api.resend.com/emails', false, $context);
+    $status = $http_response_header[0] ?? '';
+    if (!str_contains($status, ' 2')) {
+        error_log('[resend] delivery failed: ' . $status . ' ' . substr((string) $response, 0, 300));
+        return false;
+    }
+    return true;
+}
+
 function send_mail(string $to, string $subject, string $body): bool
 {
     $from = (string) (env_value('SMTP_FROM') ?? config('mail.from') ?? 'no-reply@openballot.local');
+
+    // Prefer Resend's HTTP API when a key is configured — more reliable than
+    // SMTP and reports real delivery errors.
+    $resendKey = env_value('RESEND_API_KEY');
+    if ($resendKey === null && str_starts_with((string) env_value('SMTP_PASS', ''), 're_')) {
+        $resendKey = env_value('SMTP_PASS');
+    }
+    if ($resendKey !== null && $resendKey !== '') {
+        if (resend_send($resendKey, $from, $to, $subject, $body)) {
+            return true;
+        }
+        return false;
+    }
+
     $smtpHost = env_value('SMTP_HOST');
     if ($smtpHost !== null && $smtpHost !== '') {
         if (smtp_send($smtpHost, (int) env_value('SMTP_PORT', '587'), (string) (env_value('SMTP_USER') ?? ''),
