@@ -429,6 +429,8 @@ function public_user(array $row): array
         'studentId' => $row['student_id'] ?? null,
         'emailVerified' => !empty($row['email_verified_at']),
         'mfaEnabled' => !empty($row['mfa_enabled']),
+        'phone' => $row['phone'] ?? null,
+        'phoneVerified' => !empty($row['phone_verified_at']),
         'createdAt' => sql_to_iso($row['created_at']),
         'lastLoginAt' => sql_to_iso($row['last_login_at'] ?? null),
         'organizationId' => isset($row['organization_id']) && $row['organization_id'] !== null ? (int) $row['organization_id'] : null,
@@ -647,7 +649,8 @@ function get_session(): ?array
     $id = sha256($token);
     $row = db_one(
         'SELECT s.id, s.csrf, s.expires_at, s.last_seen_at,
-                u.id AS user_id, u.name, u.email, u.role, u.active, u.created_at, u.organization_id
+                u.id AS user_id, u.name, u.email, u.role, u.active, u.created_at, u.organization_id,
+                u.phone, u.phone_verified_at
          FROM sessions s JOIN users u ON u.id = s.user_id
          WHERE s.id = ?',
         [$id],
@@ -684,6 +687,8 @@ function get_session(): ?array
             'role' => $row['role'],
             'active' => true,
             'createdAt' => sql_to_iso($row['created_at']),
+            'phone' => $row['phone'] ?? null,
+            'phoneVerified' => !empty($row['phone_verified_at']),
             'organizationId' => $row['organization_id'] === null ? null : (int) $row['organization_id'],
             'platformAdmin' => (string) $row['role'] === 'admin',
             'orgAdmin' => (string) $row['role'] === 'org_admin',
@@ -826,6 +831,9 @@ function send_login_alert(array $user, string $ip, string $device): void
         . "Device: {$device}\nIP address: {$ip}\nTime: " . now_iso() . "\n\n"
         . "If this was you, no action is needed. If you do not recognise this sign-in, change your password immediately.";
     send_mail($email, 'New sign-in to your Open Ballot account', $body);
+    if (!empty($user['phoneVerified']) && !empty($user['phone'])) {
+        send_sms((string) $user['phone'], 'New Open Ballot sign-in from ' . $device . '. If this was not you, change your password.');
+    }
     audit((int) $user['id'], 'auth.login_alert', ['device' => $device], $ip);
 }
 

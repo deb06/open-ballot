@@ -1,44 +1,56 @@
-# Email & SMS verification — status and configuration
+# Email & SMS verification — configuration
 
-## Email verification (code: works, delivery: needs SMTP)
+Both systems are implemented. They work locally out of the box via an outbox log, and use real
+providers once credentials are configured.
 
-**What works today**
-- Registration creates a hashed, single-use, 24-hour token in `email_verifications`.
-- `POST /api/auth/verify-email` consumes the token and marks the address verified.
-- `POST /api/auth/resend-verification` issues a fresh token.
-- `REQUIRE_EMAIL_VERIFICATION=1` blocks voting until the address is verified.
-- The same mail function is used for password resets, org invitations, login alerts, election
-  invitations, digests and poll reminders.
+## Email (SMTP)
 
-**What does NOT work without configuration**
-- Delivery uses PHP `mail()`. The Docker image has no MTA, so `mail()` fails and the message is only
-  appended to `data/mail.log` **inside the container**. That log is not exposed to users and is lost
-  on restart. In other words: verification links are generated, but they do not reach anyone.
+**What works**
+- Registration issues a hashed, single-use, 24-hour token in `email_verifications`.
+- `POST /api/auth/verify-email` consumes it; `POST /api/auth/resend-verification` reissues it.
+- `REQUIRE_EMAIL_VERIFICATION=1` blocks voting until verified.
+- Account page shows verification status and a resend button.
+- Same transport sends password resets, org invitations, login alerts, digests and poll reminders.
 
-**How to make links actually arrive**
-Set these in Render → Environment (they are declared `sync: false` in `render.yaml`):
-
+**Configuration** (Render → Environment; declared `sync: false` in `render.yaml`):
 ```
 SMTP_HOST=smtp.resend.com        # or your provider
 SMTP_PORT=587
 SMTP_USER=resend
 SMTP_PASS=<api key>
 SMTP_FROM=Open Ballot <no-reply@yourdomain.com>
+APP_URL=https://open-ballot.onrender.com
 ```
+With no `SMTP_HOST`, `mail()` is tried and the message is written to `data/mail.log` in the container.
+That log is not user-visible — configure SMTP for real delivery.
 
-`send_mail()` then uses SMTP with STARTTLS and AUTH (PLAIN, with LOGIN fallback). If SMTP is unset or
-fails, it falls back to `mail()` and the local outbox log, so nothing breaks.
+## SMS (phone verification)
 
-Also set `APP_URL=https://open-ballot.onrender.com` so links point at the live site.
+**What works**
+- `POST /api/account/phone` validates and stores an E.164 phone, sends a 6-digit code (10-minute expiry).
+- `POST /api/account/phone/verify` checks the code (max 5 attempts), sets `phone_verified_at`, notifies the user.
+- `DELETE /api/account/phone` removes the number; `GET /api/account/phone` reports status.
+- Account page has a phone card with send/verify/remove controls.
+- Verified phones receive sign-in alerts and poll-closing reminders by SMS.
 
-## SMS verification (not implemented)
+**Configuration:**
+```
+SMS_PROVIDER=twilio
+SMS_TWILIO_SID=...
+SMS_TWILIO_TOKEN=...
+SMS_FROM=+15550001111
+```
+or a generic HTTP provider:
+```
+SMS_PROVIDER=generic
+SMS_API_URL=https://.../sms
+SMS_API_KEY=...
+```
+With no `SMS_PROVIDER`, codes are written to `data/sms.log` (local outbox). Nothing is silently dropped;
+provider failures never break the user action.
 
-There is no SMS system: no phone field, no provider integration, and no SMS verification endpoint.
-Adding it requires choosing a provider (e.g. Twilio), adding a `phone`/`phone_verified_at` schema pair,
-an SMS code endpoint and rate limits, and provider credentials. Nothing in the current app sends SMS.
-
-## Quick check after configuring SMTP
-
-1. Register a test account.
-2. Confirm the email arrives and `/verify-email/<token>` marks it verified.
-3. Check `email_verified_at` is set for that user.
+## Security notes
+- Phone numbers are unique per user and stored in `users.phone`; codes are stored only as keyed hashes
+  in `phone_verifications`.
+- Both endpoints are rate-limited; verification attempts are capped.
+- SMS is additive — accounts remain fully usable without a phone.

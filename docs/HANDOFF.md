@@ -69,11 +69,10 @@ Progress logs: `C:\Users\DEBMALYA\.opencode\plan\enhancement_plan.md` + `docs/FU
   flows separate so ballot privacy is preserved.
 
 ## Email & SMS delivery
-- Email verification **logic** works (hashed single-use tokens, verify/resend endpoints, optional gate).
-- **Delivery does not work until SMTP is configured** — see `docs/EMAIL_AND_SMS.md`. Render has no MTA,
-  so `mail()` falls back to an in-container `data/mail.log` that users never see. Set `SMTP_HOST`,
-  `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` in Render to send real mail.
-- SMS verification does not exist at all (no phone field or provider).
+- Both systems are implemented (`docs/EMAIL_AND_SMS.md`). Email uses SMTP with STARTTLS/AUTH;
+  SMS supports Twilio or a generic HTTP provider; both fall back to in-container outbox logs.
+- Live delivery requires credentials in Render (`SMTP_*`, `SMS_*`); without them messages are logged
+  only, not delivered. Phone verification endpoints, account UI and rate limits are already live.
 
 ## Poll moderation
 - `poll_reports` table: one report per poll per anonymous reporter token; reasons spam/misleading/

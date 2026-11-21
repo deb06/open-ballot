@@ -963,6 +963,29 @@ try {
         assert_true(str_contains($map['text'], '/orgs'), 'sitemap missing organization directory.');
     });
 
+    step('email resend and phone verification work end to end', static function () use ($voter, $tempDir): void {
+        $resent = $voter->request('POST', '/api/auth/resend-verification');
+        assert_same(200, $resent['status'], $resent['text']);
+
+        $sent = $voter->request('POST', '/api/account/phone', ['phone' => '+15551234567']);
+        assert_same(200, $sent['status'], $sent['text']);
+        assert_same('+15551234567', $sent['data']['phone']);
+
+        $log = (string) @file_get_contents($tempDir . DIRECTORY_SEPARATOR . 'sms.log');
+        assert_true(preg_match('/verification code is (\d{6})/', $log, $match) === 1, 'SMS code was not written to the outbox.');
+        $code = $match[1];
+
+        $wrong = $voter->request('POST', '/api/account/phone/verify', ['code' => '000000' === $code ? '111111' : '000000']);
+        assert_same(400, $wrong['status'], $wrong['text']);
+        $ok = $voter->request('POST', '/api/account/phone/verify', ['code' => $code]);
+        assert_same(200, $ok['status'], $ok['text']);
+
+        $status = $voter->request('GET', '/api/account/phone');
+        assert_same(true, $status['data']['verified']);
+        $removed = $voter->request('DELETE', '/api/account/phone');
+        assert_same(200, $removed['status'], $removed['text']);
+    });
+
     step('expires idle sessions', static function () use ($voter): void {
         $userId = (int) db_scalar("SELECT id FROM users WHERE email = 'voter@example.test'");
         assert_true($userId > 0, 'Voter not found.');

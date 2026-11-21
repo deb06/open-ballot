@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS users (
   mfa_enabled       SMALLINT NOT NULL DEFAULT 0,
   created_at        TIMESTAMP(3) NOT NULL,
   last_login_at     TIMESTAMP(3) NULL,
-  organization_id   INT NULL REFERENCES organizations(id) ON DELETE SET NULL
+  organization_id   INT NULL REFERENCES organizations(id) ON DELETE SET NULL,
+  phone             VARCHAR(20) NULL UNIQUE,
+  phone_verified_at TIMESTAMP(3) NULL
 );
 
 CREATE TABLE IF NOT EXISTS organization_invites (
@@ -118,6 +120,15 @@ CREATE TABLE IF NOT EXISTS participation (
 );
 CREATE INDEX IF NOT EXISTS idx_participation_election ON participation(election_id);
 CREATE INDEX IF NOT EXISTS idx_participation_voter ON participation(voter_id);
+
+CREATE TABLE IF NOT EXISTS phone_verifications (
+  user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  code_hash  CHAR(64) NOT NULL,
+  expires_at TIMESTAMP(3) NOT NULL,
+  attempts   SMALLINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP(3) NOT NULL,
+  PRIMARY KEY (user_id)
+);
 
 CREATE TABLE IF NOT EXISTS sessions (
   id         CHAR(64) NOT NULL PRIMARY KEY,

@@ -63,6 +63,19 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
+      # SMS delivery. Leave SMS_PROVIDER unset to use the local outbox log.
+      - key: SMS_PROVIDER
+        sync: false
+      - key: SMS_TWILIO_SID
+        sync: false
+      - key: SMS_TWILIO_TOKEN
+        sync: false
+      - key: SMS_FROM
+        sync: false
+      - key: SMS_API_URL
+        sync: false
+      - key: SMS_API_KEY
+        sync: false
       - key: SENTRY_DSN
         sync: false
       - key: CRON_SECRET

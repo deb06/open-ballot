@@ -1640,6 +1640,66 @@ function api_routes(): array
         send_json(200, ['ok' => true]);
     }, ['auth' => true]);
 
+    $add('GET', '/api/account/phone', static function (array $ctx): void {
+        $row = db_one('SELECT phone, phone_verified_at FROM users WHERE id = ?', [(int) $ctx['user']['id']]);
+        send_json(200, [
+            'phone' => $row['phone'] ?? null,
+            'verified' => !empty($row['phone_verified_at']),
+            'provider' => sms_provider(),
+        ]);
+    }, ['auth' => true]);
+
+    $add('POST', '/api/account/phone', static function (array $ctx): void {
+        ensure_limit('phone-send:' . $ctx['user']['id'], 5, 3600, 'Too many codes requested. Try again later.');
+        $phone = normalize_phone($ctx['body']['phone'] ?? null);
+        if ($phone === null) {
+            fail(400, 'Enter a valid phone number (8–15 digits).', 'invalid_phone');
+        }
+        $taken = db_one('SELECT id FROM users WHERE phone = ? AND id <> ?', [$phone, (int) $ctx['user']['id']]);
+        if ($taken !== null) {
+            fail(409, 'That phone number is already in use.', 'phone_taken');
+        }
+        $code = sms_code();
+        db_exec('UPDATE users SET phone = ?, phone_verified_at = NULL WHERE id = ?', [$phone, (int) $ctx['user']['id']]);
+        $isPg = (config('db')['driver'] ?? 'mysql') === 'pgsql';
+        $upsert = $isPg
+            ? 'INSERT INTO phone_verifications (user_id, code_hash, expires_at, attempts, created_at)
+               VALUES (?, ?, ?, 0, ?)
+               ON CONFLICT (user_id) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0, created_at = EXCLUDED.created_at'
+            : 'INSERT INTO phone_verifications (user_id, code_hash, expires_at, attempts, created_at)
+               VALUES (?, ?, ?, 0, ?)
+               ON DUPLICATE KEY UPDATE code_hash = VALUES(code_hash), expires_at = VALUES(expires_at), attempts = 0, created_at = VALUES(created_at)';
+        db_exec($upsert, [(int) $ctx['user']['id'], hmac('phone:' . $code), iso_to_sql(now_iso_at(time() + 600)), iso_to_sql(now_iso())]);
+        send_sms($phone, 'Your Open Ballot verification code is ' . $code . '. It expires in 10 minutes.');
+        audit((int) $ctx['user']['id'], 'phone.code_sent', [], $ctx['ip']);
+        send_json(200, ['sent' => true, 'phone' => $phone, 'expiresIn' => 600]);
+    }, ['auth' => true]);
+
+    $add('POST', '/api/account/phone/verify', static function (array $ctx): void {
+        ensure_limit('phone-verify:' . $ctx['user']['id'], 10, 900, 'Too many verification attempts. Try again later.');
+        $row = db_one('SELECT * FROM phone_verifications WHERE user_id = ?', [(int) $ctx['user']['id']]);
+        if ($row === null || sql_timestamp($row['expires_at']) <= time() || (int) $row['attempts'] >= 5) {
+            fail(400, 'The code has expired. Request a new one.', 'invalid_code');
+        }
+        $code = trim((string) ($ctx['body']['code'] ?? ''));
+        if (!hash_equals((string) $row['code_hash'], hmac('phone:' . $code))) {
+            db_exec('UPDATE phone_verifications SET attempts = attempts + 1 WHERE user_id = ?', [(int) $ctx['user']['id']]);
+            fail(400, 'That code is not correct.', 'invalid_code');
+        }
+        db_exec('UPDATE users SET phone_verified_at = ? WHERE id = ?', [iso_to_sql(now_iso()), (int) $ctx['user']['id']]);
+        db_exec('DELETE FROM phone_verifications WHERE user_id = ?', [(int) $ctx['user']['id']]);
+        audit((int) $ctx['user']['id'], 'phone.verified', [], $ctx['ip']);
+        notify((int) $ctx['user']['id'], 'phone.verified', 'Phone number verified', 'Your phone number is now verified.');
+        send_json(200, ['verified' => true]);
+    }, ['auth' => true]);
+
+    $add('DELETE', '/api/account/phone', static function (array $ctx): void {
+        db_exec('UPDATE users SET phone = NULL, phone_verified_at = NULL WHERE id = ?', [(int) $ctx['user']['id']]);
+        db_exec('DELETE FROM phone_verifications WHERE user_id = ?', [(int) $ctx['user']['id']]);
+        audit((int) $ctx['user']['id'], 'phone.removed', [], $ctx['ip']);
+        send_json(200, ['ok' => true]);
+    }, ['auth' => true]);
+
     $add('GET', '/api/cron/digest', static function (array $ctx): void {
         $secret = env_value('CRON_SECRET');
         if ($secret === null || !hash_equals($secret, as_text($ctx['query']['secret'] ?? null))) {
@@ -1669,7 +1729,7 @@ function api_routes(): array
         $sent = 0;
         foreach ($polls as $poll) {
             $subscribers = db_all(
-                'SELECT u.email, s.user_id FROM poll_subscriptions s JOIN users u ON u.id = s.user_id
+                'SELECT u.email, u.phone, u.phone_verified_at, s.user_id FROM poll_subscriptions s JOIN users u ON u.id = s.user_id
                  WHERE s.poll_id = ? AND s.reminded_at IS NULL AND u.active = 1',
                 [(int) $poll['id']],
             );
@@ -1685,6 +1745,9 @@ function api_routes(): array
                 }
                 notify((int) $subscriber['user_id'], 'poll.closing', 'A poll you follow closes soon',
                     (string) $poll['title'], '/p/' . (string) ($poll['slug'] ?? ''));
+                if (!empty($subscriber['phone_verified_at']) && !empty($subscriber['phone'])) {
+                    send_sms((string) $subscriber['phone'], 'Poll closing soon: ' . $poll['title'] . ' ' . $link);
+                }
                 db_exec('UPDATE poll_subscriptions SET reminded_at = ? WHERE poll_id = ? AND user_id = ?', [
                     iso_to_sql(now_iso()), (int) $poll['id'], (int) $subscriber['user_id'],
                 ]);

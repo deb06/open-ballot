@@ -379,6 +379,8 @@ function db_migrate_final(): void
     db_add_column('elections', 'allow_anonymous', 'TINYINT(1) NOT NULL DEFAULT 0', 'SMALLINT NOT NULL DEFAULT 0');
     db_add_column('participation', 'voter_token', 'CHAR(64) NULL DEFAULT NULL', 'CHAR(64) NULL');
     db_add_column('sessions', 'last_seen_at', 'DATETIME(3) NULL DEFAULT NULL', 'TIMESTAMP(3) NULL');
+    db_add_column('users', 'phone', 'VARCHAR(20) NULL DEFAULT NULL', 'VARCHAR(20) NULL');
+    db_add_column('users', 'phone_verified_at', 'DATETIME(3) NULL DEFAULT NULL', 'TIMESTAMP(3) NULL');
     $cfg = config('db');
     if (($cfg['driver'] ?? 'mysql') !== 'pgsql') {
         try { db()->exec('ALTER TABLE participation MODIFY COLUMN voter_id INT UNSIGNED NULL DEFAULT NULL'); } catch (Throwable) {}
@@ -401,6 +403,7 @@ function db_migrate_final(): void
     try { db()->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_elections_slug ON elections(slug)'); } catch (Throwable) {}
     try { db()->exec('CREATE INDEX IF NOT EXISTS idx_participation_token ON participation(voter_token)'); } catch (Throwable) {}
     try { db()->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_participation_election_token ON participation(election_id, voter_token)'); } catch (Throwable) {}
+    try { db()->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone)'); } catch (Throwable) {}
 }
 
 function db_schema_installed(): bool

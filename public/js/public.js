@@ -2141,8 +2141,59 @@ async function viewAccount() {
     el('label', { class: 'checkbox-label small', for: digestToggle.id, style: { display: 'flex', alignItems: 'center', gap: '8px' } }, digestToggle, ' Email me a roundup of new open elections'),
   );
 
+  const emailStatus = el('p', { class: 'small muted' },
+    state.user.emailVerified ? 'Your email is verified.' : 'Your email is not verified yet — check your inbox for the link.');
+  const emailCard = el('div', { class: 'card stack' },
+    el('h2', { style: { margin: 0 } }, 'Email verification'), emailStatus,
+    state.user.emailVerified ? null : el('button', {
+      class: 'btn btn-outline btn-sm', type: 'button',
+      onclick: async () => {
+        try { await api('POST', '/api/auth/resend-verification'); toast('Verification link sent.', 'success'); }
+        catch (error) { toast(error.message, 'error'); }
+      },
+    }, 'Resend verification link'),
+  );
+
+  const phoneStatus = el('p', { class: 'small muted' }, 'Loading phone status…');
+  const phoneInput = el('input', { class: 'input', type: 'tel', placeholder: '+1 555 123 4567', 'aria-label': 'Phone number' });
+  const codeInput = el('input', { class: 'input', type: 'text', inputmode: 'numeric', maxlength: '6', placeholder: '6-digit code', 'aria-label': 'Verification code' });
+  const sendCode = el('button', { class: 'btn btn-outline btn-sm', type: 'button' }, 'Send code');
+  const verifyCode = el('button', { class: 'btn btn-primary btn-sm', type: 'button' }, 'Verify code');
+  const removePhone = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Remove number');
+  const phoneCard = el('div', { class: 'card stack' },
+    el('h2', { style: { margin: 0 } }, 'Phone verification'), phoneStatus,
+    el('div', { class: 'form-grid' },
+      el('div', { class: 'field' }, el('label', {}, 'Phone number'), phoneInput),
+      el('div', { class: 'field' }, el('label', {}, 'Verification code'), codeInput),
+    ),
+    el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } }, sendCode, verifyCode, removePhone),
+    el('p', { class: 'tiny muted' }, 'Used for sign-in alerts and poll closing reminders. Codes expire in 10 minutes.'),
+  );
+  const refreshPhone = async () => {
+    try {
+      const d = await api('GET', '/api/account/phone');
+      phoneStatus.textContent = d.phone
+        ? (d.verified ? `Verified: ${d.phone}` : `Pending verification: ${d.phone}`)
+        : 'No phone number added.';
+      removePhone.hidden = !d.phone;
+    } catch (error) { phoneStatus.textContent = error.message; }
+  };
+  refreshPhone();
+  sendCode.addEventListener('click', async () => {
+    try { await api('POST', '/api/account/phone', { phone: phoneInput.value }); toast('Code sent by SMS.', 'success'); refreshPhone(); }
+    catch (error) { toast(error.message, 'error'); }
+  });
+  verifyCode.addEventListener('click', async () => {
+    try { await api('POST', '/api/account/phone/verify', { code: codeInput.value }); toast('Phone verified.', 'success'); refreshPhone(); }
+    catch (error) { toast(error.message, 'error'); }
+  });
+  removePhone.addEventListener('click', async () => {
+    try { await api('DELETE', '/api/account/phone'); toast('Phone number removed.', 'success'); refreshPhone(); }
+    catch (error) { toast(error.message, 'error'); }
+  });
+
   return [
-    el('div', { class: 'stack-lg' }, profile, el('div', {}, el('h2', {}, 'Your ballots'), el('p', { class: 'muted' }, 'Ballots you have cast and the receipts saved on this device.'), ballotList), securityCard, recoveryCard, digestCard, sessionsCard, trustedCard, passwordForm),
+    el('div', { class: 'stack-lg' }, profile, el('div', {}, el('h2', {}, 'Your ballots'), el('p', { class: 'muted' }, 'Ballots you have cast and the receipts saved on this device.'), ballotList), emailCard, phoneCard, securityCard, recoveryCard, digestCard, sessionsCard, trustedCard, passwordForm),
   ];
 }
 

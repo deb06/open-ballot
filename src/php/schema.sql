@@ -34,8 +34,11 @@ CREATE TABLE IF NOT EXISTS users (
   created_at        DATETIME(3) NOT NULL,
   last_login_at     DATETIME(3) NULL DEFAULT NULL,
   organization_id   INT UNSIGNED NULL DEFAULT NULL,
+  phone             VARCHAR(20) NULL DEFAULT NULL,
+  phone_verified_at DATETIME(3) NULL DEFAULT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_users_email (email)
+  UNIQUE KEY uq_users_email (email),
+  UNIQUE KEY uq_users_phone (phone)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS organization_invites (
@@ -151,6 +154,16 @@ CREATE TABLE IF NOT EXISTS participation (
   KEY idx_participation_voter (voter_id),
   CONSTRAINT fk_participation_election FOREIGN KEY (election_id) REFERENCES elections (id) ON DELETE CASCADE,
   CONSTRAINT fk_participation_voter FOREIGN KEY (voter_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS phone_verifications (
+  user_id    INT UNSIGNED NOT NULL,
+  code_hash  CHAR(64) NOT NULL,
+  expires_at DATETIME(3) NOT NULL,
+  attempts   TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  created_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (user_id),
+  CONSTRAINT fk_phone_verify_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS sessions (
