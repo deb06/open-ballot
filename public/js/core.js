@@ -769,17 +769,6 @@ function renderHeader() {
     el(
       'button',
       {
-        class: 'btn btn-ghost btn-sm btn-icon header-search',
-        type: 'button',
-        onclick: openCommandPalette,
-        'aria-label': 'Open command palette (Ctrl+K)',
-        title: 'Search (Ctrl+K)',
-      },
-      el('span', { html: icons.search }),
-    ),
-    el(
-      'button',
-      {
         class: 'btn btn-ghost btn-sm btn-icon',
         type: 'button',
         id: 'theme-toggle',
@@ -1185,7 +1174,7 @@ async function boot() {
   applyTheme();
   setupNav();
   setupI18n();
-  setupCommandPalette();
+
   setupErrorReporting();
   setupLinkInterception();
   renderHeader();
