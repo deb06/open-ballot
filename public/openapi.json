@@ -1299,6 +1299,26 @@
           }
         ]
       }
+    },
+    "/search": {
+      "get": {
+        "summary": "Search public elections and polls (organization elections excluded)",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results"
+          }
+        }
+      }
     }
   }
 }

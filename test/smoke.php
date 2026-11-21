@@ -953,6 +953,30 @@ try {
         assert_same(null, $res['data']['user'], 'Idle session was not expired.');
     });
 
+    /* Public election search */
+
+    step('search finds public elections but not organization elections', static function () use ($admin, $orgAdmin): void {
+        $tag = bin2hex(random_bytes(4));
+        $publicTitle = 'Searchable public ' . $tag;
+        $orgTitle = 'Hidden org election ' . $tag;
+
+        $public = $admin->request('POST', '/api/polls', [
+            'title' => $publicTitle, 'description' => 'Public search test',
+            'options' => ['Yes', 'No'],
+        ]);
+        assert_same(201, $public['status'], $public['text']);
+        $orgElection = $orgAdmin->request('POST', '/api/admin/elections', [
+            'title' => $orgTitle, 'description' => 'Org search test',
+        ]);
+        assert_same(201, $orgElection['status'], $orgElection['text']);
+
+        $found = $admin->request('GET', '/api/search?q=' . urlencode($tag));
+        assert_same(200, $found['status'], $found['text']);
+        $titles = array_column($found['data']['results'], 'title');
+        assert_true(in_array($publicTitle, $titles, true), 'Public election missing from search.');
+        assert_true(!in_array($orgTitle, $titles, true), 'Organization election must not appear in public search.');
+    });
+
     echo "\n  {$passed} checks passed.\n\n";
     $stopServer();
     exit(0);

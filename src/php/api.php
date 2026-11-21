@@ -134,6 +134,36 @@ function api_routes(): array
         send_json(201, ['user' => $user, 'csrf' => $csrf]);
     });
 
+    $add('GET', '/api/search', static function (array $ctx): void {
+        ensure_limit('search:' . $ctx['ip'], 60, 60, 'Too many searches. Wait a moment.');
+        $q = mb_substr(trim((string) query_value($ctx['query'], 'q', '')), 0, 80);
+        if ($q === '') {
+            send_json(200, ['results' => []]);
+            return;
+        }
+        $like = '%' . $q . '%';
+        // Only public, non-organization elections are searchable. Organization
+        // elections remain invisible to the public directory and search.
+        $rows = db_all(
+            'SELECT e.id, e.title, e.description, e.status, e.kind, e.slug
+             FROM elections e
+             WHERE e.organization_id IS NULL AND e.status <> \'draft\'
+               AND (LOWER(e.title) LIKE LOWER(?) OR LOWER(e.description) LIKE LOWER(?)
+                    OR EXISTS (SELECT 1 FROM candidates c WHERE c.election_id = e.id AND LOWER(c.name) LIKE LOWER(?)))
+             ORDER BY e.created_at DESC LIMIT 10',
+            [$like, $like, $like],
+        );
+        $results = array_map(static fn (array $r): array => [
+            'id' => (int) $r['id'],
+            'title' => (string) $r['title'],
+            'description' => mb_substr((string) $r['description'], 0, 140),
+            'status' => effective_status($r),
+            'kind' => (string) $r['kind'],
+            'url' => (string) $r['kind'] === 'poll' ? '/p/' . $r['slug'] : '/election/' . $r['id'],
+        ], $rows);
+        send_json(200, ['results' => $results]);
+    });
+
     /* -------------------------------------------------------------- */
     /* Public polls (same engine, shareable link, anonymous voters)     */
     /* -------------------------------------------------------------- */

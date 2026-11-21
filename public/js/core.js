@@ -750,6 +750,68 @@ function notificationBell() {
   return el('div', { class: 'notif-wrap' }, button, panel);
 }
 
+/* Public election search — organization-owned elections are never returned. */
+let electionSearchNode = null;
+let electionSearchTimer = null;
+
+function closeElectionSearch() {
+  if (electionSearchTimer) { clearTimeout(electionSearchTimer); electionSearchTimer = null; }
+  if (electionSearchNode) { electionSearchNode.remove(); electionSearchNode = null; }
+}
+
+async function runElectionSearch(query, results) {
+  try {
+    const data = await api('GET', '/api/search?q=' + encodeURIComponent(query));
+    const items = data.results || [];
+    if (!items.length) {
+      results.replaceChildren(el('p', { class: 'palette-empty small muted' }, 'No public elections match your search.'));
+      return;
+    }
+    results.replaceChildren(...items.map((item) => el('a', {
+      class: 'palette-item', href: item.url,
+      onclick: closeElectionSearch,
+    },
+      el('span', {},
+        el('span', { class: 'palette-item-label' }, item.title),
+        el('span', { class: 'small muted', style: { display: 'block' } }, item.description),
+      ),
+      el('span', { class: 'badge' }, item.status),
+    )));
+  } catch (error) {
+    results.replaceChildren(el('p', { class: 'form-error' }, error.message));
+  }
+}
+
+function openElectionSearch() {
+  if (electionSearchNode) { closeElectionSearch(); return; }
+  const input = el('input', {
+    class: 'input palette-input', type: 'search', placeholder: 'Search public elections…',
+    'aria-label': 'Search public elections', autocomplete: 'off',
+  });
+  const results = el('div', { class: 'palette-results' },
+    el('p', { class: 'palette-empty small muted' }, 'Type to find a public election or poll.'),
+  );
+  const panel = el('div', {
+    class: 'palette-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Search elections',
+  }, input, results);
+  const backdrop = el('div', { class: 'palette-backdrop' }, panel);
+  backdrop.addEventListener('click', (event) => { if (event.target === backdrop) closeElectionSearch(); });
+  const onKey = (event) => { if (event.key === 'Escape') { closeElectionSearch(); document.removeEventListener('keydown', onKey); } };
+  document.addEventListener('keydown', onKey);
+  input.addEventListener('input', () => {
+    if (electionSearchTimer) clearTimeout(electionSearchTimer);
+    const q = input.value.trim();
+    if (!q) {
+      results.replaceChildren(el('p', { class: 'palette-empty small muted' }, 'Type to find a public election or poll.'));
+      return;
+    }
+    electionSearchTimer = setTimeout(() => runElectionSearch(q, results), 180);
+  });
+  document.body.append(backdrop);
+  electionSearchNode = backdrop;
+  setTimeout(() => input.focus(), 0);
+}
+
 function renderHeader() {
   const actions = document.getElementById('header-actions');
   if (!actions) return;
@@ -766,6 +828,17 @@ function renderHeader() {
         window.I18n.setLang(window.I18n.current() === 'en' ? 'es' : 'en');
       },
     }, el('span', { class: 'lang-label' }, (window.I18n && window.I18n.current() === 'es') ? 'ES' : 'EN')),
+    el(
+      'button',
+      {
+        class: 'btn btn-ghost btn-sm btn-icon header-search',
+        type: 'button',
+        onclick: openElectionSearch,
+        'aria-label': 'Search elections',
+        title: 'Search elections',
+      },
+      el('span', { html: icons.search }),
+    ),
     el(
       'button',
       {
@@ -1177,6 +1250,12 @@ async function boot() {
 
   setupErrorReporting();
   setupLinkInterception();
+  document.addEventListener('keydown', (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      openElectionSearch();
+    }
+  });
   renderHeader();
   await refreshMe();
   window.addEventListener('popstate', handleRoute);
