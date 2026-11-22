@@ -43,7 +43,7 @@ export default function Home() {
   const [elections, setElections] = useState<Election[]>([])
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
-  const hasOrg = user?.organizationId !== null
+  const hasOrg = !!user?.organizationId
 
   useEffect(() => {
     const load = async () => {
@@ -75,7 +75,7 @@ export default function Home() {
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_0%_100%,rgba(125,168,200,0.1),transparent)]" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 lg:px-0 py-12 lg:py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+          <div className={`grid grid-cols-1 ${hasOrg ? 'lg:grid-cols-2' : 'max-w-3xl'} gap-8 lg:gap-16 items-center`}>
             <div className="space-y-6">
               <p className="eyebrow">Secure · anonymous · receipt-verified</p>
               <h1 className="text-[clamp(2.4rem,5vw,3.9rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-text">
@@ -85,8 +85,8 @@ export default function Home() {
                 Open Ballot is a secure online voting platform for student and community elections. One person, one vote — with a secret ballot, a receipt you can check at any time and a public audit trail.
               </p>
               <div className="flex flex-wrap gap-3">
-                <Link to={hasOrg ? '/elections' : '/orgs'} className="btn btn-primary btn-lg">
-                  {hasOrg ? 'Browse elections' : 'Join an organization'}
+                <Link to={hasOrg ? '/elections' : '/register'} className="btn btn-primary btn-lg">
+                  {hasOrg ? 'Browse elections' : 'Get started'}
                   <svg className="ml-2 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14" />
                     <path d="m13 6 6 6-6 6" />
@@ -112,7 +112,8 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Hero artifact */}
+            {/* Hero artifact (org members only) */}
+            {hasOrg && (
             <aside className="relative w-full max-w-[520px] mx-auto">
               <div className="relative rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(14px,2vw,18px)] font-mono text-[0.8rem]">
                 <div className="text-text-secondary text-[0.8rem] tracking-[0.08em] uppercase border-b border-[var(--line)] pb-3 mb-[10px] flex items-center gap-2">
@@ -144,6 +145,7 @@ export default function Home() {
                 </div>
               </div>
             </aside>
+            )}
           </div>
         </div>
       </section>

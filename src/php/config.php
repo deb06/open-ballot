@@ -73,6 +73,6 @@ return [
         'password' => env_value('ADMIN_PASSWORD', 'Admin#2026'),
     ],
     'mail' => [
-        'from' => env_value('MAIL_FROM', 'no-reply@openballot.local'),
+        'from' => env_value('MAIL_FROM', 'openballot@outlook.com'),
     ],
 ];

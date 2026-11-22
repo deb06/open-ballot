@@ -116,7 +116,7 @@ export default function PublicLayout() {
             <p className="footer-note">Secret ballots · One person, one vote · Receipt-verifiable</p>
             <p className="footer-copyright">&copy; <span id="copyright-year"></span> Open Ballot. All rights reserved.</p>
             <p className="footer-contact">
-              Contact: <a href="mailto:admin@openballot.local">admin@openballot.local</a> ·{' '}
+              Contact: <a href="mailto:openballot@outlook.com">openballot@outlook.com</a> ·{' '}
               <Link to="/terms">Terms of Service</Link> ·{' '}
               <Link to="/privacy">Privacy Policy</Link> ·{' '}
               <Link to="/refunds">Refund Policy</Link> ·{' '}
@@ -146,7 +146,7 @@ export default function PublicLayout() {
       <button className="back-to-top" id="back-to-top" type="button" aria-label="Back to top">
         <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
       </button>
-      <button className="floating-contact" id="floating-contact" type="button" aria-label="Contact us" onClick={() => window.location.href = 'mailto:admin@openballot.local'}>
+      <button className="floating-contact" id="floating-contact" type="button" aria-label="Contact us" onClick={() => window.location.href = 'mailto:openballot@outlook.com'}>
         <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2H16.78A2 2 0 0 1 15 15.92v-3a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2zM12 12a3 3 0 1 0-3-3 3 3 0 0 0 3 3z" /></svg>
       </button>
     </>
