@@ -93,8 +93,7 @@ function AppRoutes() {
   // Don't block rendering on auth check - render routes immediately
   // The auth state will hydrate in the background
   return (
-    <BrowserRouter>
-      <Routes>
+    <Routes>
         {/* Public */}
         <Route path="/" element={<PublicLayout />}>
           <Route index element={<Home />} />
@@ -151,15 +150,16 @@ function AppRoutes() {
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </BrowserRouter>
   )
 }
 
-// Root App - just provides AuthProvider
+// Root App - BrowserRouter must wrap the component that calls useNavigate
 function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
     </AuthProvider>
   )
 }
