@@ -104,8 +104,40 @@ function initCounters() {
 }
 
 /* --------------------------------------------------------------------------
-   Staggered text reveal — Vengeance "Flip Text" / "Stagger Text"
+   Staggered children reveal — Motion Primitives pattern
    -------------------------------------------------------------------------- */
+
+function initStaggerChildren() {
+  document.querySelectorAll('[data-stagger-children]').forEach((parent) => {
+    const children = Array.from(parent.children).filter((c) => c.style.display !== 'none');
+    children.forEach((child, i) => {
+      child.style.opacity = '0';
+      child.style.transform = 'translateY(12px)';
+      child.style.transition = `all 0.5s cubic-bezier(${ANIM.ease.join(',')}) ${i * ANIM.stagger}s`;
+    });
+
+    if (!('IntersectionObserver' in window)) {
+      children.forEach((c) => {
+        c.style.opacity = '1';
+        c.style.transform = 'translateY(0)';
+      });
+      return;
+    }
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          children.forEach((c) => {
+            c.style.opacity = '1';
+            c.style.transform = 'translateY(0)';
+          });
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    io.observe(parent);
+  });
+}
 
 function initStaggerText() {
   document.querySelectorAll('[data-stagger]').forEach((el) => {
@@ -305,6 +337,7 @@ function initAnimations() {
   initMagnetic();
   initCounters();
   initStaggerText();
+  initStaggerChildren();
   initCardHover();
   initCursor();
   initParallax();
@@ -317,6 +350,7 @@ function refreshReveals() {
   observeReveals();
   initCounters();
   initStaggerText();
+  initStaggerChildren();
 }
 
 window.OpenBallotAnim = {

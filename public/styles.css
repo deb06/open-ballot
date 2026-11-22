@@ -33,6 +33,55 @@ body::before {
   inset: 0;
   pointer-events: none;
   z-index: -1;
+  /* Haikei-style SVG backgrounds — subtle, layered, support the copy */
+  background-image:
+    /* Brass blob — Haikei blob-scene */
+    url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%' viewBox='0 0 800 800'%3e%3cdefs%3e%3cradialGradient id='blobGrad' cx='50%25' cy='50%25' r='50%25' fx='50%25' fy='50%25'%3e%3cstop offset='0%25' stop-color='%23d9a441' stop-opacity='0.06'/%3e%3cstop offset='100%25' stop-color='%23d9a441' stop-opacity='0'/%3e%3c/radialGradient%3e%3c/defs%3e%3cpath d='M120,300 Q 200,200 400,180 Q 600,160 700,300 Q 760,440 680,560 Q 500,680 250,620 Q 60,560 120,300 Z' fill='url(%23blobGrad)'/%3e%3c/svg%3e"),
+    /* Mesh gradient — Haikei mesh-gradient */
+    url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%' viewBox='0 0 1000 1000'%3e%3cdefs%3e%3cmeshgradient id='mesh' rows='3' cols='3'%3e%3cmeshstop offset='0 0' stop-color='%23171511' stop-opacity='1'/%3e%3cmeshstop offset='100%25 0' stop-color='%232c2922' stop-opacity='1'/%3e%3cmeshstop offset='0 100%25' stop-color='%231e1b15' stop-opacity='1'/%3e%3cmeshstop offset='100%25 100%25' stop-color='%23171511' stop-opacity='1'/%3e%3cmeshstop offset='50%25 50%25' stop-color='%2325221b' stop-opacity='1'/%3e%3cmeshstop offset='0 50%25' stop-color='%23171511' stop-opacity='1'/%3e%3cmeshstop offset='100%25 50%25' stop-color='%23171511' stop-opacity='1'/%3e%3cmeshstop offset='50%25 0' stop-color='%23171511' stop-opacity='1'/%3e%3cmeshstop offset='50%25 100%25' stop-color='%23171511' stop-opacity='1'/%3e%3c/meshgradient%3e%3c/defs%3e%3crect width='1000' height='1000' fill='url(%23mesh)' opacity='0.15'/%3e%3c/svg%3e"),
+    /* Low-poly grid — Haikei low-poly-grid */
+    linear-gradient(
+      90deg,
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px
+    );
+  background-size:
+    700px 700px,
+    1000px 1000px,
+    40px 40px,
+    40px 40px;
+  background-position:
+    10% 10%,
+    80% 80%,
+    0 0,
+    0 0;
+  background-repeat: no-repeat, no-repeat, repeat, repeat;
+  background-blend-mode: normal, normal, normal, normal;
+  animation: bg-drift 40s ease-in-out infinite alternate;
+}
+
+[data-theme="light"] body::before {
+  background-image:
+    url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%' viewBox='0 0 800 800'%3e%3cdefs%3e%3cradialGradient id='blobGrad' cx='50%25' cy='50%25' r='50%25' fx='50%25' fy='50%25'%3e%3cstop offset='0%25' stop-color='%23d9a441' stop-opacity='0.04'/%3e%3cstop offset='100%25' stop-color='%23d9a441' stop-opacity='0'/%3e%3c/radialGradient%3e%3c/defs%3e%3cpath d='M120,300 Q 200,200 400,180 Q 600,160 700,300 Q 760,440 680,560 Q 500,680 250,620 Q 60,560 120,300 Z' fill='url(%23blobGrad)'/%3e%3c/svg%3e"),
+    url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%' viewBox='0 0 1000 1000'%3e%3cdefs%3e%3cmeshgradient id='mesh' rows='3' cols='3'%3e%3cmeshstop offset='0 0' stop-color='%23faf8f3' stop-opacity='1'/%3e%3cmeshstop offset='100%25 0' stop-color='%23e7e3da' stop-opacity='1'/%3e%3cmeshstop offset='0 100%25' stop-color='%23f2efea' stop-opacity='1'/%3e%3cmeshstop offset='100%25 100%25' stop-color='%23faf8f3' stop-opacity='1'/%3e%3cmeshstop offset='50%25 50%25' stop-color='%23ebe8dd' stop-opacity='1'/%3e%3cmeshstop offset='0 50%25' stop-color='%23faf8f3' stop-opacity='1'/%3e%3cmeshstop offset='100%25 50%25' stop-color='%23faf8f3' stop-opacity='1'/%3e%3cmeshstop offset='50%25 0' stop-color='%23faf8f3' stop-opacity='1'/%3e%3cmeshstop offset='50%25 100%25' stop-color='%23faf8f3' stop-opacity='1'/%3e%3c/meshgradient%3e%3c/defs%3e%3crect width='1000' height='1000' fill='url(%23mesh)' opacity='0.10'/%3e%3c/svg%3e"),
+    linear-gradient(
+      90deg,
+      rgba(44,41,34,0.02) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      rgba(44,41,34,0.02) 1px,
+      transparent 1px
+    );
+}
+
+@keyframes bg-drift {
+  0% { background-position: 10% 10%, 80% 80%, 0 0, 0 0; }
+  100% { background-position: 30% 20%, 60% 70%, 0 0, 0 0; }
 }
 
 h1, h2, h3, h4 {

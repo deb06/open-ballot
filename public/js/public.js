@@ -33,7 +33,7 @@ async function viewHome() {
       ),
       el(
         'div',
-        { class: 'hero-artifact', 'aria-label': 'How Open Ballot works in three steps', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '200' },
+        { class: 'hero-artifact', 'aria-label': 'How Open Ballot works in three steps', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '200', 'data-stagger-children': '' },
         el('div', { class: 'artifact-head' }, 'How it works'),
         el('div', { class: 'howit-step' }, el('span', { class: 'howit-num' }, '1'), el('div', {}, el('strong', {}, 'Register once'), el('p', { class: 'small muted', style: { margin: '2px 0 0' } }, 'Create your account with email verification.'))),
         el('div', { class: 'howit-step' }, el('span', { class: 'howit-num' }, '2'), el('div', {}, el('strong', {}, 'Vote anonymously'), el('p', { class: 'small muted', style: { margin: '2px 0 0' } }, 'Your ballot is stored without your identity.'))),
@@ -41,7 +41,7 @@ async function viewHome() {
       ),
       el(
         'div',
-        { class: 'hero-trust', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '400' },
+        { class: 'hero-trust', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '400', 'data-stagger-children': '' },
         el('span', { class: 'badge' }, iconEl('check'), 'One person, one vote'),
         el('span', { class: 'badge' }, iconEl('lock'), 'Secret ballot'),
         el('span', { class: 'badge' }, iconEl('shield'), 'Receipt verified'),
@@ -52,7 +52,7 @@ async function viewHome() {
 
   const strip = el(
     'div',
-    { class: 'stats-strip', 'data-stagger': '' },
+    { class: 'stats-strip', 'data-stagger-children': '' },
     statTile(stats.openElections, 'Elections open now', 'ballot', { count: stats.openElections }),
     statTile(stats.ballotsCast, 'Ballots recorded', 'check', { count: stats.ballotsCast }),
     statTile(stats.registeredVoters, 'Registered voters', 'users', { count: stats.registeredVoters }),

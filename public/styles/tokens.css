@@ -1,102 +1,98 @@
 /* ==========================================================================
    Open Ballot — design tokens
-   ==========================================================================
-   Single source of truth for the visual language.
-   Loaded by styles.css. Never reference raw hex values elsewhere.
+   Refined using Realtime Colors principles:
+   - One accent (brass #d9a441), harmonious tints/shades
+   - Neutral grays with warmth (not cool grays)
+   - Dark theme default, light theme variant
+   - No violet->cyan wash, no flat #ffffff blacks
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   Brand
+   Brand — brass accent system (Realtime Colors style)
    -------------------------------------------------------------------------- */
 :root {
-  --brand-50: #fdf8ed;
-  --brand-100: #f8ebcf;
-  --brand-200: #f0d79c;
-  --brand-300: #f0c978;
-  --brand-400: #e0ae4f;
-  --brand-500: #d9a441;
+  /* Brass accent — the single brand color */
+  --brand-50: #fbf6ea;
+  --brand-100: #f3e5c9;
+  --brand-200: #ead2a0;
+  --brand-300: #e1bd77;
+  --brand-400: #d8a84e;
+  --brand-500: #d9a441;   /* primary accent */
   --brand-600: #b57c14;
-  --brand-700: #92610c;
-  --brand-800: #6f4a0d;
-  --brand-900: #4d340d;
+  --brand-700: #8f630f;
+  --brand-800: #6c4a0b;
+  --brand-900: #493308;
 
-  --cyan-400: #7da8c8;
-  --cyan-500: #5b8fb4;
-  --cyan-600: #3f718f;
+  /* Neutral warm grays — never cool, never pure #000/#fff */
+  --neutral-50: #faf8f3;
+  --neutral-100: #f2efea;
+  --neutral-200: #e7e3da;
+  --neutral-300: #d9d4cb;
+  --neutral-400: #bdb6a9;
+  --neutral-500: #a39c8e;
+  --neutral-600: #888173;
+  --neutral-700: #6e6759;
+  --neutral-800: #544e41;
+  --neutral-900: #2c2922;
+  --neutral-950: #171511;
 
-  --emerald-400: #34d399;
-  --emerald-500: #10b981;
-  --emerald-600: #059669;
-
-  --amber-400: #fbbf24;
-  --amber-500: #f59e0b;
-  --amber-600: #d97706;
-
-  --rose-400: #fb7185;
-  --rose-500: #f43f5e;
-  --rose-600: #e11d48;
-
-  /* semantic */
+  /* Semantic accents built from brand */
   --accent: var(--brand-500);
   --accent-bright: var(--brand-300);
-  --accent-2: var(--accent); /* flat — no violet->cyan wash */
-  --accent-soft: #d9a441;
+  --accent-soft: rgba(217, 164, 65, 0.10);
+  --accent-strong: var(--brand-600);
+  --on-accent: #141006;
 
-  --success: var(--emerald-400);
-  --success-strong: var(--emerald-500);
-  --success-soft: var(--success);
-
-  --warning: var(--amber-400);
-  --warning-strong: var(--amber-500);
-  --warning-soft: var(--warning);
-
-  --danger: var(--rose-400);
-  --danger-strong: var(--rose-500);
-  --danger-soft: var(--danger);
-
-  --info: var(--cyan-400);
-  --info-soft: var(--info);
+  /* Status colors (warm, not neon) */
+  --success: #4ade80;
+  --success-strong: #22c55e;
+  --success-soft: rgba(74, 222, 128, 0.12);
+  --warning: #fbbf24;
+  --warning-strong: #f59e0b;
+  --warning-soft: rgba(251, 191, 36, 0.12);
+  --danger: #fb7185;
+  --danger-strong: #f43f5e;
+  --danger-soft: rgba(251, 113, 133, 0.10);
+  --info: #7da8c8;
+  --info-soft: rgba(125, 168, 200, 0.12);
 
   /* --------------------------------------------------------------------------
      Surfaces (dark theme — default)
      -------------------------------------------------------------------------- */
-  --bg: #0c0c0a;
-  --bg-elevated: #11110e;
-  --surface-1: #121210;
-  --surface-2: #191914;
-  --surface-3: #211f19;
-  --panel: rgba(255, 255, 255, 0.028);
-  --panel-strong: rgba(255, 255, 255, 0.05);
-  --panel-hover: rgba(255, 255, 255, 0.075);
+  --bg: var(--neutral-950);        /* #171511 */
+  --bg-elevated: #1e1b15;
+  --surface-1: #1f1c16;
+  --surface-2: #29251e;
+  --surface-3: #332e25;
+  --panel: rgba(255, 255, 255, 0.03);
+  --panel-strong: rgba(255, 255, 255, 0.06);
+  --panel-hover: rgba(255, 255, 255, 0.09);
 
-  --line: rgba(255, 255, 255, 0.09);
-  --line-strong: rgba(255, 255, 255, 0.16);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.15);
   --line-hover: rgba(255, 255, 255, 0.24);
 
-  /* component surfaces */
-  --header-bg: rgba(12, 12, 10, 0.86);
-  --nav-bg: #171713;
-  --input-bg: rgba(0, 0, 0, 0.32);
+  --header-bg: rgba(23, 21, 17, 0.82);
+  --nav-bg: #1a1712;
+  --input-bg: rgba(0, 0, 0, 0.35);
   --input-bg-focus: rgba(0, 0, 0, 0.5);
-  --inset-bg: rgba(0, 0, 0, 0.34);
-  --backdrop: rgba(6, 6, 4, 0.74);
-  --modal-bg: #161612;
-  --surface-gradient: var(--panel);
+  --inset-bg: rgba(0, 0, 0, 0.3);
+  --backdrop: rgba(6, 6, 4, 0.72);
+  --modal-bg: #1c1913;
 
-  --text: #f2efe6;
-  --text-secondary: #c8c4b8;
-  --text-muted: #9b9689;
-  --text-faint: #6b675d;
-  --text-inverse: #0c0c0a;
-  /* legacy aliases used by styles.css */
+  --text: #f5f2ea;
+  --text-secondary: #cfc7b7;
+  --text-muted: #a59b8c;
+  --text-faint: #7d7566;
+  --text-inverse: #171511;
+
   --muted: var(--text-muted);
   --faint: var(--text-faint);
 
-  --on-accent: #1a1408;
-  --on-brand: #ffffff;
+  --on-accent: #141006;
 
   /* --------------------------------------------------------------------------
-     Spacing scale (4px base)
+     Spacing (4px base)
      -------------------------------------------------------------------------- */
   --space-0: 0;
   --space-1: 4px;
@@ -115,7 +111,7 @@
   --space-16: 96px;
 
   /* --------------------------------------------------------------------------
-     Radius
+     Radius (smaller, editorial — no pill sameness)
      -------------------------------------------------------------------------- */
   --radius-xs: 3px;
   --radius-sm: 5px;
@@ -125,7 +121,7 @@
   --radius-pill: 999px;
 
   /* --------------------------------------------------------------------------
-     Shadows / elevation
+     Shadows — flat, hairline, no glow (de-slop)
      -------------------------------------------------------------------------- */
   --shadow-xs: none;
   --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.4);
@@ -141,18 +137,17 @@
   --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
   --font-mono: var(--mono);
   --font-display: "Iowan Old Style", "Palatino Linotype", Georgia, "Times New Roman", serif;
-  --font-mono: var(--mono);
 
-  --text-xs: 0.75rem;    /* 12px */
-  --text-sm: 0.875rem;   /* 14px */
-  --text-base: 1rem;     /* 16px */
-  --text-md: 1.125rem;   /* 18px */
-  --text-lg: 1.25rem;    /* 20px */
-  --text-xl: 1.5rem;     /* 24px */
-  --text-2xl: 1.875rem;  /* 30px */
-  --text-3xl: 2.25rem;   /* 36px */
-  --text-4xl: 3rem;      /* 48px */
-  --text-5xl: 3.75rem;   /* 60px */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.875rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 3rem;
+  --text-5xl: 3.75rem;
 
   --leading-tight: 1.15;
   --leading-snug: 1.35;
@@ -165,7 +160,7 @@
   --weight-bold: 700;
 
   /* --------------------------------------------------------------------------
-     Motion
+     Motion (restrained — one accent, subtle)
      -------------------------------------------------------------------------- */
   --duration-fast: 120ms;
   --duration: 180ms;
@@ -188,7 +183,7 @@
   --bp-xl: 1280px;
 
   /* --------------------------------------------------------------------------
-     Z-index scale
+     Z-index
      -------------------------------------------------------------------------- */
   --z-base: 0;
   --z-raised: 10;
@@ -200,30 +195,30 @@
   --z-tooltip: 600;
 
   /* --------------------------------------------------------------------------
-     Status scale (election lifecycle) — theme-aware
+     Status scale
      -------------------------------------------------------------------------- */
-  --status-open-fg: #6ee7b7;
-  --status-open-bg: rgba(16, 185, 129, 0.14);
-  --status-open-line: rgba(16, 185, 129, 0.4);
+  --status-open-fg: #86efac;
+  --status-open-bg: rgba(134, 239, 172, 0.10);
+  --status-open-line: rgba(16, 185, 129, 0.35);
 
   --status-closed-fg: #cbd5e1;
-  --status-closed-bg: rgba(148, 163, 184, 0.14);
-  --status-closed-line: rgba(148, 163, 184, 0.35);
+  --status-closed-bg: rgba(203, 213, 225, 0.10);
+  --status-closed-line: rgba(148, 163, 184, 0.3);
 
-  --status-scheduled-fg: #3f718f;
-  --status-scheduled-bg: rgba(63, 113, 143, 0.12);
-  --status-scheduled-line: rgba(63, 113, 143, 0.35);
+  --status-scheduled-fg: #93c5fd;
+  --status-scheduled-bg: rgba(147, 197, 253, 0.10);
+  --status-scheduled-line: rgba(59, 130, 246, 0.3);
 
-  --status-draft-fg: #f0c978;
-  --status-draft-bg: rgba(217, 164, 65, 0.14);
-  --status-draft-line: rgba(217, 164, 65, 0.4);
+  --status-draft-fg: var(--brand-300);
+  --status-draft-bg: rgba(217, 164, 65, 0.10);
+  --status-draft-line: rgba(217, 164, 65, 0.35);
 
   /* --------------------------------------------------------------------------
-     Data-visualization palette (6 categorical, accessible on dark)
+     Data-viz palette (6 categorical, accessible on dark)
      -------------------------------------------------------------------------- */
   --viz-1: #d9a441;
   --viz-2: #7da8c8;
-  --viz-3: #34d399;
+  --viz-3: #4ade80;
   --viz-4: #fbbf24;
   --viz-5: #fb7185;
   --viz-6: #c9b458;
@@ -231,72 +226,70 @@
 }
 
 /* --------------------------------------------------------------------------
-   Light theme
+   Light theme — warm paper, not stark white
    -------------------------------------------------------------------------- */
 [data-theme="light"] {
-  --bg: #f5f3ec;
-  --bg-elevated: #fffdf7;
-  --surface-1: #fffdf7;
-  --surface-2: #f0ede4;
-  --surface-3: #e5e1d5;
-  --panel: rgba(40, 34, 22, 0.025);
-  --panel-strong: rgba(40, 34, 22, 0.05);
-  --panel-hover: rgba(40, 34, 22, 0.08);
+  --bg: var(--neutral-50);        /* #faf8f3 */
+  --bg-elevated: #ffffff;
+  --surface-1: #ffffff;
+  --surface-2: #f2efea;
+  --surface-3: #e7e3da;
+  --panel: rgba(44, 41, 34, 0.02);
+  --panel-strong: rgba(44, 41, 34, 0.05);
+  --panel-hover: rgba(44, 41, 34, 0.08);
 
-  --line: rgba(40, 34, 22, 0.14);
-  --line-strong: rgba(40, 34, 22, 0.24);
-  --line-hover: rgba(40, 34, 22, 0.34);
+  --line: rgba(44, 41, 34, 0.12);
+  --line-strong: rgba(44, 41, 34, 0.20);
+  --line-hover: rgba(44, 41, 34, 0.30);
 
-  --header-bg: rgba(250, 248, 242, 0.9);
-  --nav-bg: #fffdf7;
-  --input-bg: #fffefb;
+  --header-bg: rgba(250, 248, 243, 0.88);
+  --nav-bg: #faf8f3;
+  --input-bg: #ffffff;
   --input-bg-focus: #ffffff;
-  --inset-bg: rgba(40, 34, 22, 0.035);
-  --backdrop: rgba(28, 24, 16, 0.46);
-  --modal-bg: #fffdf7;
-  --surface-gradient: var(--surface-1);
+  --inset-bg: rgba(44, 41, 34, 0.03);
+  --backdrop: rgba(28, 24, 16, 0.4);
+  --modal-bg: #ffffff;
 
-  --text: #1b1a16;
-  --text-secondary: #444138;
-  --text-muted: #6e695d;
-  --text-faint: #999286;
+  --text: #2c2922;
+  --text-secondary: #544e41;
+  --text-muted: #7d7566;
+  --text-faint: #a39c8e;
   --text-inverse: #ffffff;
 
   --accent: var(--brand-600);
   --accent-bright: var(--brand-700);
   --on-accent: #ffffff;
-  --accent-soft: rgba(146, 97, 12, 0.1);
+  --accent-soft: rgba(217, 164, 65, 0.08);
 
-  --success-soft: rgba(16, 185, 129, 0.12);
-  --warning-soft: rgba(245, 158, 11, 0.14);
-  --danger-soft: rgba(244, 63, 94, 0.1);
-  --info-soft: rgba(63, 113, 143, 0.12);
+  --success-soft: rgba(34, 197, 94, 0.10);
+  --warning-soft: rgba(245, 158, 11, 0.10);
+  --danger-soft: rgba(244, 63, 94, 0.08);
+  --info-soft: rgba(125, 168, 200, 0.10);
 
-  --shadow-xs: 0 1px 0 rgba(16, 24, 40, 0.04);
-  --shadow-sm: 0 1px 0 rgba(16, 24, 40, 0.08);
-  --shadow: 0 1px 0 rgba(16, 24, 40, 0.10);
-  --shadow-lg: 0 1px 0 rgba(16, 24, 40, 0.12);
-  --ring: 0 0 0 3px rgba(146, 97, 12, 0.25);
-  --shadow-focus-ring: 0 0 0 3px rgba(146, 97, 12, 0.3);
+  --shadow-xs: 0 1px 0 rgba(44, 41, 34, 0.04);
+  --shadow-sm: 0 1px 0 rgba(44, 41, 34, 0.08);
+  --shadow: 0 1px 0 rgba(44, 41, 34, 0.10);
+  --shadow-lg: 0 1px 0 rgba(44, 41, 34, 0.12);
+  --ring: 0 0 0 3px rgba(143, 99, 15, 0.25);
+  --shadow-focus-ring: 0 0 0 3px rgba(143, 99, 15, 0.3);
 
-  /* status scale — darker foregrounds for light surfaces */
   --status-open-fg: #047857;
-  --status-open-bg: rgba(16, 185, 129, 0.12);
-  --status-open-line: rgba(5, 150, 105, 0.35);
+  --status-open-bg: rgba(16, 185, 129, 0.10);
+  --status-open-line: rgba(5, 150, 105, 0.3);
 
   --status-closed-fg: #475569;
-  --status-closed-bg: rgba(100, 116, 139, 0.12);
-  --status-closed-line: rgba(100, 116, 139, 0.3);
+  --status-closed-bg: rgba(100, 116, 139, 0.10);
+  --status-closed-line: rgba(100, 116, 139, 0.25);
 
   --status-scheduled-fg: #0369a1;
-  --status-scheduled-bg: rgba(14, 165, 233, 0.12);
-  --status-scheduled-line: rgba(3, 105, 161, 0.3);
+  --status-scheduled-bg: rgba(59, 130, 246, 0.10);
+  --status-scheduled-line: rgba(3, 105, 161, 0.25);
 
-  --status-draft-fg: #92610c;
-  --status-draft-bg: rgba(146, 97, 12, 0.1);
-  --status-draft-line: rgba(146, 97, 12, 0.3);
+  --status-draft-fg: var(--brand-700);
+  --status-draft-bg: rgba(217, 164, 65, 0.08);
+  --status-draft-line: rgba(217, 164, 65, 0.25);
 
-  --viz-grid: rgba(17, 24, 39, 0.1);
+  --viz-grid: rgba(44, 41, 34, 0.1);
 }
 
 /* Respect reduced-motion preferences */
