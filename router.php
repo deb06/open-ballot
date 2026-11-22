@@ -37,6 +37,15 @@ if ($pathname === '/api/v1') {
 }
 
 try {
+    // Render's liveness probe must not depend on the remote database. A new
+    // instance can otherwise miss the health-check deadline while Neon is
+    // waking up or while schema checks run. /api/status remains the deeper
+    // readiness check that verifies the database and election service.
+    if ($pathname === '/api/health' && $method === 'GET') {
+        send_json(200, ['ok' => true, 'time' => now_iso(), 'app' => config('app_name')]);
+        return true;
+    }
+
     if (str_starts_with($pathname, '/api/')) {
         db_ensure_ready();
         handle_api($pathname, $method, $version);
