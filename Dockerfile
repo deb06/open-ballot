@@ -1,19 +1,4 @@
 # syntax=docker/dockerfile:1
-
-# --- Frontend build stage ---
-FROM node:20-alpine AS frontend
-WORKDIR /app
-COPY package.json ./
-COPY vite.config.js ./
-COPY tailwind.config.js ./
-COPY postcss.config.js ./
-COPY tsconfig.json ./
-COPY tsconfig.node.json ./
-COPY src ./src
-COPY public/index.html ./public/index.html
-RUN npm install && npm run build
-
-# --- Production stage ---
 FROM php:8.3-cli-alpine
 
 # System deps + PHP extensions.
@@ -26,9 +11,6 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 COPY . /app
-
-# Copy built frontend assets from frontend stage
-COPY --from=frontend /app/public/ ./public/
 
 # Install WebAuthn library (used by passkey endpoints once verification is wired).
 RUN composer require web-auth/webauthn-lib --no-interaction --optimize-autoloader 2>/dev/null || true

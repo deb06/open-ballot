@@ -11,7 +11,3 @@ backups/
 # Python caches
 __pycache__/
 *.pyc
-
-# Build output
-dist/
-public/assets/

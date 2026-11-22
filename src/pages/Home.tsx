@@ -64,97 +64,100 @@ export default function Home() {
   }, [])
 
   const openCount = elections.filter((e) => e.status === 'open').length
-  const scheduledCount = elections.filter((e) => e.status === 'scheduled').length
   const completedCount = elections.filter((e) => e.status === 'closed').length
 
-  const statTiles = [
-    { label: 'Elections open now', value: stats?.openElections ?? 0, icon: 'ballot', color: 'var(--success)' },
-    { label: 'Ballots recorded', value: stats?.ballotsCast ?? 0, icon: 'check', color: 'var(--accent-bright)' },
-    { label: 'Registered voters', value: stats?.registeredVoters ?? 0, icon: 'users', color: 'var(--info)' },
-    { label: 'Elections completed', value: stats?.completedElections ?? 0, icon: 'chart', color: 'var(--text-muted)' },
-  ]
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-0">
       {/* Hero */}
-      <section className="hero">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center py-12 lg:py-20 px-4 lg:px-0">
-          <div className="space-y-6">
-            <p className="eyebrow">Secure · anonymous · receipt-verified</p>
-            <h1 className="text-[clamp(2.4rem,5vw,3.9rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-text">
-              Your voice, <span className="font-normal italic text-accent">counted.</span>
-            </h1>
-            <p className="text-text-secondary max-w-[54ch] leading-[1.6]">
-              Open Ballot is a secure online voting platform for student and community elections. One person, one vote — with a secret ballot, a receipt you can check at any time and a public audit trail.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link to={hasOrg ? '/elections' : '/orgs'} className="btn btn-primary btn-lg">
-                {hasOrg ? 'Browse elections' : 'Join an organization'}
-                <svg className="ml-2 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14" />
-                  <path d="m13 6 6 6-6 6" />
-                </svg>
-              </Link>
-              <Link to="/verify" className="btn btn-outline btn-lg">
-                Verify a receipt
-              </Link>
-            </div>
-            <div className="flex gap-3 pt-4">
-              <span className="flex items-center gap-2 px-3 py-1 rounded text-xs font-bold text-text bg-[var(--accent-soft)] border border-[rgba(217,164,65,0.2)]">
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
-                One person, one vote
-              </span>
-              <span className="flex items-center gap-2 px-3 py-1 rounded text-xs font-bold text-text bg-[var(--accent-soft)] border border-[rgba(217,164,65,0.2)]">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v6" /><path d="M19 21v-6a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v6" /></svg>
-                Secret ballot
-              </span>
-              <span className="flex items-center gap-2 px-3 py-1 rounded text-xs font-bold text-text bg-[var(--accent-soft)] border border-[rgba(217,164,65,0.2)]">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4" /><path d="M20 4v7a4 4 0 0 1-4 4H5a4 4 0 0 1-4-4V4a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4v7" /></svg>
-                Receipt verified
-              </span>
-            </div>
-          </div>
+      <section className="hero relative overflow-hidden">
+        {/* Decorative background */}
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(217,164,65,0.15),transparent)]" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_0%_100%,rgba(125,168,200,0.1),transparent)]" />
 
-          {/* Hero artifact */}
-          <aside className="relative w-full max-w-[520px] mx-auto">
-            <div className="relative rounded-[10px] border border-[rgba(255,255,255,0.15)] bg-[rgba(255,255,255,0.03)] p-[clamp(14px,2vw,18px)] font-mono text-[0.8rem] overflow-hidden">
-              <div className="text-text-secondary text-[0.8rem] tracking-[0.08em] uppercase border-b border-[rgba(255,255,255,0.08)] pb-3 mb-[10px] flex items-center gap-2">
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v2" /><path d="M12 20v2" /><path d="M4 9.5L9 4l5 5M5 20h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" /></svg>
-                How it works
+        <div className="relative z-10 max-w-7xl mx-auto px-4 lg:px-0 py-12 lg:py-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+            <div className="space-y-6">
+              <p className="eyebrow">Secure · anonymous · receipt-verified</p>
+              <h1 className="text-[clamp(2.4rem,5vw,3.9rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-text">
+                Your voice, <span className="font-normal italic text-accent">counted.</span>
+              </h1>
+              <p className="text-text-secondary max-w-[54ch] leading-[1.6]">
+                Open Ballot is a secure online voting platform for student and community elections. One person, one vote — with a secret ballot, a receipt you can check at any time and a public audit trail.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link to={hasOrg ? '/elections' : '/orgs'} className="btn btn-primary btn-lg">
+                  {hasOrg ? 'Browse elections' : 'Join an organization'}
+                  <svg className="ml-2 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14" />
+                    <path d="m13 6 6 6-6 6" />
+                  </svg>
+                </Link>
+                <Link to="/verify" className="btn btn-outline btn-lg">
+                  Verify a receipt
+                </Link>
               </div>
-              <div className="space-y-0 py-2">
-                <div className="flex items-start gap-3 border-b border-[rgba(255,255,255,0.08)] pb-[2px] pt-0">
-                  <span className="w-[28px] h-[28px] flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center border border-[var(--accent)]">1</span>
-                  <div>
-                    <strong className="text-text">Register once</strong>
-                    <p className="text-[0.8rem] text-text-secondary mt-[2px] leading-[1.2]">Create your account with email verification.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 border-b border-[rgba(255,255,255,0.08)] pb-[2px] pt-0">
-                  <span className="w-[28px] h-[28px] flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center border border-[var(--accent)]">2</span>
-                  <div>
-                    <strong className="text-text">Vote anonymously</strong>
-                    <p className="text-[0.8rem] text-text-secondary mt-[2px] leading-[1.2]">Your ballot is stored without your identity.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 pb-0 pt-0">
-                  <span className="w-[28px] h-[28px] flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center border border-[var(--accent)]">3</span>
-                  <div>
-                    <strong className="text-text">Verify your receipt</strong>
-                    <p className="text-[0.8rem] text-text-secondary mt-[2px] leading-[1.2]">Check your ballot is counted — anytime.</p>
-                  </div>
-                </div>
+              <div className="flex gap-3 pt-4">
+                <span className="flex items-center gap-2 px-3 py-1 rounded text-xs font-bold text-text bg-[var(--accent-soft)] border border-[rgba(217,164,65,0.2)]">
+                  <span className="w-2 h-2 rounded-full bg-current inline-block" />
+                  One person, one vote
+                </span>
+                <span className="flex items-center gap-2 px-3 py-1 rounded text-xs font-bold text-text bg-[var(--accent-soft)] border border-[rgba(217,164,65,0.2)]">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v6" /><path d="M19 21v-6a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v6" /></svg>
+                  Secret ballot
+                </span>
+                <span className="flex items-center gap-2 px-3 py-1 rounded text-xs font-bold text-text bg-[var(--accent-soft)] border border-[rgba(217,164,65,0.2)]">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4" /><path d="M20 4v7a4 4 0 0 1-4 4H5a4 4 0 0 0-4-4V4a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4v7" /></svg>
+                  Receipt verified
+                </span>
               </div>
             </div>
-          </aside>
+
+            {/* Hero artifact */}
+            <aside className="relative w-full max-w-[520px] mx-auto">
+              <div className="relative rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(14px,2vw,18px)] font-mono text-[0.8rem]">
+                <div className="text-text-secondary text-[0.8rem] tracking-[0.08em] uppercase border-b border-[var(--line)] pb-3 mb-[10px] flex items-center gap-2">
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v2" /><path d="M12 20v2" /><path d="M4 9.5L9 4l5 5M5 20h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2v12a2 2 0 0 0 2 2z" /></svg>
+                  How it works
+                </div>
+                <div className="space-y-0 py-2">
+                  <div className="flex items-start gap-3 border-b border-[var(--line)] pb-[2px] pt-0">
+                    <span className="w-[28px] h-[28px] flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center border border-[var(--accent)]">1</span>
+                    <div>
+                      <strong className="text-text">Register once</strong>
+                      <p className="text-[0.8rem] text-text-secondary mt-[2px] leading-[1.2]">Create your account with email verification.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 border-b border-[var(--line)] pb-[2px] pt-0">
+                    <span className="w-[28px] h-[28px] flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center border border-[var(--accent)]">2</span>
+                    <div>
+                      <strong className="text-text">Vote anonymously</strong>
+                      <p className="text-[0.8rem] text-text-secondary mt-[2px] leading-[1.2]">Your ballot is stored without your identity.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 pb-0 pt-0">
+                    <span className="w-[28px] h-[28px] flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center border border-[var(--accent)]">3</span>
+                    <div>
+                      <strong className="text-text">Verify your receipt</strong>
+                      <p className="text-[0.8rem] text-text-secondary mt-[2px] leading-[1.2]">Check your ballot is counted — anytime.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
         </div>
       </section>
 
       {/* Stats strip */}
       {hasOrg && (
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-6 lg:py-12 px-4 lg:px-0 animate-[page-enter_0.45s_cubic-bezier(0.22,1,0.36,1)_both]">
-          {statTiles.map((tile) => (
-            <div key={tile.label} className="rounded-[8px] bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,3vw,24px)]">
+          {[
+            { label: 'Elections open now', value: stats?.openElections ?? 0, icon: 'ballot', color: 'var(--success)' },
+            { label: 'Ballots recorded', value: stats?.ballotsCast ?? 0, icon: 'check', color: 'var(--accent-bright)' },
+            { label: 'Registered voters', value: stats?.registeredVoters ?? 0, icon: 'users', color: 'var(--info)' },
+            { label: 'Elections completed', value: stats?.completedElections ?? 0, icon: 'chart', color: 'var(--text-muted)' },
+          ].map((tile) => (
+            <div key={tile.label} className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,3vw,24px)] hover:border-[var(--line-hover)] transition-all duration-200">
               <span className="text-[clamp(1.5rem,3vw,2rem)] font-bold leading-[1.1] tracking-[-0.03em] text-text font-variant-numeric">{formatNumber(tile.value)}</span>
               <p className="mt-[4px] text-[0.8rem] text-text-secondary tracking-[0.02em]">{tile.label}</p>
             </div>
@@ -164,7 +167,7 @@ export default function Home() {
 
       {/* Elections list */}
       {hasOrg && (
-        <section id="elections" className="px-4 lg:px-0">
+        <section id="elections" className="px-4 lg:px-0 py-8">
           <div className="flex items-end justify-between gap-20px flex-wrap mb-6">
             <div>
               <h2 id="elections-title" className="text-[clamp(1.5rem,3vw,2.05rem)] font-semibold text-text">Elections</h2>
@@ -176,7 +179,7 @@ export default function Home() {
                 <option value="turnout">Highest turnout</option>
                 <option value="newest">Newest first</option>
               </select>
-              <div className="inline-flex gap-4px rounded text-xs font-bold text-text-secondary bg-[var(--panel)] border border-[var(--line)]">
+              <div className="inline-flex gap-4px rounded text-xs font-bold text-text bg-[var(--panel)] border border-[var(--line)]">
                 <button className="text-[0.83rem] font-bold text-text bg-[var(--accent)] py-3 px-15 rounded">All <span className="ml-2 text-text-muted">{elections.length}</span></button>
                 <button className="text-[0.83rem] font-bold text-text bg-transparent py-3 px-15 rounded">Open <span className="ml-2 text-text-muted">{openCount}</span></button>
               </div>
@@ -194,7 +197,7 @@ export default function Home() {
                 </div>
               </div>
             ) : elections.map((election) => (
-              <div key={election.id} className="group relative flex flex-col gap-[14px] p-[22px] rounded-[8px] bg-[var(--panel)] border border-[var(--line)] shadow-[var(--shadow-sm)] transition-[transform_0.2s_ease,border-color_0.2s_ease,box-shadow_0.2s_ease] text-inherit hover:translate-y-[-3px] hover:border-[var(--line-strong)] hover:shadow-[var(--shadow)] cursor-pointer">
+              <div key={election.id} className="group relative flex flex-col gap-[14px] p-[22px] rounded-lg bg-[var(--panel)] border border-[var(--line)] shadow-[var(--shadow-sm)] transition-[transform_0.2s_ease,border-color_0.2s_ease,box-shadow_0.2s_ease] text-inherit hover:translate-y-[-3px] hover:border-[var(--line-strong)] hover:shadow-[var(--shadow)] cursor-pointer">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold tracking-[0.06em] uppercase border rounded px-[11px] py-[4px] text-[var(--success)] bg-[var(--success-soft)] border-[rgba(52,211,153,0.28)]">
                     {election.status === 'open' ? 'Open' : election.status === 'closed' ? 'Closed' : 'Scheduled'}
@@ -237,15 +240,15 @@ export default function Home() {
           <p className="text-text-secondary">Three steps, no queues, no paper forms.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
-          <div className="rounded-[8px] bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)]">
+          <div className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)]">
             <div className="flex items-start gap-[14px] mb-[14px]">
               <span className="flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center w-[28px] h-[28px] border border-[var(--accent)]">1</span>
-              <svg className="flex-none w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx={9} cy={7} r={3.5} /></svg>
+              <svg className="flex-none w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x={4} y={10} width={16} height={11} rx={2.5} /><circle cx={9} cy={7} r={3.5} /></svg>
             </div>
             <h3 className="text-[1.02rem] font-semibold text-text">Register once</h3>
             <p className="text-[0.88rem] text-text-secondary mt-0 leading-[1.55]">Create an account with your name and email. Your password is hashed with scrypt — never stored in plain text.</p>
           </div>
-          <div className="rounded-[8px] bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)]">
+          <div className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)]">
             <div className="flex items-start gap-[14px] mb-[14px]">
               <span className="flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center w-[28px] h-[28px] border border-[var(--accent)]">2</span>
               <svg className="flex-none w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x={4} y={10} width={16} height={11} rx={2.5} /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
@@ -253,7 +256,7 @@ export default function Home() {
             <h3 className="text-[1.02rem] font-semibold text-text">Vote anonymously</h3>
             <p className="text-[0.88rem] text-text-secondary mt-0 leading-[1.55]">Choose your candidate and confirm. Your identity and your choice are stored separately, so no one can tell how you voted.</p>
           </div>
-          <div className="rounded-[8px] bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)]">
+          <div className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)]">
             <div className="flex items-start gap-[14px] mb-[14px]">
               <span className="flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center w-[28px] h-[28px] border border-[var(--accent)]">3</span>
               <svg className="flex-none w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4" /><path d="M20 4v7a4 4 0 0 1-4 4H5a4 4 0 0 0-4-4V4a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4v7" /></svg>
@@ -265,14 +268,14 @@ export default function Home() {
       </section>
 
       {/* Integrity */}
-      <section className="rounded-[8px] bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)] shadow-[var(--shadow-sm)] mt-[clamp(40px,6vw,64px)]">
+      <section className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)] shadow-[var(--shadow-sm)] mt-[clamp(40px,6vw,64px)]">
         <div className="flex items-center justify-between gap-[16px] mb-[18px]">
           <div>
             <h2 className="text-[1.2rem] font-semibold text-text mb-0">Built for integrity</h2>
             <p className="text-[0.88rem] text-text-secondary mt-[6px]">The safeguards behind every tally.</p>
           </div>
           <span className="px-[9px] py-[3px] rounded-[7px] text-[0.74rem] font-bold text-[var(--accent-bright)] bg-[var(--accent-soft)] border border-[rgba(217,164,65,0.3)]">
-            <svg className="w-[14px] h-[14px] mr-[6px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v6" /><path d="M19 21v-6a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v6" /></svg>
+            <svg className="w-[14px] h-[14px] mr-[6px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v6" /><path d="M19 21v-6a4 4 0 0 1-4-4H9a4 4 0 0 0-4 4v6" /></svg>
             Audited design
           </span>
         </div>
@@ -282,7 +285,7 @@ export default function Home() {
             { title: 'Secret ballots', text: 'Participation (who voted) and ballots (what was chosen) are separate tables. Ballots have no voter id and no timestamp.' },
             { title: 'Tamper evidence', text: 'Every administrative action and ballot event is written to an append-only audit log with timestamps and IPs.' },
           ].map((item, i) => (
-            <div key={item.title} className="rounded-[8px] bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)]">
+            <div key={item.title} className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)]">
               <h4 className="text-[1rem] font-semibold text-text mb-[6px]">{item.title}</h4>
               <p className="text-[0.88rem] text-text-secondary mt-0 leading-[1.55]">{item.text}</p>
             </div>
