@@ -98,8 +98,8 @@ export default function ElectionDetail() {
           <p className="text-text-secondary">Loading election…</p>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className="px-4 lg:px-0 py-8">

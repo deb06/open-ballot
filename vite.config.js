@@ -4,10 +4,16 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
-  root: 'public',
+  root: '.',
+  publicDir: 'public',
   build: {
-    outDir: '.',
-    emptyOutDir: false,
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'public/index.html'),
+      },
+    },
   },
   server: {
     port: 5173,
@@ -20,11 +26,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
-      '@components': path.resolve(__dirname, 'src/components'),
-      '@hooks': path.resolve(__dirname, 'src/hooks'),
-      '@lib': path.resolve(__dirname, 'src/lib'),
-      '@pages': path.resolve(__dirname, 'src/pages'),
+      '@': path.resolve('./src'),
+      '@components': path.resolve('./src/components'),
+      '@hooks': path.resolve('./src/hooks'),
+      '@lib': path.resolve('./src/lib'),
+      '@pages': path.resolve('./src/pages'),
     },
   },
 })

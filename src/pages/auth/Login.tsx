@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api } from '../lib/api'
-import { toast } from '../lib/toast'
-import { useAuth } from '../lib/auth'
+import { api } from '../../lib/api'
+import { toast } from '../../lib/toast'
+import { useAuth } from '../../lib/auth'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -66,9 +66,9 @@ export default function Login() {
         </form>
         <div className="auth-alt mt-6">
           New here?{' '}
-          <Link to="/register" className="text-accent-bright hover:text-accent-bright">Create an account</a>{' '}
+          <Link to="/register" className="text-accent-bright hover:text-accent-bright">Create an account</Link>{' '}
           ·{' '}
-          <Link to="/forgot-password" className="text-accent-bright hover:text-accent-bright">Forgot password?</a>
+          <Link to="/forgot-password" className="text-accent-bright hover:text-accent-bright">Forgot password?</Link>
         </div>
       </div>
     </div>

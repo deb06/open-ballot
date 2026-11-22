@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api } from '../lib/api'
-import { toast } from '../lib/toast'
-import { useAuth } from '../lib/auth'
+import { api } from '../../lib/api'
+import { toast } from '../../lib/toast'
+import { useAuth } from '../../lib/auth'
 
 export default function Register() {
   const [name, setName] = useState('')
@@ -130,7 +130,7 @@ export default function Register() {
         </form>
         <div className="auth-alt mt-6">
           Already registered?{' '}
-          <Link to="/login" className="text-accent-bright hover:text-accent-bright">Sign in</a>
+          <Link to="/login" className="text-accent-bright hover:text-accent-bright">Sign in</Link>
         </div>
       </div>
     </div>

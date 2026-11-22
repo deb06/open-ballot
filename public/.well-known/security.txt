@@ -1,7 +1,0 @@
-# Open Ballot Security Policy
-# https://open-ballot.onrender.com/.well-known/security.txt
-
-Contact: mailto:admin@openballot.local
-Policy: https://open-ballot.onrender.com/privacy
-Preferred-Languages: en
-Canonical: https://open-ballot.onrender.com/.well-known/security.txt
