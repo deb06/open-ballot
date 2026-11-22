@@ -11,6 +11,7 @@
 async function viewHome() {
   const [stats, data] = await Promise.all([api('GET', '/api/stats'), api('GET', '/api/elections')]);
   const elections = data.elections;
+  const hasOrg = state.user && state.user.organizationId;
 
   const hero = el(
     'section',
@@ -28,7 +29,7 @@ async function viewHome() {
       el(
         'div',
         { class: 'hero-actions' },
-        el('a', { class: 'btn btn-primary btn-lg', 'data-magnetic': '', href: '#elections' }, 'Browse elections', iconEl('arrow')),
+        el('a', { class: 'btn btn-primary btn-lg', 'data-magnetic': '', href: hasOrg ? '#elections' : '/orgs' }, hasOrg ? 'Browse elections' : 'Join an organization', iconEl('arrow')),
         el('a', { class: 'btn btn-outline btn-lg', 'data-magnetic': '', href: '/verify' }, 'Verify a receipt'),
       ),
       el(
@@ -47,99 +48,105 @@ async function viewHome() {
         el('span', { class: 'badge' }, iconEl('shield'), 'Receipt verified'),
       ),
     ),
-    heroArt(stats),
+    hasOrg ? heroArt(stats) : getStartedCard(),
   );
 
-  const strip = el(
-    'div',
-    { class: 'stats-strip', 'data-stagger-children': '' },
-    statTile(stats.openElections, 'Elections open now', 'ballot', { count: stats.openElections }),
-    statTile(stats.ballotsCast, 'Ballots recorded', 'check', { count: stats.ballotsCast }),
-    statTile(stats.registeredVoters, 'Registered voters', 'users', { count: stats.registeredVoters }),
-    statTile(stats.completedElections, 'Elections completed', 'chart', { count: stats.completedElections }),
-  );
+  const strip = hasOrg
+    ? el(
+        'div',
+        { class: 'stats-strip', 'data-stagger-children': '' },
+        statTile(stats.openElections, 'Elections open now', 'ballot', { count: stats.openElections }),
+        statTile(stats.ballotsCast, 'Ballots recorded', 'check', { count: stats.ballotsCast }),
+        statTile(stats.registeredVoters, 'Registered voters', 'users', { count: stats.registeredVoters }),
+        statTile(stats.completedElections, 'Elections completed', 'chart', { count: stats.completedElections }),
+      )
+    : null;
 
-  /* Filterable election list */
-  let filter = 'all';
-  let sort = 'closing';
-  const list = el('div', { class: 'election-grid' });
-  const tabs = el('div', { class: 'admin-nav', role: 'group', 'aria-label': 'Filter elections' });
-  const sortSelect = el('select', { class: 'select', 'aria-label': 'Sort elections', onchange: (e) => { sort = e.target.value; renderList(); } },
-    el('option', { value: 'closing' }, 'Closing soonest'),
-    el('option', { value: 'turnout' }, 'Highest turnout'),
-    el('option', { value: 'newest' }, 'Newest first'),
-  );
+  const electionsSection = hasOrg
+    ? (() => {
+        /* Filterable election list */
+        let filter = 'all';
+        let sort = 'closing';
+        const list = el('div', { class: 'election-grid' });
+        const tabs = el('div', { class: 'admin-nav', role: 'group', 'aria-label': 'Filter elections' });
+        const sortSelect = el('select', { class: 'select', 'aria-label': 'Sort elections', onchange: (e) => { sort = e.target.value; renderList(); } },
+          el('option', { value: 'closing' }, 'Closing soonest'),
+          el('option', { value: 'turnout' }, 'Highest turnout'),
+          el('option', { value: 'newest' }, 'Newest first'),
+        );
 
-  const renderList = () => {
-    const filtered = elections.filter((election) => {
-      if (filter === 'all') return true;
-      if (filter === 'open') return election.status === 'open';
-      if (filter === 'upcoming') return election.status === 'scheduled';
-      return election.status === 'closed';
-    });
-    filtered.sort((a, b) => {
-      if (sort === 'turnout') {
-        const ar = a.registeredVoters ? a.totalVotes / a.registeredVoters : 0;
-        const br = b.registeredVoters ? b.totalVotes / b.registeredVoters : 0;
-        return br - ar;
-      }
-      if (sort === 'newest') return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
-      const at = a.closesAt ? Date.parse(a.closesAt) : Infinity;
-      const bt = b.closesAt ? Date.parse(b.closesAt) : Infinity;
-      return at - bt;
-    });
-    if (!filtered.length) {
-      list.replaceChildren(
-        emptyState({
-          icon: 'ballot',
-          title: 'No elections here yet',
-          message:
-            filter === 'all'
-              ? 'There are no published elections at the moment. Check back soon.'
-              : 'No elections match this filter right now.',
-        }),
-      );
-      return;
-    }
-    list.replaceChildren(...filtered.map(electionCard));
-  };
+        const renderList = () => {
+          const filtered = elections.filter((election) => {
+            if (filter === 'all') return true;
+            if (filter === 'open') return election.status === 'open';
+            if (filter === 'upcoming') return election.status === 'scheduled';
+            return election.status === 'closed';
+          });
+          filtered.sort((a, b) => {
+            if (sort === 'turnout') {
+              const ar = a.registeredVoters ? a.totalVotes / a.registeredVoters : 0;
+              const br = b.registeredVoters ? b.totalVotes / b.registeredVoters : 0;
+              return br - ar;
+            }
+            if (sort === 'newest') return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+            const at = a.closesAt ? Date.parse(a.closesAt) : Infinity;
+            const bt = b.closesAt ? Date.parse(b.closesAt) : Infinity;
+            return at - bt;
+          });
+          if (!filtered.length) {
+            list.replaceChildren(
+              emptyState({
+                icon: 'ballot',
+                title: 'No elections here yet',
+                message:
+                  filter === 'all'
+                    ? 'There are no published elections at the moment. Check back soon.'
+                    : 'No elections match this filter right now.',
+              }),
+            );
+            return;
+          }
+          list.replaceChildren(...filtered.map(electionCard));
+        };
 
-  const filters = [
-    ['all', 'All', elections.length],
-    ['open', 'Open', elections.filter((e) => e.status === 'open').length],
-    ['upcoming', 'Upcoming', elections.filter((e) => e.status === 'scheduled').length],
-    ['closed', 'Closed', elections.filter((e) => e.status === 'closed').length],
-  ];
-  for (const [key, label, count] of filters) {
-    const button = el(
-      'button',
-      {
-        type: 'button',
-        class: key === filter ? 'active' : '',
-        onclick: () => {
-          filter = key;
-          tabs.querySelectorAll('button').forEach((node) => node.classList.toggle('active', node === button));
-          renderList();
-        },
-      },
-      `${label} `,
-      el('span', { class: 'muted' }, String(count)),
-    );
-    tabs.append(button);
-  }
-  renderList();
+        const filters = [
+          ['all', 'All', elections.length],
+          ['open', 'Open', elections.filter((e) => e.status === 'open').length],
+          ['upcoming', 'Upcoming', elections.filter((e) => e.status === 'scheduled').length],
+          ['closed', 'Closed', elections.filter((e) => e.status === 'closed').length],
+        ];
+        for (const [key, label, count] of filters) {
+          const button = el(
+            'button',
+            {
+              type: 'button',
+              class: key === filter ? 'active' : '',
+              onclick: () => {
+                filter = key;
+                tabs.querySelectorAll('button').forEach((node) => node.classList.toggle('active', node === button));
+                renderList();
+              },
+            },
+            `${label} `,
+            el('span', { class: 'muted' }, String(count)),
+          );
+          tabs.append(button);
+        }
+        renderList();
 
-  const electionsSection = el(
-    'section',
-    { id: 'elections', 'aria-labelledby': 'elections-title' },
-    el(
-      'div',
-      { class: 'section-head' },
-      el('div', {}, el('h2', { id: 'elections-title' }, 'Elections'), el('p', {}, 'Every published ballot, open and past.')),
-      el('div', { class: 'row', style: { gap: '10px', flexWrap: 'wrap' } }, sortSelect, tabs),
-    ),
-    list,
-  );
+        return el(
+          'section',
+          { id: 'elections', 'aria-labelledby': 'elections-title' },
+          el(
+            'div',
+            { class: 'section-head' },
+            el('div', {}, el('h2', { id: 'elections-title' }, 'Elections'), el('p', {}, 'Every published ballot, open and past.')),
+            el('div', { class: 'row', style: { gap: '10px', flexWrap: 'wrap' } }, sortSelect, tabs),
+          ),
+          list,
+        );
+      })()
+    : null;
 
   const howItWorks = el(
     'section',
@@ -176,7 +183,40 @@ async function viewHome() {
     ),
   );
 
-  return [hero, strip, electionsSection, howItWorks, integrity];
+  return [hero, strip, electionsSection, howItWorks, integrity].filter(Boolean);
+}
+
+/* Get-started card shown to users not associated with an organization.
+   Replaces platform activity and demo election data. */
+function getStartedCard() {
+  return el(
+    'section',
+    { class: 'card stack', style: { marginTop: 'clamp(40px, 6vw, 64px)' } },
+    el(
+      'div',
+      { class: 'row-between' },
+      el('div', {}, el('h2', { style: { margin: 0 } }, 'Get started'), el('p', { style: { margin: '6px 0 0' } }, 'Elections are run by organizations. Join one to see and vote in its ballots.')),
+      el('span', { class: 'badge badge-accent' }, iconEl('users'), 'Organization'),
+    ),
+    el(
+      'div',
+      { class: 'election-grid' },
+      el(
+        'div',
+        { class: 'card-flat' },
+        el('h3', { style: { marginTop: 0 } }, 'Create your own organization'),
+        el('p', { class: 'small muted', style: { margin: '6px 0 0' } }, 'Run verifiable elections for your members.'),
+        el('a', { class: 'btn btn-primary', href: '/register-organization' }, 'Register organization', iconEl('arrow')),
+      ),
+      el(
+        'div',
+        { class: 'card-flat' },
+        el('h3', { style: { marginTop: 0 } }, 'Browse existing organizations'),
+        el('p', { class: 'small muted', style: { margin: '6px 0 0' } }, 'Join an organization to view its elections and cast ballots.'),
+        el('a', { class: 'btn btn-outline', href: '/orgs' }, 'View organizations', iconEl('arrow')),
+      ),
+    ),
+  );
 }
 
 function statTile(value, label, icon = null, opts = {}) {
