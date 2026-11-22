@@ -58,13 +58,14 @@ function security_headers(): void
     if (request_is_secure()) {
         header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
     }
+    // CSP: allow React app (module scripts from self, inline styles for Tailwind arbitrary values)
     header(
         'Content-Security-Policy: ' . implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'sha256-1vtGRdulwnqb8Ao0s4+BpbUIXEoo6+kouLUx5lAQyl8='",
+            "script-src 'self' 'wasm-unsafe-eval'", // React dev needs eval for hot reload; production doesn't use it but keep for safety
             "object-src 'none'",
             "upgrade-insecure-requests",
-            "style-src 'self'",
+            "style-src 'self' 'unsafe-inline'", // Tailwind arbitrary values need inline styles
             "img-src 'self' data:",
             "font-src 'self'",
             "connect-src 'self'",
