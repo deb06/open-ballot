@@ -185,13 +185,8 @@ function rate_limit(string $key, int $max, int $windowSeconds): array
     $upsert = $isPg
         ? "INSERT INTO rate_limits ($keyCol, window_start, count) VALUES (?, ?, ?) ON CONFLICT ($keyCol) DO UPDATE SET window_start = EXCLUDED.window_start, count = EXCLUDED.count"
         : "INSERT INTO rate_limits ($keyCol, window_start, count) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE window_start = VALUES(window_start), count = VALUES(count)";
-    try {
-        db_exec($upsert, [$key, iso_to_sql(now_iso_at($windowStart)), $count]);
-    } catch (Throwable) {
-        // Fall back to a best-effort in-memory bucket if the database is unavailable.
-        static $buckets = [];
-        $buckets[$key] = ['count' => $count, 'reset' => $windowStart + $windowSeconds];
-    }
+    // No silent fallback — if the DB is down, let the error propagate so we know.
+    db_exec($upsert, [$key, iso_to_sql(now_iso_at($windowStart)), $count]);
     return ['ok' => true, 'retryAfter' => 0];
 }
 

@@ -37,9 +37,9 @@ function db_connect(): PDO
         // LIMIT/OFFSET values in this app are inlined ints, so this is safe.
         PDO::ATTR_EMULATE_PREPARES => $driver === 'pgsql',
         PDO::ATTR_STRINGIFY_FETCHES => false,
-        // Reuse connections across requests: remote DBs (Neon) can take
-        // seconds per handshake, which would otherwise block every request.
-        PDO::ATTR_PERSISTENT => $driver === 'pgsql',
+        // Disable persistent connections to avoid Neon pooler issues with
+        // prepared statements and rate limit table locks.
+        PDO::ATTR_PERSISTENT => false,
     ]);
 
     if ($driver === 'pgsql') {

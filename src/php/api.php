@@ -106,6 +106,48 @@ function api_routes(): array
         send_json(200, ['ok' => true, 'time' => now_iso(), 'app' => config('app_name')]);
     });
 
+    // Debug endpoints for rate limiting
+    $add('POST', '/api/debug/rate-limit', static function (array $ctx): void {
+        $body = $ctx['body'];
+        $key = as_text($body['key'] ?? 'test_' . time());
+        $max = (int) ($body['max'] ?? 5);
+        $window = (int) ($body['window'] ?? 900);
+        
+        try {
+            $result = rate_limit($key, $max, 900);
+            send_json(200, [
+                'ok' => true,
+                'result' => $result,
+                'key' => $key,
+                'db_connected' => true
+            ]);
+        } catch (Throwable $e) {
+            send_json(500, [
+                'ok' => false,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }, ['auth' => false]);
+
+    $add('GET', '/api/debug/rate-limit/check', static function (array $ctx): void {
+        try {
+            $rows = db_all("SELECT * FROM rate_limits ORDER BY window_start DESC LIMIT 20");
+            send_json(200, ['ok' => true, 'rows' => $rows]);
+        } catch (Throwable $e) {
+            send_json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }, ['auth' => false]);
+
+    $add('POST', '/api/debug/rate-limit/clear', static function (array $ctx): void {
+        try {
+            db_exec('TRUNCATE TABLE rate_limits');
+            send_json(200, ['ok' => true, 'message' => 'Cleared']);
+        } catch (Throwable $e) {
+            send_json(500, ['error' => $e->getMessage()]);
+        }
+    }, ['auth' => false]);
+
     $add('GET', '/api/stats', static function (array $ctx): void {
         $elections = db_all('SELECT * FROM elections');
         $statuses = array_map(static fn (array $row): string => effective_status($row), $elections);
@@ -792,12 +834,13 @@ function api_routes(): array
     });
 
     $add('POST', '/api/auth/login', static function (array $ctx): void {
-        ensure_limit('login:ip:' . $ctx['ip'], 20, 900, 'Too many sign-in attempts. Wait a moment and try again.');
+        // Stricter: 5 attempts per IP per 15 min, 3 per email per 15 min
+        ensure_limit('login:ip:' . $ctx['ip'], 5, 900, 'Too many sign-in attempts. Wait a moment and try again.');
         $body = $ctx['body'];
         $email = strtolower(trim(as_text($body['email'] ?? null)));
         ensure_limit(
             'login:email:' . ($email !== '' ? $email : 'unknown'),
-            8,
+            3,
             900,
             'Too many sign-in attempts for this account. Wait a moment and try again.',
         );
@@ -887,6 +930,8 @@ function api_routes(): array
     });
 
     $add('POST', '/api/auth/forgot-password', static function (array $ctx): void {
+        ensure_limit('forgot-password:ip:' . $ctx['ip'], 3, 900, 'Too many password reset requests. Wait a few minutes.');
+        ensure_limit('forgot-password:email:' . strtolower(trim(as_text($ctx['body']['email'] ?? null))), 2, 900, 'Too many password reset requests for this address. Wait a few minutes.');
         $body = $ctx['body'];
         $email = strtolower(trim(as_text($body['email'] ?? null)));
         $row = db_one('SELECT * FROM users WHERE email = ?', [$email]);
@@ -941,13 +986,14 @@ function api_routes(): array
     });
 
     $add('POST', '/api/auth/request-otp', static function (array $ctx): void {
-        ensure_limit('otp-request:ip:' . $ctx['ip'], 15, 900, 'Too many code requests. Wait a few minutes.');
+        // Stricter: 3 requests per IP per 15 min, 2 per email per 15 min
+        ensure_limit('otp-request:ip:' . $ctx['ip'], 3, 900, 'Too many code requests. Wait a few minutes.');
         $body = $ctx['body'];
         $email = strtolower(trim(as_text($body['email'] ?? null)));
         if ($email === '') {
             fail(400, 'Enter your email address.', 'email_required');
         }
-        ensure_limit('otp-request:email:' . $email, 6, 900, 'Too many code requests for this address. Wait a few minutes.');
+        ensure_limit('otp-request:email:' . $email, 2, 900, 'Too many code requests for this address. Wait a few minutes.');
 
         // Generic response shape (does not reveal whether the account exists).
         $row = db_one('SELECT id, email_verified_at FROM users WHERE email = ?', [$email]);
@@ -966,14 +1012,15 @@ function api_routes(): array
     });
 
     $add('POST', '/api/auth/verify-otp', static function (array $ctx): void {
-        ensure_limit('otp-verify:ip:' . $ctx['ip'], 30, 600, 'Too many attempts. Wait a moment.');
+        // Stricter rate limiting: 5 attempts per IP per 10 min, 3 per email per 10 min
+        ensure_limit('otp-verify:ip:' . $ctx['ip'], 5, 600, 'Too many attempts. Wait a moment.');
         $body = $ctx['body'];
         $email = strtolower(trim(as_text($body['email'] ?? null)));
         $code = preg_replace('/\D/', '', as_text($body['code'] ?? null)) ?? '';
         if ($email === '' || strlen($code) !== 6) {
             fail(400, 'Enter the 6-digit code.', 'otp_invalid');
         }
-        ensure_limit('otp-verify:email:' . $email, 8, 600, 'Too many attempts for this address. Wait a moment.');
+        ensure_limit('otp-verify:email:' . $email, 3, 600, 'Too many attempts for this address. Wait a moment.');
 
         $row = db_one('SELECT * FROM users WHERE email = ?', [$email]);
         if ($row === null) {

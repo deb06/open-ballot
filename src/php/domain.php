@@ -116,6 +116,10 @@ function require_text(mixed $value, int $min, int $max, string $label): string
     if ($length > $max) {
         fail(400, sprintf('%s must be %d characters or fewer.', $label, $max), 'validation');
     }
+    // Strip HTML/script tags to prevent XSS
+    $text = strip_tags($text);
+    // Remove control characters except newlines/tabs
+    $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $text);
     return $text;
 }
 
@@ -125,6 +129,9 @@ function optional_text(mixed $value, int $max, string $label): string
     if (mb_strlen($text) > $max) {
         fail(400, sprintf('%s must be %d characters or fewer.', $label, $max), 'validation');
     }
+    // Strip HTML/script tags to prevent XSS
+    $text = strip_tags($text);
+    $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $text);
     return $text;
 }
 
