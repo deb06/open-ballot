@@ -56,29 +56,29 @@ import PollDetail from './pages/polls/PollDetail'
 // Auth required wrapper
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  if (loading) return null
+  if (loading) return <div className="loading-screen">Loading...</div>
   if (!user) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
 function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth()
-  if (loading) return null
+  if (loading) return <div className="loading-screen">Loading...</div>
   if (!user || !isAdmin()) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
 function RequireOrgAdmin({ children }: { children: React.ReactNode }) {
   const { user, isOrgAdmin, loading } = useAuth()
-  if (loading) return null
+  if (loading) return <div className="loading-screen">Loading...</div>
   if (!user || !isOrgAdmin()) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
-function App() {
+// Inner app that lives INSIDE AuthProvider - can safely use useAuth
+function AppRoutes() {
   const { loading, refresh, logout } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
 
   // Handle auth expiration from API
   useEffect(() => {
@@ -90,69 +90,76 @@ function App() {
     return () => window.removeEventListener('auth:expired', handler)
   }, [navigate])
 
-  if (loading) return null
+  // Don't block rendering on auth check - render routes immediately
+  // The auth state will hydrate in the background
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public */}
+        <Route path="/" element={<PublicLayout />}>
+          <Route index element={<Home />} />
+          <Route path="elections" element={<Elections />} />
+          <Route path="election/:id" element={<ElectionDetail />} />
+          <Route path="verify" element={<Verify />} />
+          <Route path="help" element={<Help />} />
+          <Route path="privacy" element={<Privacy />} />
+          <Route path="terms" element={<Terms />} />
+          <Route path="refunds" element={<Refunds />} />
+          <Route path="data-request" element={<RequireAuth><DataRequest /></RequireAuth>} />
+          <Route path="dpa" element={<Dpa />} />
+          <Route path="subprocessors" element={<Subprocessors />} />
+          <Route path="status" element={<Status />} />
+          <Route path="archive" element={<Archive />} />
+          <Route path="audit" element={<AuditChain />} />
+          <Route path="party" element={<Home />} />
+        </Route>
 
+        {/* Auth */}
+        <Route path="login" element={<AuthLayout><Login /></AuthLayout>} />
+        <Route path="register" element={<AuthLayout><Register /></AuthLayout>} />
+        <Route path="forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
+        <Route path="reset-password/:token" element={<AuthLayout><ResetPassword /></AuthLayout>} />
+        <Route path="verify-email/:token" element={<AuthLayout><VerifyEmail /></AuthLayout>} />
+        <Route path="register-organization" element={<AuthLayout><RegisterOrganization /></AuthLayout>} />
+        <Route path="join" element={<AuthLayout><Join /></AuthLayout>} />
+
+        {/* Account */}
+        <Route path="account" element={<RequireAuth><Account /></RequireAuth>} />
+
+        {/* Admin */}
+        <Route path="admin/*" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="elections" element={<AdminElections />} />
+          <Route path="election/:id" element={<AdminElections />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="audit" element={<AdminAudit />} />
+          <Route path="polls" element={<AdminPolls />} />
+          <Route path="webhooks" element={<AdminWebhooks />} />
+          <Route path="api-keys" element={<AdminApiKeys />} />
+          <Route path="schema" element={<AdminSchema />} />
+          <Route path="org" element={<AdminOrganization />} />
+          <Route path="organizations" element={<AdminOrganizations />} />
+        </Route>
+
+        {/* Polls */}
+        <Route path="polls/new" element={<RequireAuth><PollNew /></RequireAuth>} />
+        <Route path="p/:slug" element={<PollDetail />} />
+
+        {/* Observer */}
+        <Route path="observer" element={<RequireAuth><Home /></RequireAuth>} />
+
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
+// Root App - just provides AuthProvider
+function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public */}
-          <Route path="/" element={<PublicLayout />}>
-            <Route index element={<Home />} />
-            <Route path="elections" element={<Elections />} />
-            <Route path="election/:id" element={<ElectionDetail />} />
-            <Route path="verify" element={<Verify />} />
-            <Route path="help" element={<Help />} />
-            <Route path="privacy" element={<Privacy />} />
-            <Route path="terms" element={<Terms />} />
-            <Route path="refunds" element={<Refunds />} />
-            <Route path="data-request" element={<RequireAuth><DataRequest /></RequireAuth>} />
-            <Route path="dpa" element={<Dpa />} />
-            <Route path="subprocessors" element={<Subprocessors />} />
-            <Route path="status" element={<Status />} />
-            <Route path="archive" element={<Archive />} />
-            <Route path="audit" element={<AuditChain />} />
-            <Route path="party" element={<Home />} /> {/* redirect to home for now */}
-          </Route>
-
-          {/* Auth */}
-          <Route path="login" element={<AuthLayout><Login /></AuthLayout>} />
-          <Route path="register" element={<AuthLayout><Register /></AuthLayout>} />
-          <Route path="forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
-          <Route path="reset-password/:token" element={<AuthLayout><ResetPassword /></AuthLayout>} />
-          <Route path="verify-email/:token" element={<AuthLayout><VerifyEmail /></AuthLayout>} />
-          <Route path="register-organization" element={<AuthLayout><RegisterOrganization /></AuthLayout>} />
-          <Route path="join" element={<AuthLayout><Join /></AuthLayout>} />
-
-          {/* Account */}
-          <Route path="account" element={<RequireAuth><Account /></RequireAuth>} />
-
-          {/* Admin */}
-          <Route path="admin/*" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="elections" element={<AdminElections />} />
-            <Route path="election/:id" element={<AdminElections />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="audit" element={<AdminAudit />} />
-            <Route path="polls" element={<AdminPolls />} />
-            <Route path="webhooks" element={<AdminWebhooks />} />
-            <Route path="api-keys" element={<AdminApiKeys />} />
-            <Route path="schema" element={<AdminSchema />} />
-            <Route path="org" element={<AdminOrganization />} />
-            <Route path="organizations" element={<AdminOrganizations />} />
-          </Route>
-
-          {/* Polls */}
-          <Route path="polls/new" element={<RequireAuth><PollNew /></RequireAuth>} />
-          <Route path="p/:slug" element={<PollDetail />} />
-
-          {/* Observer */}
-          <Route path="observer" element={<RequireAuth><Home /></RequireAuth>} />
-
-          {/* 404 */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AppRoutes />
     </AuthProvider>
   )
 }
