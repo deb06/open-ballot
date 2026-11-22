@@ -201,7 +201,7 @@
   height: 20px;
   margin-left: 8px;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: var(--radius);
   background: var(--surface-3);
   color: var(--text-muted);
   font-size: 0.72rem;
@@ -306,7 +306,7 @@
   min-width: 17px;
   height: 17px;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: var(--radius);
   background: var(--rose-500, #f43f5e);
   color: #fff;
   font-size: 0.63rem;
@@ -376,7 +376,7 @@
 
 /* Password strength meter ------------------------------------------------- */
 .strength-wrap { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
-.strength-bar { flex: 1; height: 5px; border-radius: 99px; background: var(--surface-3); overflow: hidden; position: relative; }
+.strength-bar { flex: 1; height: 5px; border-radius: var(--radius); background: var(--surface-3); overflow: hidden; position: relative; }
 .strength-bar::after { content: ''; position: absolute; inset: 0; width: calc(var(--w, 0) * 20%); background: var(--rose-500, #f43f5e); transition: width 0.2s, background 0.2s; }
 .strength-bar[data-score="0"] { --w: 0; }
 .strength-bar[data-score="1"] { --w: 1; }

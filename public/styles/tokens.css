@@ -273,9 +273,9 @@
   --info-soft: rgba(63, 113, 143, 0.12);
 
   --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-sm: 0 8px 24px -12px rgba(16, 24, 40, 0.18);
-  --shadow: 0 8px 26px -14px rgba(16, 24, 40, 0.22);
-  --shadow-lg: 0 32px 70px -28px rgba(16, 24, 40, 0.35);
+  --shadow-sm: 0 1px 0 rgba(16, 24, 40, 0.08);
+  --shadow: 0 1px 0 rgba(16, 24, 40, 0.10);
+  --shadow-lg: 0 1px 0 rgba(16, 24, 40, 0.12);
   --ring: 0 0 0 3px rgba(146, 97, 12, 0.25);
   --shadow-focus-ring: 0 0 0 3px rgba(146, 97, 12, 0.3);
 
