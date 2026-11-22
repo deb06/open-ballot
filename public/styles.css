@@ -653,7 +653,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   content: "";
   width: 6px;
   height: 6px;
-  border-radius: 99px;
+  border-radius: var(--radius);
   background: currentColor;
 }
 .pill-open { color: #6ee7b7; background: var(--success-soft); border-color: rgba(52, 211, 153, 0.28); }
@@ -817,7 +817,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   content: "";
   width: 10px;
   height: 10px;
-  border-radius: 99px;
+  border-radius: var(--radius);
   background: transparent;
   transition: background 0.16s ease, transform 0.16s ease;
   transform: scale(0.4);
@@ -963,7 +963,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .live-dot {
   width: 7px;
   height: 7px;
-  border-radius: 99px;
+  border-radius: var(--radius);
   background: var(--success);
   animation: pulse 2.2s ease-in-out infinite;
 }
