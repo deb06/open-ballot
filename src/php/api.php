@@ -107,7 +107,7 @@ function api_routes(): array
     });
 
     // Debug endpoints for rate limiting
-    $add('POST', '/api/debug/rate-limit', static function (array $ctx): void {
+    $admin('POST', '/api/debug/rate-limit', static function (array $ctx): void {
         $body = $ctx['body'];
         $key = as_text($body['key'] ?? 'test_' . time());
         $max = (int) ($body['max'] ?? 5);
@@ -128,25 +128,25 @@ function api_routes(): array
                 'trace' => $e->getTraceAsString()
             ]);
         }
-    }, ['auth' => false]);
+    });
 
-    $add('GET', '/api/debug/rate-limit/check', static function (array $ctx): void {
+    $admin('GET', '/api/debug/rate-limit/check', static function (array $ctx): void {
         try {
             $rows = db_all("SELECT * FROM rate_limits ORDER BY window_start DESC LIMIT 20");
             send_json(200, ['ok' => true, 'rows' => $rows]);
         } catch (Throwable $e) {
             send_json(500, ['ok' => false, 'error' => $e->getMessage()]);
         }
-    }, ['auth' => false]);
+    });
 
-    $add('POST', '/api/debug/rate-limit/clear', static function (array $ctx): void {
+    $admin('POST', '/api/debug/rate-limit/clear', static function (array $ctx): void {
         try {
             db_exec('TRUNCATE TABLE rate_limits');
             send_json(200, ['ok' => true, 'message' => 'Cleared']);
         } catch (Throwable $e) {
             send_json(500, ['error' => $e->getMessage()]);
         }
-    }, ['auth' => false]);
+    });
 
     $add('GET', '/api/stats', static function (array $ctx): void {
         $elections = db_all('SELECT * FROM elections');
