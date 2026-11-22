@@ -17,9 +17,9 @@ async function viewHome() {
     { class: 'hero' },
     el(
       'div',
-      {},
+      { 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '0' },
       el('p', { class: 'eyebrow', 'data-i18n': 'home.eyebrow' }, window.I18n ? I18n.t('home.eyebrow') : 'Secure · anonymous · receipt-verified'),
-      el('h1', {}, window.I18n ? I18n.t('home.title.a') : 'Your voice, ', el('em', {}, window.I18n ? I18n.t('home.title.b') : 'counted.')),
+      el('h1', { 'data-stagger': '' }, window.I18n ? I18n.t('home.title.a') : 'Your voice, ', el('em', {}, window.I18n ? I18n.t('home.title.b') : 'counted.')),
       el(
         'p',
         { class: 'hero-sub' },
@@ -28,12 +28,12 @@ async function viewHome() {
       el(
         'div',
         { class: 'hero-actions' },
-        el('a', { class: 'btn btn-primary btn-lg', href: '#elections' }, 'Browse elections', iconEl('arrow')),
-        el('a', { class: 'btn btn-outline btn-lg', href: '/verify' }, 'Verify a receipt'),
+        el('a', { class: 'btn btn-primary btn-lg', 'data-magnetic': '', href: '#elections' }, 'Browse elections', iconEl('arrow')),
+        el('a', { class: 'btn btn-outline btn-lg', 'data-magnetic': '', href: '/verify' }, 'Verify a receipt'),
       ),
       el(
         'div',
-        { class: 'hero-artifact', 'aria-label': 'How Open Ballot works in three steps' },
+        { class: 'hero-artifact', 'aria-label': 'How Open Ballot works in three steps', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '200' },
         el('div', { class: 'artifact-head' }, 'How it works'),
         el('div', { class: 'howit-step' }, el('span', { class: 'howit-num' }, '1'), el('div', {}, el('strong', {}, 'Register once'), el('p', { class: 'small muted', style: { margin: '2px 0 0' } }, 'Create your account with email verification.'))),
         el('div', { class: 'howit-step' }, el('span', { class: 'howit-num' }, '2'), el('div', {}, el('strong', {}, 'Vote anonymously'), el('p', { class: 'small muted', style: { margin: '2px 0 0' } }, 'Your ballot is stored without your identity.'))),
@@ -41,7 +41,7 @@ async function viewHome() {
       ),
       el(
         'div',
-        { class: 'hero-trust' },
+        { class: 'hero-trust', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '400' },
         el('span', { class: 'badge' }, iconEl('check'), 'One person, one vote'),
         el('span', { class: 'badge' }, iconEl('lock'), 'Secret ballot'),
         el('span', { class: 'badge' }, iconEl('shield'), 'Receipt verified'),
@@ -52,11 +52,11 @@ async function viewHome() {
 
   const strip = el(
     'div',
-    { class: 'stats-strip' },
-    statTile(stats.openElections, 'Elections open now', 'ballot'),
-    statTile(stats.ballotsCast, 'Ballots recorded', 'check'),
-    statTile(stats.registeredVoters, 'Registered voters', 'users'),
-    statTile(stats.completedElections, 'Elections completed', 'chart'),
+    { class: 'stats-strip', 'data-stagger': '' },
+    statTile(stats.openElections, 'Elections open now', 'ballot', { count: stats.openElections }),
+    statTile(stats.ballotsCast, 'Ballots recorded', 'check', { count: stats.ballotsCast }),
+    statTile(stats.registeredVoters, 'Registered voters', 'users', { count: stats.registeredVoters }),
+    statTile(stats.completedElections, 'Elections completed', 'chart', { count: stats.completedElections }),
   );
 
   /* Filterable election list */
@@ -179,8 +179,16 @@ async function viewHome() {
   return [hero, strip, electionsSection, howItWorks, integrity];
 }
 
-function statTile(value, label, icon = null) {
-  return Components.stat({ label, value: formatNumber(value), icon });
+function statTile(value, label, icon = null, opts = {}) {
+  return Components.stat({
+    label,
+    value: el('span', {
+      'data-count-to': value,
+      'data-count-duration': '1.2',
+      'class': 'stat-value',
+    }, formatNumber(value)),
+    icon,
+  });
 }
 
 function heroArt(stats) {
@@ -254,7 +262,13 @@ function electionCard(election) {
   const turnout = registered ? Math.min(100, Math.round((election.totalVotes / registered) * 100)) : 0;
   return el(
     'a',
-    { class: 'election-card', href: `/election/${election.id}` },
+    {
+      class: 'election-card',
+      href: `/election/${election.id}`,
+      'data-anim': '',
+      'data-anim-kind': 'fade-up',
+      'data-card-hover': '',
+    },
     el(
       'div',
       { class: 'row-between' },
@@ -280,7 +294,7 @@ function electionCard(election) {
       'div',
       { class: 'card-foot' },
       el('span', { class: 'small muted' }, election.status === 'closed' ? 'View final outcome' : 'Open ballot'),
-      el('span', { class: 'btn btn-sm btn-outline' }, election.status === 'closed' ? 'View results' : election.hasVoted ? 'Your ballot' : 'Vote now'),
+      el('span', { class: 'btn btn-sm btn-outline', 'data-magnetic': '' }, election.status === 'closed' ? 'View results' : election.hasVoted ? 'Your ballot' : 'Vote now'),
     ),
   );
 }
@@ -416,7 +430,7 @@ async function viewElection(rawId) {
 
   function ballotForm() {
     const form = el('form', { class: 'card stack', novalidate: true });
-    const submit = el('button', { class: 'btn btn-primary btn-lg', type: 'submit' }, 'Review and cast ballot');
+    const submit = el('button', { class: 'btn btn-primary btn-lg', 'data-magnetic': '', type: 'submit' }, 'Review and cast ballot');
     const stepMount = el('div', {}, Components.stepper(
       [{ label: 'Review' }, { label: 'Confirm' }, { label: 'Receipt' }], 0,
     ));
@@ -427,7 +441,7 @@ async function viewElection(rawId) {
     const maxChoices = Number(election.maxChoices || 1);
     const multi = maxChoices > 1;
     const ranked = String(election.ballotType || 'single') === 'ranked';
-    const fieldset = el('fieldset', { class: 'ballot candidate-grid' }, el('legend', { class: 'visually-hidden' }, ranked ? 'Rank candidates in order of preference' : multi ? 'Choose up to ' + maxChoices + ' candidates' : 'Choose one candidate'));
+    const fieldset = el('fieldset', { class: 'ballot candidate-grid', 'data-stagger': '' }, el('legend', { class: 'visually-hidden' }, ranked ? 'Rank candidates in order of preference' : multi ? 'Choose up to ' + maxChoices + ' candidates' : 'Choose one candidate'));
     let rankOrder = ranked ? candidates.map((c) => c.id) : [];
 
     if (ranked) {
@@ -450,7 +464,12 @@ async function viewElection(rawId) {
       fieldset.append(
         el(
           'label',
-          { class: 'candidate' },
+          {
+            class: 'candidate',
+            'data-anim': '',
+            'data-anim-kind': 'fade-up',
+            'data-card-hover': '',
+          },
           el('input', {
             type: multi ? 'checkbox' : 'radio',
             name: 'candidate',
@@ -1142,35 +1161,35 @@ function viewRegister() {
   const age13 = el('input', { class: 'input', type: 'checkbox', id: nextId('age13') });
   const terms = el('input', { class: 'input', type: 'checkbox', id: nextId('terms') });
   const marketing = el('input', { class: 'input', type: 'checkbox', id: nextId('marketing') });
-  const submit = el('button', { class: 'btn btn-primary btn-block btn-lg', type: 'submit' }, 'Create account');
+  const submit = el('button', { class: 'btn btn-primary btn-block btn-lg', 'data-magnetic': '', type: 'submit' }, 'Create account');
 
   const form = el(
     'form',
-    { class: 'stack', novalidate: true },
+    { class: 'stack', novalidate: true, 'data-stagger': '' },
     errorBox,
-    el('div', { class: 'field' }, el('label', { for: name.id }, 'Full name'), name),
-    el('div', { class: 'field' }, el('label', { for: email.id }, 'Email'), email),
-    el('div', { class: 'field' }, el('label', { for: password.id }, 'Password'), password, strengthMeter(password), el('p', { class: 'hint' }, 'Use at least 12 characters. Stored as a salted scrypt hash.')),
-    el('div', { class: 'field' }, el('label', { for: confirm.id }, 'Confirm password'), confirm),
-    el('div', { class: 'field consent-row', style: { display: 'flex', alignItems: 'flex-start', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--line)' } },
+    el('div', { class: 'field', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '50' }, el('label', { for: name.id }, 'Full name'), name),
+    el('div', { class: 'field', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '100' }, el('label', { for: email.id }, 'Email'), email),
+    el('div', { class: 'field', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '150' }, el('label', { for: password.id }, 'Password'), password, strengthMeter(password), el('p', { class: 'hint' }, 'Use at least 12 characters. Stored as a salted scrypt hash.')),
+    el('div', { class: 'field', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '200' }, el('label', { for: confirm.id }, 'Confirm password'), confirm),
+    el('div', { class: 'field consent-row', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '250', style: { display: 'flex', alignItems: 'flex-start', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--line)' } },
       el('input', { id: age13.id, type: 'checkbox', required: true }),
       el('label', { for: age13.id, style: { flex: 1, fontSize: '0.85rem', lineHeight: '1.4' } },
         window.I18n ? I18n.t('consent.age') : 'I am at least 13 years old, or I have verifiable parental or guardian consent to register.'
       ),
     ),
-    el('div', { class: 'field consent-row', style: { display: 'flex', alignItems: 'flex-start', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--line)' } },
+    el('div', { class: 'field consent-row', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '300', style: { display: 'flex', alignItems: 'flex-start', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--line)' } },
       el('input', { id: terms.id, type: 'checkbox', required: true }),
       el('label', { for: terms.id, style: { flex: 1, fontSize: '0.85rem', lineHeight: '1.4' } },
         window.I18n ? I18n.t('consent.terms') : 'I agree to the ', el('a', { href: '/terms', style: { color: 'var(--accent)', textDecoration: 'underline' } }, window.I18n ? I18n.t('consent.termsLabel') : 'Terms of Service'), ' and ', el('a', { href: '/privacy', style: { color: 'var(--accent)', textDecoration: 'underline' } }, window.I18n ? I18n.t('consent.termsLabel') : 'Privacy Policy'), '.'
       ),
     ),
-    el('div', { class: 'field consent-row', style: { display: 'flex', alignItems: 'flex-start', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--line)' } },
+    el('div', { class: 'field consent-row', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '350', style: { display: 'flex', alignItems: 'flex-start', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--line)' } },
       el('input', { id: marketing.id, type: 'checkbox' }),
       el('label', { for: marketing.id, style: { flex: 1, fontSize: '0.85rem', lineHeight: '1.4' } },
         window.I18n ? I18n.t('consent.marketing') : 'Send me occasional election digests and updates (you can unsubscribe at any time).'
       ),
     ),
-    submit,
+    el('div', { class: 'field', 'data-anim': '', 'data-anim-kind': 'fade-up', 'data-anim-delay': '400' }, submit),
   );
 
   form.addEventListener('submit', async (event) => {

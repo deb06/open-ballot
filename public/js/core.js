@@ -1120,6 +1120,9 @@ async function handleRoute() {
 
   const main = app();
   document.body.dataset.area = parts[0] === 'admin' ? 'admin' : 'public';
+
+  if (window.OpenBallotAnim) window.OpenBallotAnim.startPageTransition();
+
   main.replaceChildren(loading());
   window.scrollTo({ top: 0, behavior: 'auto' });
 
@@ -1131,14 +1134,17 @@ async function handleRoute() {
       const crumbs = autoBreadcrumbs(parts);
       if (crumbs) main.prepend(crumbs);
     }
+    if (window.OpenBallotAnim) window.OpenBallotAnim.refresh();
     // Inject cookie consent banner when consent has not been given.
     const banner = renderCookieBanner();
     if (banner) document.body.appendChild(banner);
+    if (window.OpenBallotAnim) window.OpenBallotAnim.endPageTransition();
   } catch (error) {
     if (token !== routeToken) return;
     main.replaceChildren(errorView(error));
     const banner = renderCookieBanner();
     if (banner) document.body.appendChild(banner);
+    if (window.OpenBallotAnim) window.OpenBallotAnim.endPageTransition();
   }
 }
 
@@ -1379,6 +1385,7 @@ async function boot() {
   applyTheme();
   setupNav();
   setupI18n();
+  if (window.OpenBallotAnim) window.OpenBallotAnim.init();
 
   setupErrorReporting();
   setupLinkInterception();

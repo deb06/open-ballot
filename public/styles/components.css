@@ -784,3 +784,135 @@ body[data-area="admin"] .admin-head h1 { letter-spacing: -0.02em; }
   cursor: pointer;
 }
 .cookie-banner [aria-label="Close cookie banner"]:hover { color: var(--text); }
+
+/* ==========================================================================
+   Animation library (inspired by Animaster Lib, Skiper UI, Vengeance UI)
+   Vanilla CSS + JS equivalents — zero dependencies.
+   ========================================================================== */
+
+/* --- Scroll reveal (Animaster "Scroll Animations") ---------------------- */
+
+[data-anim] {
+  opacity: 0;
+  pointer-events: none;
+}
+[data-anim].anim-in {
+  opacity: 1;
+  pointer-events: auto;
+  animation: animReveal var(--duration) var(--ease-out) both;
+}
+
+/* Reveal variants */
+.anim-fade-up   { animation-name: animFadeUp; }
+.anim-slide-up  { animation-name: animSlideUp; }
+.anim-fade-in   { animation-name: animFadeIn; }
+.anim-zoom-in   { animation-name: animZoomIn; }
+.anim-flip-x    { animation-name: animFlipX; }
+
+@keyframes animReveal {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes animFadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes animSlideUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes animFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes animZoomIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes animFlipX {
+  from { opacity: 0; transform: rotateX(-15deg) translateY(12px); }
+  to   { opacity: 1; transform: rotateX(0) translateY(0); }
+}
+
+/* Stagger delay helper */
+[data-anim][data-stagger] > * { opacity: 0; }
+
+/* --- Page transition overlay (Animaster "Page Transitions") ------------ */
+
+.page-overlay {
+  backdrop-filter: blur(4px);
+}
+
+@keyframes pageSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Magnetic buttons (Vengeance/Skiper style) ------------------------- */
+
+[data-magnetic] {
+  transition: transform 0.1s ease-out, box-shadow 0.2s ease;
+  will-change: transform;
+}
+
+/* --- Liquid buttons (Vengeance "Liquid Button") ------------------------ */
+
+[data-liquid] {
+  position: relative;
+  overflow: hidden;
+  transition: color 0.3s ease;
+}
+[data-liquid]::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  border-radius: 45%;
+  background: radial-gradient(circle, rgba(217,164,65,0.25) 0%, transparent 60%);
+  transform: scale(0);
+  transition: transform 0.4s var(--ease-out);
+  pointer-events: none;
+}
+[data-liquid].liquid-active::before {
+  transform: scale(1.6);
+}
+
+/* --- Card hover lift + glow (Skiper/Vengeance card style) -------------- */
+
+[data-card-hover] {
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+  will-change: transform;
+}
+
+/* --- Stats counter (Vengeance "Animated Number") ----------------------- */
+
+[data-count-to] {
+  font-variant-numeric: tabular-nums;
+  will-change: auto;
+}
+
+/* --- Staggered text (Vengeance "Stagger Text") ------------------------- */
+
+[data-stagger] > span {
+  will-change: transform, opacity;
+}
+
+/* --- Cursor follower (Animaster "Mouse Effects") ----------------------- */
+
+.ob-cursor {
+  mix-blend-mode: difference;
+}
+
+/* --- Parallax background (Animaster "Background Animations") ----------- */
+
+[data-parallax] {
+  will-change: transform;
+}
+
+/* --- Reduced motion fallback ------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-anim] { opacity: 1; pointer-events: auto; animation: none; }
+  [data-anim].anim-in { animation: none; }
+  [data-stagger] > span { opacity: 1; transform: none; transition: none; }
+  [data-card-hover] { transition: none; }
+  .page-overlay { animation: none; }
+}
