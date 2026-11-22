@@ -329,17 +329,167 @@ function initLiquidButtons() {
 }
 
 /* --------------------------------------------------------------------------
-   Initialize all animations
+   Glassmorphism cards — Skiper UI "Glass Dock" style
+   -------------------------------------------------------------------------- */
+
+function initGlassCards() {
+  document.querySelectorAll('[data-glass]').forEach((card) => {
+    card.addEventListener('mouseenter', () => {
+      card.style.boxShadow = '0 20px 40px -10px rgba(0, 0, 0, 0.4)';
+      card.style.borderColor = 'rgba(217, 164, 65, 0.4)';
+      card.style.transform = 'translateY(-4px)';
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.boxShadow = '';
+      card.style.borderColor = '';
+      card.style.transform = '';
+    });
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Hover reveal overlay — Vengeance UI "Image Reveal" style
+   -------------------------------------------------------------------------- */
+
+function initHoverReveal() {
+  document.querySelectorAll('[data-hover-reveal]').forEach((el) => {
+    const overlay = el.querySelector('[data-hover-reveal-overlay]');
+    if (!overlay) return;
+    el.addEventListener('mouseenter', () => {
+      overlay.style.opacity = '1';
+      overlay.style.transform = 'translateY(0)';
+    });
+    el.addEventListener('mouseleave', () => {
+      overlay.style.opacity = '0';
+      overlay.style.transform = 'translateY(100%)';
+    });
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Flip card — Skiper UI card stack style
+   -------------------------------------------------------------------------- */
+
+function initFlipCards() {
+  document.querySelectorAll('[data-flip-card]').forEach((card) => {
+    const front = card.querySelector('[data-flip-front]');
+    const back = card.querySelector('[data-flip-back]');
+    if (!front || !back) return;
+    card.addEventListener('click', () => {
+      const flipped = card.classList.toggle('flipped');
+      front.style.transform = flipped ? 'rotateY(180deg)' : 'rotateY(0)';
+      back.style.transform = flipped ? 'rotateY(0)' : 'rotateY(-180deg)';
+    });
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Elastic text marquee — Vengeance UI "Magnetic Spotlight Marquee"
+   -------------------------------------------------------------------------- */
+
+function initElasticMarquee() {
+  document.querySelectorAll('[data-marquee]').forEach((el) => {
+    const content = el.innerHTML;
+    el.innerHTML = '';
+    const track = document.createElement('div');
+    track.style.cssText = 'display: flex; gap: 40px; will-change: transform; animation: marquee 20s linear infinite;';
+    track.innerHTML = content + content;
+    el.appendChild(track);
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Glow border — Vengeance UI "Glow Border Card"
+   -------------------------------------------------------------------------- */
+
+function initGlowBorders() {
+  document.querySelectorAll('[data-glow-border]').forEach((el) => {
+    el.addEventListener('mouseenter', () => {
+      el.style.boxShadow = '0 0 24px rgba(217, 164, 65, 0.35)';
+    });
+    el.addEventListener('mouseleave', () => {
+      el.style.boxShadow = '';
+    });
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Cursor spotlight — Vengeance UI "Spotlight Navbar"
+   -------------------------------------------------------------------------- */
+
+function initCursorSpotlight() {
+  if (window.matchMedia('(pointer: coarse)').matches) return;
+  const spotlight = document.createElement('div');
+  spotlight.className = 'ob-spotlight';
+  spotlight.style.cssText = `
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    pointer-events: none;
+    display: none;
+    mix-blend-mode: overlay;
+    background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 50%), rgba(217, 164, 65, 0.15), transparent 60%);
+    transition: transform 0.1s ease;
+  `;
+  document.body.appendChild(spotlight);
+  let mx = 0, my = 0, cx = 0, cy = 0;
+  document.addEventListener('mousemove', (e) => {
+    mx = e.clientX;
+    my = e.clientY;
+    spotlight.style.display = 'block';
+  });
+  const animate = () => {
+    cx += (mx - cx) * 0.15;
+    cy += (my - cy) * 0.15;
+    spotlight.style.setProperty('--mx', cx + 'px');
+    spotlight.style.setProperty('--my', cy + 'px');
+    requestAnimationFrame(animate);
+  };
+  requestAnimationFrame(animate);
+}
+
+/* --------------------------------------------------------------------------
+   Smooth reveal on scroll — additional scroll reveal variants
+   -------------------------------------------------------------------------- */
+
+function observeAdditionalReveals() {
+  if (!('IntersectionObserver' in window)) return;
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting && !revealed.has(entry.target)) {
+        revealed.add(entry.target);
+        const delay = parseFloat(entry.target.dataset.animDelay || '0');
+        const kind = entry.target.dataset.animKind || 'fade-up';
+        setTimeout(() => {
+          entry.target.classList.add('anim-in');
+          entry.target.classList.add(`anim-${kind}`);
+        }, delay * 1000);
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -80px 0px' });
+  document.querySelectorAll('[data-anim]').forEach((el) => io.observe(el));
+}
+
+/* --------------------------------------------------------------------------
+   Initialize all animations (extended)
    -------------------------------------------------------------------------- */
 
 function initAnimations() {
   observeReveals();
+  observeAdditionalReveals();
   initMagnetic();
   initCounters();
   initStaggerText();
   initStaggerChildren();
   initCardHover();
+  initGlassCards();
+  initHoverReveal();
+  initFlipCards();
+  initElasticMarquee();
+  initGlowBorders();
   initCursor();
+  initCursorSpotlight();
   initParallax();
   initLiquidButtons();
 }
@@ -348,6 +498,7 @@ function initAnimations() {
 function refreshReveals() {
   revealed.clear();
   observeReveals();
+  observeAdditionalReveals();
   initCounters();
   initStaggerText();
   initStaggerChildren();
