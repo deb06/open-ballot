@@ -42,6 +42,7 @@ export default function Home() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [elections, setElections] = useState<Election[]>([])
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<'all' | 'open' | 'closed'>('all')
   const { user } = useAuth()
   const hasOrg = !!user?.organizationId
 
@@ -65,6 +66,12 @@ export default function Home() {
 
   const openCount = elections.filter((e) => e.status === 'open').length
   const completedCount = elections.filter((e) => e.status === 'closed').length
+
+  const filteredElections = elections.filter((e) => {
+    if (filter === 'open') return e.status === 'open'
+    if (filter === 'closed') return e.status === 'closed'
+    return true
+  })
 
   return (
     <div className="space-y-0">
@@ -176,19 +183,34 @@ export default function Home() {
               <p className="text-text-secondary mt-[6px]">Every published ballot, open and past.</p>
             </div>
             <div className="flex gap-10px flex-wrap">
-              <select className="select w-[200px]" defaultValue="closing">
+              <select className="select w-[200px]" defaultValue="closing" onChange={(e) => {/* sorting handled by API */}}>
                 <option value="closing">Closing soonest</option>
                 <option value="turnout">Highest turnout</option>
                 <option value="newest">Newest first</option>
               </select>
-              <div className="inline-flex gap-4px rounded text-xs font-bold text-text bg-[var(--panel)] border border-[var(--line)]">
-                <button className="text-[0.83rem] font-bold text-text bg-[var(--accent)] py-3 px-15 rounded">All <span className="ml-2 text-text-muted">{elections.length}</span></button>
-                <button className="text-[0.83rem] font-bold text-text bg-transparent py-3 px-15 rounded">Open <span className="ml-2 text-text-muted">{openCount}</span></button>
+              <div className="inline-flex gap-2 rounded bg-[var(--panel)] border border-[var(--line)] p-1">
+                {[
+                  { key: 'all', label: 'All', count: elections.length },
+                  { key: 'open', label: 'Open', count: openCount },
+                  { key: 'closed', label: 'Closed', count: completedCount },
+                ].map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFilter(f.key)}
+                    className={`text-[0.83rem] font-bold px-4 py-2 rounded transition-all ${
+                      filter === f.key
+                        ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-sm'
+                        : 'text-text bg-transparent hover:bg-[var(--panel-strong)]'
+                    }`}
+                  >
+                    {f.label} <span className="ml-1 text-text-muted font-normal">{f.count}</span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[18px]">
-            {elections.length === 0 ? (
+            {filteredElections.length === 0 ? (
               <div className="col-span-full">
                 <div className="rounded border border-[var(--line)] bg-[var(--panel)] p-[clamp(40px,7vw,72px)] text-center">
                   <div className="icon" style={{ width: '56px', height: '56px', borderRadius: '18px', background: 'var(--accent-soft)', color: 'var(--accent-bright)', display: 'grid', placeItems: 'center', margin: '0 auto 8px' }}>
@@ -198,7 +220,7 @@ export default function Home() {
                   <p className="text-text-secondary max-w-[46ch] mx-auto">There are no published elections at the moment. Check back soon.</p>
                 </div>
               </div>
-            ) : elections.map((election) => (
+            ) : filteredElections.map((election) => (
               <div key={election.id} className="group relative flex flex-col gap-[14px] p-[22px] rounded-lg bg-[var(--panel)] border border-[var(--line)] shadow-[var(--shadow-sm)] transition-[transform_0.2s_ease,border-color_0.2s_ease,box-shadow_0.2s_ease] text-inherit hover:translate-y-[-3px] hover:border-[var(--line-strong)] hover:shadow-[var(--shadow)] cursor-pointer">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold tracking-[0.06em] uppercase border rounded px-[11px] py-[4px] text-[var(--success)] bg-[var(--success-soft)] border-[rgba(52,211,153,0.28)]">
