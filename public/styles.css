@@ -4,6 +4,7 @@
 
 @import url('/styles/tokens.css?v=5');
 @import url('/styles/components.css?v=5');
+@import url('/styles/manus-tokens.css?v=5');
 
 *,
 *::before,
