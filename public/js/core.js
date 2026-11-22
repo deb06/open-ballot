@@ -1381,11 +1381,134 @@ function renderCookieBanner() {
   return banner;
 }
 
+/* ==========================================================================
+   UX Polish — small details
+   ========================================================================== */
+
+/* --- Scroll progress bar ------------------------------------------------- */
+
+function initScrollProgress() {
+  const bar = document.querySelector('.scroll-progress');
+  if (!bar) return;
+  const update = () => {
+    const win = document.documentElement;
+    const top = win.scrollTop || document.body.scrollTop || 0;
+    const height = win.scrollHeight - win.clientHeight;
+    const pct = height > 0 ? (top / height) * 100 : 0;
+    bar.style.width = `${pct}%`;
+  };
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+}
+
+/* --- Back to top button -------------------------------------------------- */
+
+function initBackToTop() {
+  const btn = document.getElementById('back-to-top');
+  if (!btn) return;
+  const update = () => {
+    const y = window.pageYOffset || document.documentElement.scrollTop;
+    if (y > 300) btn.classList.add('visible');
+    else btn.classList.remove('visible');
+  };
+  btn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+}
+
+/* --- Copy to clipboard --------------------------------------------------- */
+
+function initCopyButtons() {
+  document.querySelectorAll('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const target = btn.dataset.copyTarget || btn.parentElement?.dataset?.copyTarget;
+      const text = target ? document.getElementById(target)?.textContent?.trim()
+        : btn.dataset.copyText || btn.parentElement?.textContent?.trim();
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.classList.add('copied');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>';
+        toast('Copied to clipboard.', 'success');
+        setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = orig; }, 1800);
+      } catch { /* clipboard unavailable */ }
+    });
+  });
+}
+
+/* --- Password visibility toggle ------------------------------------------ */
+
+function initPasswordToggles() {
+  document.querySelectorAll('.field-password').forEach((field) => {
+    const input = field.querySelector('input[type="password"]');
+    const btn = field.querySelector('.password-toggle');
+    if (!input || !btn) return;
+    let shown = false;
+    btn.addEventListener('click', () => {
+      shown = !shown;
+      input.type = shown ? 'text' : 'password';
+      btn.innerHTML = shown
+        ? '<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94A9.9 9.9 0 0 1 3 17c0 5.59 4.55 10 10 10 1.43 0 2.8-.24 4.1-.6z"/></svg>'
+        : '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    });
+  });
+}
+
+/* --- UTM tracking -------------------------------------------------------- */
+
+function initUTMTracking() {
+  const params = new URLSearchParams(location.search);
+  const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
+  const found = {};
+  for (const key of utmKeys) {
+    const v = params.get(key);
+    if (v) found[key] = v;
+  }
+  if (Object.keys(found).length > 0) {
+    try {
+      localStorage.setItem('openballot.utm', JSON.stringify({ ...found, at: Date.now() }));
+    } catch { /* ignore */ }
+  }
+}
+
+/* --- Last updated date --------------------------------------------------- */
+
+function initLastUpdated() {
+  const els = document.querySelectorAll('.last-updated');
+  if (!els.length) return;
+  const date = new Date(document.lastModified || new Date()).toLocaleDateString(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric',
+  });
+  els.forEach((el) => {
+    el.textContent = `Last updated: ${date}`;
+  });
+}
+
+/* --- Floating contact button --------------------------------------------- */
+
+function initFloatingContact() {
+  const btn = document.getElementById('floating-contact');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    location.href = 'mailto:admin@openballot.local';
+  });
+}
+
 async function boot() {
   applyTheme();
   setupNav();
   setupI18n();
   if (window.OpenBallotAnim) window.OpenBallotAnim.init();
+  initScrollProgress();
+  initBackToTop();
+  initCopyButtons();
+  initPasswordToggles();
+  initUTMTracking();
+  initLastUpdated();
+  initFloatingContact();
 
   setupErrorReporting();
   setupLinkInterception();
