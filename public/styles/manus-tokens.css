@@ -1,0 +1,94 @@
+
+/* ==========================================================================
+   Manus — Design system component variants & layout scale
+   Inspired by: Manus AI website builder (layout/design control)
+   Provides component composition patterns for consistent UI assembly.
+   ========================================================================== */
+
+/* --- Button variants (Manus-style component composition) --- */
+:root {
+  --btn-variant-primary-bg: var(--accent);
+  --btn-variant-primary-fg: var(--on-accent);
+  --btn-variant-primary-border: transparent;
+  --btn-variant-secondary-bg: transparent;
+  --btn-variant-secondary-fg: var(--text);
+  --btn-variant-secondary-border: var(--line-strong);
+  --btn-variant-ghost-bg: transparent;
+  --btn-variant-ghost-fg: var(--text-secondary);
+  --btn-variant-ghost-border: transparent;
+  --btn-variant-danger-bg: var(--danger-soft);
+  --btn-variant-danger-fg: var(--danger);
+  --btn-variant-danger-border: rgba(248, 113, 113, 0.4);
+
+  --btn-size-sm-padding: 7px 13px;
+  --btn-size-sm-font: 0.83rem;
+  --btn-size-sm-radius: 9px;
+  --btn-size-md-padding: 11px 20px;
+  --btn-size-md-font: 0.93rem;
+  --btn-size-md-radius: 11px;
+  --btn-size-lg-padding: 15px 28px;
+  --btn-size-lg-font: 1rem;
+  --btn-size-lg-radius: 13px;
+  --btn-size-xl-padding: 16px 32px;
+  --btn-size-xl-font: 1.05rem;
+  --btn-size-xl-radius: 14px;
+}
+
+/* --- Card variants --- */
+:root {
+  --card-variant-default-bg: var(--panel);
+  --card-variant-default-border: var(--line);
+  --card-variant-default-shadow: var(--shadow-sm);
+  --card-variant-elevated-bg: var(--surface-2);
+  --card-variant-elevated-border: var(--line-strong);
+  --card-variant-elevated-shadow: var(--shadow);
+  --card-variant-flat-bg: var(--panel);
+  --card-variant-flat-border: var(--line);
+  --card-variant-flat-shadow: none;
+  --card-variant-glass-bg: rgba(255, 255, 255, 0.03);
+  --card-variant-glass-border: rgba(255, 255, 255, 0.08);
+  --card-variant-glass-shadow: none;
+}
+
+/* --- Layout scale --- */
+:root {
+  --layout-section-padding: clamp(48px, 6vw, 96px);
+  --layout-section-gap: clamp(40px, 6vw, 80px);
+  --layout-container-max: var(--shell-wide);
+  --layout-container-wide: var(--shell-max);
+  --layout-grid-gap: clamp(20px, 3vw, 32px);
+  --layout-sidebar-width: 320px;
+}
+
+/* --- Elevation scale (beyond flat shadows) --- */
+:root {
+  --elev-0: none;
+  --elev-1: 0 1px 0 rgba(0, 0, 0, 0.4);
+  --elev-2: 0 2px 0 rgba(0, 0, 0, 0.35);
+  --elev-3: 0 4px 0 rgba(0, 0, 0, 0.3);
+  --elev-4: 0 8px 16px -4px rgba(0, 0, 0, 0.25);
+  --elev-5: 0 12px 24px -6px rgba(0, 0, 0, 0.3);
+  --elev-6: 0 20px 40px -10px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Typography modular scale (1.250 ratio) --- */
+:root {
+  --type-scale-0: 0.8rem;
+  --type-scale-1: 1rem;
+  --type-scale-2: 1.25rem;
+  --type-scale-3: 1.563rem;
+  --type-scale-4: 1.953rem;
+  --type-scale-5: 2.441rem;
+  --type-scale-6: 3.052rem;
+  --type-scale-7: 3.815rem;
+}
+
+/* --- Component gap scale --- */
+:root {
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 16px;
+  --gap-lg: 24px;
+  --gap-xl: 32px;
+  --gap-2xl: 48px;
+}
