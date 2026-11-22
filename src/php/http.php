@@ -229,6 +229,13 @@ function serve_static(string $pathname): bool
     if (str_contains($relative, "\0")) {
         return false;
     }
+    // Do not expose the API specification or internal documentation to the public.
+    if ($relative === '/openapi.json') {
+        http_response_code(404);
+        header('Content-Type: application/json; charset=utf-8');
+        echo '{"error":{"message":"Not found.","code":"not_found"}}';
+        return true;
+    }
     if ($relative === '/' || $relative === '') {
         $relative = '/index.html';
     }

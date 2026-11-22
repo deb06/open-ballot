@@ -349,7 +349,7 @@ function email_api_send(string $from, string $to, string $subject, string $body)
         return false;
     }
     $default = json_encode([
-        'from' => ['email' => $from, 'name' => 'Open Ballot'],
+        'sender' => ['email' => $from, 'name' => 'Open Ballot'],
         'to' => [['email' => $to]],
         'subject' => $subject,
         'textContent' => $body,

@@ -33,11 +33,11 @@ async function viewHome() {
       ),
       el(
         'div',
-        { class: 'hero-artifact', 'aria-label': 'Example of a verified ballot receipt and audit record' },
-        el('div', { class: 'artifact-head' }, 'Verified receipt · record excerpt'),
-        el('div', { class: 'artifact-line' }, el('span', { class: 'artifact-key' }, 'receipt'), el('span', { class: 'artifact-value' }, 'OB-7F3A-9C2E-1B8D')),
-        el('div', { class: 'artifact-line' }, el('span', { class: 'artifact-key' }, 'merkle'), el('span', { class: 'artifact-value' }, 'included · proof valid')),
-        el('div', { class: 'artifact-line' }, el('span', { class: 'artifact-key' }, 'audit'), el('span', { class: 'artifact-value' }, 'chain head verified')),
+        { class: 'hero-artifact', 'aria-label': 'How Open Ballot works in three steps' },
+        el('div', { class: 'artifact-head' }, 'How it works'),
+        el('div', { class: 'howit-step' }, el('span', { class: 'howit-num' }, '1'), el('div', {}, el('strong', {}, 'Register once'), el('p', { class: 'small muted', style: { margin: '2px 0 0' } }, 'Create your account with email verification.'))),
+        el('div', { class: 'howit-step' }, el('span', { class: 'howit-num' }, '2'), el('div', {}, el('strong', {}, 'Vote anonymously'), el('p', { class: 'small muted', style: { margin: '2px 0 0' } }, 'Your ballot is stored without your identity.'))),
+        el('div', { class: 'howit-step' }, el('span', { class: 'howit-num' }, '3'), el('div', {}, el('strong', {}, 'Verify your receipt'), el('p', { class: 'small muted', style: { margin: '2px 0 0' } }, 'Check your ballot is counted — anytime.'))),
       ),
       el(
         'div',

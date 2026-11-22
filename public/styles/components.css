@@ -743,3 +743,8 @@ main > * { animation: page-enter var(--duration-slow) var(--ease-out) both; }
 /* E4 — control-room dashboard --------------------------------------------- */
 body[data-area="admin"] .stat-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
 body[data-area="admin"] .admin-head h1 { letter-spacing: -0.02em; }
+
+/* How it works panel */
+.howit-step { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.howit-step:last-child { border-bottom: 0; }
+.howit-num { width: 28px; height: 28px; flex: 0 0 28px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 0.85rem; border: 1px solid var(--accent); }
