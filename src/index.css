@@ -3,6 +3,62 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --font: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --font-mono: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+    --accent: #d9a441;
+    --accent-bright: #e1bd77;
+    --accent-soft: rgba(217, 164, 65, 0.10);
+    --accent-strong: #b57c14;
+    --on-accent: #141006;
+    --panel: rgba(255, 255, 255, 0.03);
+    --panel-strong: rgba(255, 255, 255, 0.06);
+    --panel-hover: rgba(255, 255, 255, 0.09);
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.15);
+    --line-hover: rgba(255, 255, 255, 0.24);
+    --text: #f5f2ea;
+    --text-secondary: #cfc7b7;
+    --text-muted: #a59b8c;
+    --text-faint: #7d7566;
+    --bg: #171511;
+    --bg-elevated: #1e1b15;
+    --surface-1: #1f1c16;
+    --surface-2: #29251e;
+    --surface-3: #332e25;
+    --success: #34d399;
+    --success-soft: rgba(52, 211, 153, 0.15);
+    --danger: #f87171;
+    --danger-soft: rgba(248, 113, 113, 0.15);
+    --info: #7dd3fc;
+    --info-soft: rgba(125, 211, 252, 0.15);
+    --faint: #7d7566;
+    --input-bg: rgba(255, 255, 255, 0.03);
+    --input-bg-focus: rgba(255, 255, 255, 0.06);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.5);
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --radius: 8px;
+    --radius-sm: 5px;
+    --radius-pill: 999px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 28px;
+    --space-8: 32px;
+    --space-9: 40px;
+    --space-10: 48px;
+    --space-11: 56px;
+    --space-12: 64px;
+    --space-14: 80px;
+    --space-16: 96px;
+  }
+
   html {
     scroll-behavior: smooth;
   }
