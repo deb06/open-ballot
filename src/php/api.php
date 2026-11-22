@@ -3054,6 +3054,7 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
                 || $pathname === '/api/organizations/register'
                 || $pathname === '/api/auth/forgot-password' || $pathname === '/api/auth/reset-password'
                 || $pathname === '/api/auth/verify-email' || $pathname === '/api/auth/mfa/challenge'
+                || $pathname === '/api/unsubscribe'
                 || preg_match('#^/api/elections/\d+/results/verify$#', $pathname) === 1
                 || preg_match('#^/api/polls/[^/]+/(vote|report)$#', $pathname) === 1;
             if (!$exempt) {
