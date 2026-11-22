@@ -40,22 +40,22 @@
   --accent: var(--brand-500);
   --accent-bright: var(--brand-300);
   --accent-2: var(--accent); /* flat — no violet->cyan wash */
-  --accent-soft: rgba(217, 164, 65, 0.14);
+  --accent-soft: #d9a441;
 
   --success: var(--emerald-400);
   --success-strong: var(--emerald-500);
-  --success-soft: rgba(52, 211, 153, 0.12);
+  --success-soft: var(--success);
 
   --warning: var(--amber-400);
   --warning-strong: var(--amber-500);
-  --warning-soft: rgba(251, 191, 36, 0.12);
+  --warning-soft: var(--warning);
 
   --danger: var(--rose-400);
   --danger-strong: var(--rose-500);
-  --danger-soft: rgba(248, 113, 113, 0.12);
+  --danger-soft: var(--danger);
 
   --info: var(--cyan-400);
-  --info-soft: rgba(125, 168, 200, 0.12);
+  --info-soft: var(--info);
 
   /* --------------------------------------------------------------------------
      Surfaces (dark theme — default)
@@ -272,7 +272,7 @@
   --danger-soft: rgba(244, 63, 94, 0.1);
   --info-soft: rgba(63, 113, 143, 0.12);
 
-  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-xs: 0 1px 0 rgba(16, 24, 40, 0.04);
   --shadow-sm: 0 1px 0 rgba(16, 24, 40, 0.08);
   --shadow: 0 1px 0 rgba(16, 24, 40, 0.10);
   --shadow-lg: 0 1px 0 rgba(16, 24, 40, 0.12);

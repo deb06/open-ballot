@@ -1187,7 +1187,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background-size: 9px 4px;
   background-repeat: repeat-x;
   animation: legend-dots 0.9s linear infinite;
-  filter: drop-shadow(0 0 4px rgba(217, 164, 65, 0.9));
+  filter: none;
 }
 @keyframes legend-dots {
   from { background-position: 0 0; }
