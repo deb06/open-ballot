@@ -100,6 +100,16 @@ function api_routes(): array
         $name = require_text($body['name'] ?? null, 2, 80, 'Full name');
         $email = normalize_email($body['email'] ?? null);
         $password = validate_password($body['password'] ?? null);
+        $ageConfirmed = (bool) ($body['ageConfirmed'] ?? false);
+        $termsAccepted = (bool) ($body['termsAccepted'] ?? false);
+        $marketingOptIn = (bool) ($body['marketingOptIn'] ?? false);
+
+        if (!$ageConfirmed) {
+            fail(400, 'You must confirm you are at least 13 (or have parental consent) to register.', 'age_required');
+        }
+        if (!$termsAccepted) {
+            fail(400, 'You must accept the Terms of Service and Privacy Policy to register.', 'terms_required');
+        }
 
         if (db_one('SELECT id FROM users WHERE email = ?', [$email]) !== null) {
             fail(409, 'An account with that email already exists.', 'email_taken');
@@ -107,9 +117,9 @@ function api_routes(): array
 
         $now = now_iso();
         $id = db_insert(
-            "INSERT INTO users (name, email, password_hash, role, active, created_at)
-             VALUES (?, ?, ?, 'voter', 1, ?)",
-            [$name, $email, hash_password($password), iso_to_sql($now)],
+            "INSERT INTO users (name, email, password_hash, role, active, created_at, age_confirmed, terms_accepted, terms_accepted_at, digest_optin)
+             VALUES (?, ?, ?, 'voter', 1, ?, ?, ?, ?, ?)",
+            [$name, $email, hash_password($password), iso_to_sql($now), (int) $ageConfirmed, (int) $termsAccepted, iso_to_sql($now), (int) $marketingOptIn, iso_to_sql($now)],
         );
 
         // Members of a domain-verified organization are attached automatically.
@@ -2850,6 +2860,99 @@ function api_routes(): array
         }, $rows);
 
         send_json(200, ['total' => $total, 'entries' => $entries]);
+    });
+
+    /* -------------------------------------------------------------- */
+    /* Data access & deletion (GDPR-style rights)                     */
+    /* -------------------------------------------------------------- */
+
+    $add('GET', '/api/data-request', static function (array $ctx): void {
+        $user = $ctx['user'];
+        if ($user === null) {
+            fail(401, 'Sign in to request your data.', 'auth_required');
+        }
+        $id = (int) $user['id'];
+        $profile = db_one('SELECT id, name, email, role, active, student_id, recovery_email, phone, organization_id, created_at, last_login_at, digest_optin, mfa_enabled FROM users WHERE id = ?', [$id]);
+        $elections = db_all('SELECT id, title, status, created_at FROM elections WHERE created_by = ? ORDER BY created_at DESC', [$id]);
+        $participation = db_all('SELECT p.election_id, e.title, p.voted_at FROM participation p JOIN elections e ON e.id = p.election_id WHERE p.voter_id = ? ORDER BY p.voted_at DESC', [$id]);
+        $sessions = db_all('SELECT id, created_at, expires_at, ip, user_agent FROM sessions WHERE user_id = ? ORDER BY created_at DESC', [$id]);
+        $notifications = db_all('SELECT id, type, title, body, link, read_at, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC', [$id]);
+        send_json(200, [
+            'exportedAt' => now_iso(),
+            'profile' => $profile,
+            'elections' => $elections,
+            'participation' => $participation,
+            'sessions' => $sessions,
+            'notifications' => $notifications,
+        ]);
+    }, ['auth' => true]);
+
+    $add('DELETE', '/api/data-request', static function (array $ctx): void {
+        $user = $ctx['user'];
+        if ($user === null) {
+            fail(401, 'Sign in to request data deletion.', 'auth_required');
+        }
+        $body = $ctx['body'];
+        $confirm = as_text($body['confirm'] ?? '');
+        if ($confirm !== 'DELETE MY DATA') {
+            fail(400, 'Type "DELETE MY DATA" to confirm permanent deletion.', 'confirmation_required');
+        }
+        $password = as_text($body['password'] ?? null);
+        $row = db_one('SELECT password_hash FROM users WHERE id = ?', [(int) $user['id']]);
+        if ($row === null || !verify_password($password, (string) $row['password_hash'])) {
+            fail(401, 'Password is required to confirm deletion.', 'invalid_password');
+        }
+        $id = (int) $user['id'];
+        db_transaction(static function () use ($id): void {
+            db_exec('DELETE FROM notifications WHERE user_id = ?', [$id]);
+            db_exec('DELETE FROM sessions WHERE user_id = ?', [$id]);
+            db_exec('DELETE FROM phone_verifications WHERE user_id = ?', [$id]);
+            db_exec('DELETE FROM backup_codes WHERE user_id = ?', [$id]);
+            db_exec('DELETE FROM mfa_challenges WHERE user_id = ?', [$id]);
+            db_exec('DELETE FROM webauthn_challenges WHERE user_id = ?', [$id]);
+            db_exec('DELETE FROM trusted_devices WHERE user_id = ?', [$id]);
+            db_exec('DELETE FROM api_keys WHERE user_id = ?', [$id]);
+            db_exec('DELETE FROM election_templates WHERE user_id = ?', [$id]);
+            db_exec('DELETE FROM organization_invites WHERE organization_id IN (SELECT id FROM organizations WHERE created_by = ?)', [$id]);
+            db_exec('DELETE FROM poll_subscriptions WHERE user_id = ?', [$id]);
+            db_exec('DELETE FROM participation WHERE voter_id = ?', [$id]);
+            db_exec('UPDATE users SET name = ?, email = ?, password_hash = NULL, recovery_email = NULL, phone = NULL, organization_id = NULL, active = 0, email_verified_at = NULL, mfa_secret = NULL, mfa_enabled = 0, digest_optin = 0 WHERE id = ?', ['Deleted User', 'deleted_' . $id . '@openballot.invalid', null, $id]);
+        });
+        clear_cookie((string) config('session_cookie'));
+        audit($id, 'auth.data_deleted', [], $_SERVER['REMOTE_ADDR'] ?? null);
+        send_json(200, ['ok' => true, 'message' => 'Your account data has been deleted.']);
+    }, ['auth' => true]);
+
+    /* -------------------------------------------------------------- */
+    /* Marketing unsubscribe                                          */
+    /* -------------------------------------------------------------- */
+
+    $add('POST', '/api/unsubscribe', static function (array $ctx): void {
+        $user = $ctx['user'];
+        $email = null;
+        if ($user !== null) {
+            $email = (string) ($user['email'] ?? '');
+        } else {
+            $email = strtolower(trim(as_text($ctx['body']['email'] ?? null)));
+            if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+                fail(400, 'A valid email address is required.', 'invalid_email');
+            }
+        }
+        db_exec('UPDATE users SET digest_optin = 0 WHERE email = ?', [$email]);
+        audit(null, 'security.unsubscribe', ['email' => $email], $_SERVER['REMOTE_ADDR'] ?? null);
+        send_json(200, ['ok' => true, 'message' => 'You have been unsubscribed from marketing and digest emails.']);
+    });
+
+    $add('GET', '/api/unsubscribe/:token', static function (array $ctx): void {
+        $token = (string) $ctx['params']['token'];
+        $hash = sha256($token);
+        $row = db_one('SELECT u.id, u.email FROM users u JOIN password_resets pr ON pr.user_id = u.id WHERE pr.token_hash = ? AND pr.used_at IS NULL AND pr.expires_at > ?', [$hash, iso_to_sql(now_iso())]);
+        if ($row === null) {
+            fail(404, 'Unsubscribe link is invalid or has expired.', 'not_found');
+        }
+        db_exec('UPDATE users SET digest_optin = 0 WHERE id = ?', [(int) $row['id']]);
+        db_exec('UPDATE password_resets SET used_at = ? WHERE id = ?', [iso_to_sql(now_iso()), (int) $row['id']]);
+        send_json(200, ['ok' => true, 'message' => 'You have been unsubscribed from digest emails.']);
     });
 
     return $routes;

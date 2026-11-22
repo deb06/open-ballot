@@ -73,6 +73,9 @@ function security_headers(): void
             "frame-ancestors 'none'",
         ]),
     );
+    // Indicate that site content must not be used for AI/ML training.
+    header('X-AI-Training: no-training');
+    header('X-Robots-Tag: noai, noimageai');
 }
 
 /**

@@ -1050,6 +1050,11 @@ async function viewFor(parts) {
   if (root === 'passkeys') return viewPasskeys();
   if (root === 'help') return viewHelp();
   if (root === 'privacy') return viewPrivacy();
+  if (root === 'terms') return viewTerms();
+  if (root === 'refunds') return viewRefunds();
+  if (root === 'data-request') return viewDataRequest();
+  if (root === 'dpa') return viewDpa();
+  if (root === 'subprocessors') return viewSubprocessors();
   if (root === 'archive') return viewArchive();
   if (root === 'audit') return viewAuditChain();
   if (root === 'observer') return viewObserver();
@@ -1126,9 +1131,14 @@ async function handleRoute() {
       const crumbs = autoBreadcrumbs(parts);
       if (crumbs) main.prepend(crumbs);
     }
+    // Inject cookie consent banner when consent has not been given.
+    const banner = renderCookieBanner();
+    if (banner) document.body.appendChild(banner);
   } catch (error) {
     if (token !== routeToken) return;
     main.replaceChildren(errorView(error));
+    const banner = renderCookieBanner();
+    if (banner) document.body.appendChild(banner);
   }
 }
 
@@ -1145,6 +1155,11 @@ function paletteItems() {
     { label: 'Verify a ballot', hint: 'Check a receipt', path: '/verify' },
     { label: 'Help & FAQ', hint: 'Support', path: '/help' },
     { label: 'Privacy', hint: 'Legal', path: '/privacy' },
+    { label: 'Terms', hint: 'Legal', path: '/terms' },
+    { label: 'Refunds', hint: 'Legal', path: '/refunds' },
+    { label: 'My data', hint: 'Access or deletion', path: '/data-request' },
+    { label: 'DPA', hint: 'Data processing', path: '/dpa' },
+    { label: 'Subprocessors', hint: 'Third-party vendors', path: '/subprocessors' },
     { label: 'Status', hint: 'Service health', path: '/status' },
     { label: 'Audit chain', hint: 'Transparency', path: '/audit' },
   ];
@@ -1283,6 +1298,81 @@ function setupLinkInterception() {
     event.preventDefault();
     go(href);
   });
+}
+
+/* ==========================================================================
+   Cookie consent banner
+   ========================================================================== */
+
+const COOKIE_CONSENT_KEY = 'openballot.cookie_consent';
+const COOKIE_CONSENT_VERSION = '1';
+
+function getCookieConsent() {
+  try {
+    const raw = localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.version === COOKIE_CONSENT_VERSION) return parsed;
+  } catch { /* ignore */ }
+  return null;
+}
+
+function setCookieConsent(consent) {
+  try {
+    localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify({ version: COOKIE_CONSENT_VERSION, ...consent, at: Date.now() }));
+  } catch { /* ignore */ }
+}
+
+function hasCookieConsent() {
+  const c = getCookieConsent();
+  return c !== null && c.essential === true;
+}
+
+function renderCookieBanner() {
+  if (hasCookieConsent()) return null;
+
+  const acceptAll = el('button', { class: 'btn btn-primary btn-sm', type: 'button' }, 'Accept all');
+  const acceptEssential = el('button', { class: 'btn btn-outline btn-sm', type: 'button' }, 'Essential only');
+  const closeBanner = el('button', { class: 'btn-ghost', type: 'button', 'aria-label': 'Close cookie banner' }, el('span', { 'aria-hidden': 'true' }, '×'));
+
+  acceptAll.addEventListener('click', () => {
+    setCookieConsent({ essential: true, analytics: true, marketing: true });
+    banner.remove();
+    toast('Cookie preferences saved.', 'success');
+  });
+
+  acceptEssential.addEventListener('click', () => {
+    setCookieConsent({ essential: true, analytics: false, marketing: false });
+    banner.remove();
+    toast('Cookie preferences saved (essential only).', 'success');
+  });
+
+  closeBanner.addEventListener('click', () => {
+    banner.remove();
+  });
+
+  const banner = el('div', {
+    class: 'cookie-banner',
+    role: 'dialog',
+    'aria-modal': 'true',
+    'aria-label': 'Cookie preferences',
+  },
+    el('div', { class: 'cookie-banner-body' },
+      el('div', { class: 'cookie-banner-content' },
+        el('h3', { style: { margin: '0 0 8px 0', fontSize: '1rem' } }, 'Cookies and your privacy'),
+        el('p', { class: 'small muted', style: { margin: '0 0 14px 0', lineHeight: '1.5' } },
+          'Open Ballot uses an essential session cookie to keep you signed in. With your consent, we may also store a trusted-device cookie and an anonymous voter token for polls. We do not use advertising or analytics cookies. You can change your choices at any time.'
+        ),
+      ),
+      el('div', { class: 'cookie-banner-actions', style: { display: 'flex', gap: '10px', marginTop: '12px' } },
+        acceptAll,
+        acceptEssential,
+      ),
+    ),
+    closeBanner,
+  );
+
+  return banner;
 }
 
 async function boot() {

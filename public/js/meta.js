@@ -20,7 +20,12 @@
     'reset-password': { title: 'Choose a new password', description: 'Choose a new password for your Open Ballot account.' },
     'verify-email': { title: 'Verify email', description: 'Verify your e-mail address to finish setting up your account.' },
     help: { title: 'Help & FAQ', description: 'Answers to common questions about voting, receipts and account security.' },
-    privacy: { title: 'Privacy', description: 'How Open Ballot handles your data and keeps ballots anonymous.' },
+    privacy: { title: 'Privacy Policy', description: 'How Open Ballot collects, uses and protects your data, and your rights over that data.' },
+    terms: { title: 'Terms of Service', description: 'Terms governing your use of Open Ballot, including eligibility, conduct, voting integrity, and fees.' },
+    refunds: { title: 'Refund Policy', description: 'Open Ballot is free of charge; there are no subscriptions, hidden fees, or auto-renewals.' },
+    'data-request': { title: 'Data Access & Deletion', description: 'Request a copy of your data or delete your Open Ballot account.' },
+    dpa: { title: 'Data Processing Agreement', description: 'How Open Ballot processes personal data as a data processor.' },
+    subprocessors: { title: 'Subprocessors', description: 'Third-party subprocessors used by Open Ballot and their data processing agreements.' },
     audit: { title: 'Public audit chain', description: 'Inspect the published HMAC chain of election and administrative events.' },
     archive: { title: 'Results archive', description: 'Final, signed tallies from every published election.' },
     party: { title: 'Results party', description: 'A live, anonymous view of election participation.' },
@@ -31,7 +36,7 @@
   // Routes that must never be indexed (privacy / authenticated surfaces).
   var PRIVATE = {
     verify: 1, login: 1, register: 1, 'forgot-password': 1, 'reset-password': 1,
-    'verify-email': 1, account: 1, passkeys: 1, admin: 1,
+    'verify-email': 1, account: 1, passkeys: 1, admin: 1, 'data-request': 1,
   };
 
   function setMeta(selector, attribute, value) {

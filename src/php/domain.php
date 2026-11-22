@@ -436,6 +436,10 @@ function public_user(array $row): array
         'organizationId' => isset($row['organization_id']) && $row['organization_id'] !== null ? (int) $row['organization_id'] : null,
         'platformAdmin' => (string) ($row['role'] ?? '') === 'admin',
         'orgAdmin' => (string) ($row['role'] ?? '') === 'org_admin',
+        'ageConfirmed' => !empty($row['age_confirmed']),
+        'termsAccepted' => !empty($row['terms_accepted']),
+        'termsAcceptedAt' => $row['terms_accepted_at'] !== null ? sql_to_iso($row['terms_accepted_at']) : null,
+        'digestOptIn' => !empty($row['digest_optin']),
     ];
 }
 

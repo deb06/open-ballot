@@ -1,0 +1,30 @@
+Open Ballot — Third-Party Notices
+=================================
+
+This project includes third-party software components. Their licenses and
+attributions are listed below.
+
+1. axe-core (https://github.com/dequelabs/axe-core)
+   - Used for: Automated accessibility testing
+   - License: Mozilla Public License 2.0
+   - Location: public/js/vendor/axe.min.js
+
+2. QRCode.js (https://github.com/davidshimjs/qrcodejs)
+   - Used for: Generating QR codes for receipt verification
+   - License: MIT License
+   - Location: public/js/vendor/qrcode.js
+
+3. PHP (https://www.php.net/)
+   - Used for: Server-side runtime
+   - License: PHP License v3.01
+
+4. PostgreSQL (https://www.postgresql.org/)
+   - Used for: Production database (Neon)
+   - License: PostgreSQL License
+
+5. MariaDB (https://mariadb.org/)
+   - Used for: Local development database
+   - License: GNU General Public License v2.0
+
+The Open Ballot application code itself is licensed under the MIT License
+(see LICENSE file).

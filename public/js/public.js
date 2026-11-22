@@ -141,8 +141,6 @@ async function viewHome() {
     list,
   );
 
-  addTimer(refreshCountdowns, 60000);
-
   const howItWorks = el(
     'section',
     { style: { marginTop: 'clamp(48px, 7vw, 88px)' } },
@@ -249,25 +247,6 @@ function integrityItem(title, text) {
   );
 }
 
-function compactCountdown(iso) {
-  if (!iso) return '';
-  const diff = Date.parse(iso) - Date.now();
-  if (!Number.isFinite(diff)) return '';
-  if (diff <= 0) return 'Closing now';
-  const mins = Math.floor(diff / 60000);
-  const days = Math.floor(mins / 1440);
-  if (days >= 1) return `${days}d ${Math.floor((mins % 1440) / 60)}h left`;
-  const hours = Math.floor(mins / 60);
-  if (hours >= 1) return `${hours}h ${mins % 60}m left`;
-  return `${mins}m left`;
-}
-
-function refreshCountdowns() {
-  document.querySelectorAll('[data-countdown]').forEach((node) => {
-    const text = compactCountdown(node.dataset.countdown);
-    if (text) node.textContent = text;
-  });
-}
 
 function electionCard(election) {
   const closeText = election.closesAt ? `Closes ${formatDate(election.closesAt)}` : 'No closing date';
@@ -285,7 +264,7 @@ function electionCard(election) {
     el('h3', {}, election.title, election.hasVoted ? el('span', { class: 'voted-ribbon' }, '✓ Voted') : null),
     el('p', { class: 'desc' }, election.description || 'No description was provided for this election.'),
     election.status === 'open' && election.closesAt
-      ? el('div', { class: 'card-countdown', 'aria-label': 'Time remaining' }, iconEl('clock'), el('span', { 'data-countdown': election.closesAt }, compactCountdown(election.closesAt)))
+      ? el('div', { class: 'card-close', 'aria-label': 'Closes ' + formatDate(election.closesAt) }, iconEl('clock'), el('span', {}, 'Closes ' + formatDate(election.closesAt)))
       : null,
     el('div', { class: 'turnout-sliver', role: 'img', 'aria-label': `${turnout}% turnout` },
       el('div', { class: 'turnout-fill', style: { width: `${turnout}%` } }),
@@ -351,12 +330,11 @@ async function viewElection(rawId) {
       : null,
   );
 
-  let countdown = null;
-  if (election.status === 'scheduled' && election.opensAt) {
-    countdown = countdownCard('Voting opens in', election.opensAt, handleRoute);
-  } else if (election.status === 'open' && election.closesAt) {
-    countdown = countdownCard('Voting closes in', election.closesAt, handleRoute);
-  }
+  const statusLine = election.status === 'scheduled' && election.opensAt
+    ? el('span', { class: 'small muted subnav-count' }, 'Opens ' + formatDate(election.opensAt))
+    : election.status === 'open' && election.closesAt
+    ? el('span', { class: 'small muted subnav-count' }, 'Closes ' + formatDate(election.closesAt))
+    : null;
 
   const actionMount = el('div', { id: 'ballot', style: { display: 'grid', gap: '18px' } });
   const resultsMount = el('div', { class: 'stack', id: 'results-section', style: { marginTop: '22px' } });
@@ -366,7 +344,7 @@ async function viewElection(rawId) {
     el('a', { href: '#ballot' }, 'Ballot'),
     election.resultsVisible ? el('a', { href: '#results-section' }, 'Results') : null,
     el('a', { href: '#rules' }, 'Rules'),
-    election.closesAt ? el('span', { class: 'small muted subnav-count', 'data-countdown': election.closesAt }, compactCountdown(election.closesAt)) : null,
+    statusLine,
   );
 
   const renderAction = () => {
@@ -737,48 +715,6 @@ function rule(title, text) {
   );
 }
 
-function countdownCard(title, targetIso, onExpire) {
-  const target = Date.parse(targetIso);
-  const values = { days: '00', hours: '00', minutes: '00' };
-  const nodes = {};
-  const units = [
-    ['days', 'Days'],
-    ['hours', 'Hours'],
-    ['minutes', 'Minutes'],
-  ];
-  const grid = el('div', { class: 'countdown' });
-  for (const [key, label] of units) {
-    const value = el('div', { class: 'countdown-value' }, values[key]);
-    nodes[key] = value;
-    grid.append(el('div', { class: 'countdown-unit' }, value, el('div', { class: 'countdown-label' }, label)));
-  }
-  let expired = false;
-  let timerId = null;
-  const update = () => {
-    const remaining = target - Date.now();
-    if (!Number.isFinite(remaining) || remaining <= 0) {
-      nodes.days.textContent = '00';
-      nodes.hours.textContent = '00';
-      nodes.minutes.textContent = '00';
-      if (!expired) {
-        expired = true;
-        if (timerId) clearInterval(timerId);
-        if (typeof onExpire === 'function') onExpire();
-      }
-      return;
-    }
-    const totalMinutes = Math.floor(remaining / 60000);
-    const days = Math.floor(totalMinutes / 1440);
-    const hours = Math.floor((totalMinutes % 1440) / 60);
-    const minutes = totalMinutes % 60;
-    nodes.days.textContent = String(days).padStart(2, '0');
-    nodes.hours.textContent = String(hours).padStart(2, '0');
-    nodes.minutes.textContent = String(minutes).padStart(2, '0');
-  };
-  timerId = addTimer(update, 15000);
-  update();
-  return el('div', { class: 'card-flat', style: { marginBottom: '18px' } }, el('h4', { style: { marginTop: 0 } }, title), grid);
-}
 
 function resultsCard(results, { live = false, updatedAt = null } = {}) {
   const total = results.totalVotes;
@@ -1203,6 +1139,9 @@ function viewRegister() {
   const email = el('input', { class: 'input', type: 'email', id: nextId('email'), required: true, autocomplete: 'email', placeholder: 'you@example.com' });
   const password = el('input', { class: 'input', type: 'password', id: nextId('password'), required: true, autocomplete: 'new-password', placeholder: 'At least 8 characters' });
   const confirm = el('input', { class: 'input', type: 'password', id: nextId('confirm'), required: true, autocomplete: 'new-password', placeholder: 'Repeat your password' });
+  const age13 = el('input', { class: 'input', type: 'checkbox', id: nextId('age13') });
+  const terms = el('input', { class: 'input', type: 'checkbox', id: nextId('terms') });
+  const marketing = el('input', { class: 'input', type: 'checkbox', id: nextId('marketing') });
   const submit = el('button', { class: 'btn btn-primary btn-block btn-lg', type: 'submit' }, 'Create account');
 
   const form = el(
@@ -1213,6 +1152,24 @@ function viewRegister() {
     el('div', { class: 'field' }, el('label', { for: email.id }, 'Email'), email),
     el('div', { class: 'field' }, el('label', { for: password.id }, 'Password'), password, strengthMeter(password), el('p', { class: 'hint' }, 'Use at least 12 characters. Stored as a salted scrypt hash.')),
     el('div', { class: 'field' }, el('label', { for: confirm.id }, 'Confirm password'), confirm),
+    el('div', { class: 'field consent-row', style: { display: 'flex', alignItems: 'flex-start', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--line)' } },
+      el('input', { id: age13.id, type: 'checkbox', required: true }),
+      el('label', { for: age13.id, style: { flex: 1, fontSize: '0.85rem', lineHeight: '1.4' } },
+        window.I18n ? I18n.t('consent.age') : 'I am at least 13 years old, or I have verifiable parental or guardian consent to register.'
+      ),
+    ),
+    el('div', { class: 'field consent-row', style: { display: 'flex', alignItems: 'flex-start', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--line)' } },
+      el('input', { id: terms.id, type: 'checkbox', required: true }),
+      el('label', { for: terms.id, style: { flex: 1, fontSize: '0.85rem', lineHeight: '1.4' } },
+        window.I18n ? I18n.t('consent.terms') : 'I agree to the ', el('a', { href: '/terms', style: { color: 'var(--accent)', textDecoration: 'underline' } }, window.I18n ? I18n.t('consent.termsLabel') : 'Terms of Service'), ' and ', el('a', { href: '/privacy', style: { color: 'var(--accent)', textDecoration: 'underline' } }, window.I18n ? I18n.t('consent.termsLabel') : 'Privacy Policy'), '.'
+      ),
+    ),
+    el('div', { class: 'field consent-row', style: { display: 'flex', alignItems: 'flex-start', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--line)' } },
+      el('input', { id: marketing.id, type: 'checkbox' }),
+      el('label', { for: marketing.id, style: { flex: 1, fontSize: '0.85rem', lineHeight: '1.4' } },
+        window.I18n ? I18n.t('consent.marketing') : 'Send me occasional election digests and updates (you can unsubscribe at any time).'
+      ),
+    ),
     submit,
   );
 
@@ -1224,9 +1181,24 @@ function viewRegister() {
       confirm.focus();
       return;
     }
+    if (!age13.checked) {
+      errorBox.textContent = window.I18n ? I18n.t('error.ageRequired') : 'You must confirm your age to register.';
+      return;
+    }
+    if (!terms.checked) {
+      errorBox.textContent = window.I18n ? I18n.t('error.termsRequired') : 'You must accept the Terms of Service and Privacy Policy.';
+      return;
+    }
     setBusy(submit, true, 'Creating account…');
     try {
-      const data = await api('POST', '/api/auth/register', { name: name.value, email: email.value, password: password.value });
+      const data = await api('POST', '/api/auth/register', {
+        name: name.value,
+        email: email.value,
+        password: password.value,
+        ageConfirmed: age13.checked,
+        termsAccepted: terms.checked,
+        marketingOptIn: marketing.checked,
+      });
       state.user = data.user;
       state.csrf = data.csrf;
       renderHeader();
@@ -2324,6 +2296,14 @@ async function viewStatus() {
   return [el('div', { class: 'stack-lg' },
     el('div', {}, el('p', { class: 'eyebrow' }, 'Service health'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Status')),
     box,
+    el('div', { class: 'card stack', style: { marginTop: '22px' } },
+      el('h3', { style: { margin: '0 0 10px 0' } }, 'Service commitment'),
+      el('p', { style: { margin: 0, lineHeight: '1.6' } },
+        'Open Ballot is operated to maximize availability. There is no contractual uptime SLA at this time. ' +
+        'Service health is checked hourly and published above. Planned maintenance is announced via the ' +
+        'election digest and account notifications.'
+      ),
+    ),
     historyBox,
   )];
 }
@@ -2482,12 +2462,262 @@ async function viewHelp() {
 async function viewPrivacy() {
   return [
     el('div', { class: 'stack-lg' },
-      el('div', {}, el('p', { class: 'eyebrow' }, 'Legal'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Privacy')),
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Privacy Policy'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Privacy Policy')),
+      el('div', { class: 'card stack', style: { lineHeight: '1.6' } },
+        el('p', { style: { marginBottom: '16px' } }, 'Last updated: 22 November 2026. Open Ballot is operated to support secure, anonymous, receipt-verifiable elections for student and community organizations. This policy explains what data we collect, why we collect it, how we use it, and your rights over that data.'),
+        el('h2', {}, '1. Data we collect'),
+        el('ul', {},
+          el('li', {}, el('strong', {}, 'Account data: '), 'name, email address, hashed password (never stored in plain text), role, active status, and optional phone number.'),
+          el('li', {}, el('strong', {}, 'Election data: '), 'elections you create, candidates you add, and your participation record (whether you voted, not how you voted).'),
+          el('li', {}, el('strong', {}, 'Ballot data: '), 'your vote choices are stored anonymously with a random ID, no voter key, and no timestamp. They cannot be linked back to your account.'),
+          el('li', {}, el('strong', {}, 'Receipt data: '), 'a one-time receipt code is issued when you vote. Only a keyed hash of the code is stored, so we cannot reconstruct the code from our records.'),
+          el('li', {}, el('strong', {}, 'Session & security data: '), 'session tokens (HttpOnly cookies), login timestamps, IP addresses for security/audit, MFA secrets and backup codes (hashed), trusted device tokens.'),
+          el('li', {}, el('strong', {}, 'Communications: '), 'email verification, password reset, login alerts, and optional election digests (only if you opt in).'),
+        ),
+        el('h2', {}, '2. How we use your data'),
+        el('ul', {},
+          el('li', {}, 'To create and authenticate your account.'),
+          el('li', {}, 'To let you vote in elections and record that you participated (without recording how you voted).'),
+          el('li', {}, 'To issue and verify receipts so you can confirm your ballot was counted.'),
+          el('li', {}, 'To send security notifications (new sign-ins, password changes) and, if you opt in, election digests.'),
+          el('li', {}, 'To operate the service, prevent abuse, and maintain an audit trail.'),
+        ),
+        el('h2', {}, '3. Data we do NOT collect or do'),
+        el('ul', {},
+          el('li', {}, 'We do not sell or rent your personal data to third parties.'),
+          el('li', {}, 'We do not show advertising.'),
+          el('li', {}, 'We do not use third-party analytics or tracking cookies.'),
+          el('li', {}, 'We do not use your data to train artificial intelligence models.'),
+          el('li', {}, 'We do not link anonymous ballots to voter identities.'),
+        ),
+        el('h2', {}, '4. Data retention'),
+        el('ul', {},
+          el('li', {}, 'Account data is retained while your account is active. You may request deletion at any time via /data-request.'),
+          el('li', {}, 'Audit log entries are retained for 90 days for security and transparency, then purged.'),
+          el('li', {}, 'Session tokens expire after 7 days of absolute lifetime or 24 hours of inactivity.'),
+          el('li', {}, 'Receipt hashes are retained indefinitely so past receipts remain verifiable.'),
+        ),
+        el('h2', {}, '5. Your rights'),
+        el('ul', {},
+          el('li', {}, 'Request a copy of your data: visit /data-request while signed in.'),
+          el('li', {}, 'Request deletion of your account: visit /data-request while signed in.'),
+          el('li', {}, 'Unsubscribe from digest emails: use the unsubscribe link in any digest, or visit /api/unsubscribe.'),
+          el('li', {}, 'Correct inaccurate data: contact us at the address below.'),
+        ),
+        el('h2', {}, '6. Children and parental consent'),
+        el('p', {}, 'Open Ballot is not directed at children under 13. We do not knowingly collect personal data from children under 13 without verifiable parental consent. If you are under 13, do not register unless your parent or guardian has consented.'),
+        el('h2', {}, '7. Security'),
+        el('p', {}, 'Passwords are hashed with Argon2id (or bcrypt fallback). Sessions use HttpOnly, SameSite=Strict, Secure cookies. All database access uses parameterized queries. The service runs over HTTPS with HSTS.'),
+        el('h2', {}, '8. Contact'),
+        el('p', {}, 'For privacy questions or requests, contact: admin@openballot.local'),
+        el('p', { class: 'small muted' }, 'This policy may be updated. Continued use of the service after changes are posted constitutes acceptance of the revised policy.'),
+      ),
+    ),
+  ];
+}
+
+async function viewTerms() {
+  return [
+    el('div', { class: 'stack-lg' },
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Legal'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Terms of Service')),
+      el('div', { class: 'card stack', style: { lineHeight: '1.6' } },
+        el('p', { style: { marginBottom: '16px' } }, 'Last updated: 22 November 2026. These Terms of Service govern your use of Open Ballot (https://open-ballot.onrender.com). By creating an account or using the service, you agree to these terms. If you do not agree, do not use the service.'),
+        el('h2', {}, '1. Acceptance of terms'),
+        el('p', {}, 'By registering, you confirm that you have read, understood, and agree to these Terms of Service and our Privacy Policy. You also confirm that you are at least 13 years old, or that you have obtained verifiable parental or guardian consent if younger.'),
+        el('h2', {}, '2. Eligibility'),
+        el('ul', {},
+          el('li', {}, 'You must be at least 13 years old to create an account.'),
+          el('li', {}, 'Users under 13 require verifiable parental or guardian consent before registering.'),
+          el('li', {}, 'You must provide accurate, current, and complete information during registration.'),
+        ),
+        el('h2', {}, '3. User conduct'),
+        el('p', {}, 'You agree not to: impersonate another person, create multiple accounts to manipulate election results, vote in an election you are not eligible for, attempt to reverse-engineer or de-anonymize ballots, or use the service for unlawful purposes.'),
+        el('h2', {}, '4. Voting integrity'),
+        el('p', {}, 'Each person may vote once per election. Ballots are secret and anonymous. Receipt codes allow you to verify your ballot was counted, but do not reveal how you voted to anyone, including us.'),
+        el('h2', {}, '5. Fees and payments'),
+        el('p', {}, 'Open Ballot is provided free of charge. There are no hidden fees, no subscription charges, and no auto-renewing payments. If paid features are ever introduced, they will be clearly disclosed before any charge.'),
+        el('h2', {}, '6. Termination'),
+        el('p', {}, 'We may suspend or terminate accounts that violate these terms. You may delete your account at any time via /data-request. Termination does not affect the validity of past election results.'),
+        el('h2', {}, '7. Limitation of liability'),
+        el('p', {}, 'Open Ballot is provided "as is" without warranties of any kind. To the fullest extent permitted by law, we are not liable for indirect, incidental, or consequential damages arising from your use of the service.'),
+        el('h2', {}, '8. Changes to terms'),
+        el('p', {}, 'We may update these terms from time to time. Continued use of the service after changes are posted constitutes acceptance of the revised terms.'),
+        el('h2', {}, '9. Contact'),
+        el('p', {}, 'For questions about these terms, contact: admin@openballot.local'),
+        el('h2', {}, '10. Copyright and DMCA'),
+        el('p', {}, 'Open Ballot respects the intellectual property rights of others. If you believe your work has been copied in a way that constitutes copyright infringement, please provide our designated copyright agent with the following information:'),
+        el('ul', {},
+          el('li', {}, 'Identification of the copyrighted work claimed to have been infringed.'),
+          el('li', {}, 'Identification of the material that is claimed to be infringing and its location on the service.'),
+          el('li', {}, 'Your contact information, including address, telephone number, and email address.'),
+          el('li', {}, 'A statement that you have a good-faith belief that use of the material is not authorized.'),
+          el('li', {}, 'A statement, under penalty of perjury, that the information in your notice is accurate and that you are the copyright owner or authorized to act on the owner\'s behalf.'),
+          el('li', {}, 'Your physical or electronic signature.'),
+        ),
+        el('p', {}, 'Send copyright notices to: admin@openballot.local'),
+        el('p', { class: 'small muted' }, 'Open Ballot will respond to valid DMCA notices by removing or disabling access to the allegedly infringing material and notifying the affected user.'),
+      ),
+    ),
+  ];
+}
+
+async function viewRefunds() {
+  return [
+    el('div', { class: 'stack-lg' },
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Legal'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Refund Policy')),
+      el('div', { class: 'card stack', style: { lineHeight: '1.6' } },
+        el('p', { style: { marginBottom: '16px' } }, 'Last updated: 22 November 2026. Open Ballot is provided free of charge. There are no paid subscriptions, no premium features, and no purchases made through the service. Accordingly, no refunds are applicable.'),
+        el('h2', {}, '1. No charges'),
+        el('p', {}, 'Creating an account, voting in elections, verifying receipts, and using administrative features are all free. We do not collect payment information.'),
+        el('h2', {}, '2. No subscriptions'),
+        el('p', {}, 'There are no subscription plans, no recurring billing, and no auto-renewals. You will never be charged without a clear, separate consent.'),
+        el('h2', {}, '3. Future paid features'),
+        el('p', {}, 'If paid features are introduced in the future, they will be clearly labeled with a price, a refund window, and an easy cancellation mechanism before any charge is made.'),
+        el('h2', {}, '4. Contact'),
+        el('p', {}, 'For billing questions (if any arise), contact: admin@openballot.local'),
+      ),
+    ),
+  ];
+}
+
+async function viewDataRequest() {
+  if (!state.user) {
+    return el('div', { class: 'stack-lg' },
       el('div', { class: 'card stack' },
-        el('p', {}, 'Open Ballot stores only the data needed to run an election: your name and email, a hashed password, session records, and an audit trail of actions.'),
-        el('p', {}, 'Ballots are anonymous. The record of who voted is kept in a separate table that shares no key with the record of what was chosen.'),
-        el('p', {}, 'We do not sell data, show advertising, or use third-party analytics cookies. Receipt codes are random and are never sent to external services.'),
-        el('p', { class: 'small muted' }, 'For security enquiries, see /.well-known/security.txt.'),
+        el('h1', {}, 'Access or delete your data'),
+        el('p', {}, 'Sign in to request a copy of your data or delete your account.'),
+        el('a', { class: 'btn btn-primary', href: '/login' }, 'Sign in'),
+      ),
+    );
+  }
+
+  const exportBtn = el('button', { class: 'btn btn-primary btn-block btn-lg', type: 'button' }, 'Download my data');
+  const deleteConfirm = el('input', { class: 'input', type: 'text', id: nextId('deleteConfirm'), placeholder: 'Type DELETE MY DATA to confirm', maxlength: 50 });
+  const deleteBtn = el('button', { class: 'btn btn-outline btn-block btn-lg', type: 'button', disabled: true }, 'Delete my account');
+  const result = el('div', { class: 'form-error', role: 'status', 'aria-live': 'polite' });
+
+  deleteConfirm.addEventListener('input', () => {
+    deleteBtn.disabled = deleteConfirm.value.trim() !== 'DELETE MY DATA';
+  });
+
+  exportBtn.addEventListener('click', async () => {
+    try {
+      setBusy(exportBtn, true, 'Preparing…');
+      const data = await api('GET', '/api/data-request');
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `open-ballot-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast('Your data has been downloaded.', 'success');
+    } catch (error) {
+      result.textContent = error.message;
+    } finally {
+      setBusy(exportBtn, false);
+    }
+  });
+
+  deleteBtn.addEventListener('click', async () => {
+    const ok = await confirmDialog({
+      title: 'Delete your account?',
+      message: 'This permanently deletes your account, sessions, votes participation records, and notifications. Anonymous ballot receipts are kept only as keyed hashes and cannot be linked to you. This cannot be undone.',
+      confirmLabel: 'Delete my account',
+      cancelLabel: 'Cancel',
+    });
+    if (!ok) return;
+    const password = prompt('Enter your password to confirm deletion:');
+    if (!password) return;
+    try {
+      setBusy(deleteBtn, true, 'Deleting…');
+      await api('DELETE', '/api/data-request', { confirm: 'DELETE MY DATA', password });
+      toast('Account deleted. Redirecting…', 'success');
+      setTimeout(() => { location.href = '/'; }, 1500);
+    } catch (error) {
+      result.textContent = error.message;
+    } finally {
+      setBusy(deleteBtn, false);
+    }
+  });
+
+  return el('div', { class: 'stack-lg' },
+    el('div', {}, el('p', { class: 'eyebrow' }, 'Your data rights'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Access or delete your data')),
+    el('div', { class: 'card stack' },
+      el('p', {}, 'Under data protection law, you have the right to request a copy of the personal data we hold about you, and to request deletion of your account.'),
+      el('div', { class: 'field' }, el('label', {}, 'Export your data'), exportBtn, el('p', { class: 'hint' }, 'Download a JSON file containing your profile, elections you created, participation records, sessions, and notifications.')),
+      el('div', { class: 'field' }, el('label', {}, 'Delete your account'), deleteConfirm, deleteBtn, el('p', { class: 'hint' }, 'Deletion is permanent and cannot be undone. You must enter your password to confirm.')),
+      result,
+    ),
+  );
+}
+
+async function viewDpa() {
+  return [
+    el('div', { class: 'stack-lg' },
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Legal'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Data Processing Agreement')),
+      el('div', { class: 'card stack', style: { lineHeight: '1.6' } },
+        el('p', { style: { marginBottom: '16px' } }, 'This Data Processing Agreement (DPA) governs how Open Ballot processes personal data on behalf of its users. It is incorporated into the Terms of Service and Privacy Policy.'),
+        el('h2', {}, '1. Roles'),
+        el('p', {}, 'Open Ballot acts as a data processor for election-related personal data (voter contact information, participation records) when an organization or administrator uses the platform to run an election. The organization or administrator is the data controller.'),
+        el('h2', {}, '2. Processing details'),
+        el('ul', {},
+          el('li', {}, el('strong', {}, 'Nature of processing: '), 'Collection, storage, authentication, and deletion of voter account data; recording anonymous ballot participation; issuing receipt hashes; sending election-related communications.'),
+          el('li', {}, el('strong', {}, 'Purpose: '), 'To operate a secure, anonymous, receipt-verifiable voting platform.'),
+          el('li', {}, el('strong', {}, 'Data types: '), 'Name, email, hashed password, phone (optional), role, participation timestamps (no ballot choices linked to identity), session tokens, IP addresses for security.'),
+          el('li', {}, el('strong', {}, 'Data subjects: '), 'Voters, administrators, observers, and organization members.'),
+          el('li', {}, el('strong', {}, 'Duration: '), 'Data is retained for the life of the account or until deletion is requested via /data-request. Audit logs are retained 90 days.'),
+        ),
+        el('h2', {}, '3. Subprocessors'),
+        el('p', {}, 'Open Ballot may use subprocessors for hosting and email delivery. The current list is published at /subprocessors. Changes will be notified to customers in advance.'),
+        el('h2', {}, '4. Data subject rights'),
+        el('p', {}, 'Open Ballot assists data controllers in responding to data subject requests (access, rectification, erasure, portability) via the /data-request endpoint and admin tools.'),
+        el('h2', {}, '5. Security'),
+        el('p', {}, 'Open Ballot implements encryption in transit (HTTPS/TLS), password hashing (Argon2id/bcrypt), parameterized queries, CSRF protection, rate limiting, and audit logging.'),
+        el('h2', {}, '6. International transfers'),
+        el('p', {}, 'Data may be processed in the United States (Render, Neon). Standard contractual clauses or equivalent safeguards are available on request.'),
+        el('h2', {}, '7. Contact'),
+        el('p', {}, 'For DPA questions, contact: admin@openballot.local'),
+      ),
+    ),
+  ];
+}
+
+async function viewSubprocessors() {
+  return [
+    el('div', { class: 'stack-lg' },
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Legal'), el('h1', { style: { margin: 0, fontSize: 'clamp(1.7rem, 3vw, 2.2rem)' } }, 'Subprocessors')),
+      el('div', { class: 'card stack', style: { lineHeight: '1.6' } },
+        el('p', { style: { marginBottom: '16px' } }, 'Open Ballot uses the following subprocessors to deliver the service. Each subprocessor is bound by a data processing agreement.'),
+        el('table', { class: 'data-table', style: { width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' } },
+          el('thead', {},
+            el('tr', {},
+              el('th', { style: { textAlign: 'left', padding: '8px', borderBottom: '1px solid var(--line)' } }, 'Subprocessor'),
+              el('th', { style: { textAlign: 'left', padding: '8px', borderBottom: '1px solid var(--line)' } }, 'Location'),
+              el('th', { style: { textAlign: 'left', padding: '8px', borderBottom: '1px solid var(--line)' } }, 'Purpose'),
+            ),
+          ),
+          el('tbody', {},
+            el('tr', { style: { borderBottom: '1px solid var(--line)' } },
+              el('td', { style: { padding: '8px' } }, 'Render'),
+              el('td', { style: { padding: '8px' } }, 'United States'),
+              el('td', { style: { padding: '8px' } }, 'Web application hosting'),
+            ),
+            el('tr', { style: { borderBottom: '1px solid var(--line)' } },
+              el('td', { style: { padding: '8px' } }, 'Neon'),
+              el('td', { style: { padding: '8px' } }, 'United States'),
+              el('td', { style: { padding: '8px' } }, 'PostgreSQL database hosting'),
+            ),
+            el('tr', { style: { padding: '8px' } },
+              el('td', { style: { padding: '8px' } }, 'SMTP provider (configurable)'),
+              el('td', { style: { padding: '8px' } }, 'Varies'),
+              el('td', { style: { padding: '8px' } }, 'Transactional email delivery'),
+            ),
+          ),
+        ),
+        el('p', { class: 'small muted' }, 'Open Ballot does not use analytics providers, advertising networks, social media trackers, or AI model providers. Full details: /subprocessors.md'),
       ),
     ),
   ];

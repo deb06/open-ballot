@@ -381,6 +381,9 @@ function db_migrate_final(): void
     db_add_column('sessions', 'last_seen_at', 'DATETIME(3) NULL DEFAULT NULL', 'TIMESTAMP(3) NULL');
     db_add_column('users', 'phone', 'VARCHAR(20) NULL DEFAULT NULL', 'VARCHAR(20) NULL');
     db_add_column('users', 'phone_verified_at', 'DATETIME(3) NULL DEFAULT NULL', 'TIMESTAMP(3) NULL');
+    db_add_column('users', 'age_confirmed', 'TINYINT(1) NOT NULL DEFAULT 0', 'SMALLINT NOT NULL DEFAULT 0');
+    db_add_column('users', 'terms_accepted', 'TINYINT(1) NOT NULL DEFAULT 0', 'SMALLINT NOT NULL DEFAULT 0');
+    db_add_column('users', 'terms_accepted_at', 'DATETIME(3) NULL DEFAULT NULL', 'TIMESTAMP(3) NULL');
     $cfg = config('db');
     if (($cfg['driver'] ?? 'mysql') !== 'pgsql') {
         try { db()->exec('ALTER TABLE participation MODIFY COLUMN voter_id INT UNSIGNED NULL DEFAULT NULL'); } catch (Throwable) {}

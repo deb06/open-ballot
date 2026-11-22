@@ -1,8 +1,7 @@
-Contact: mailto:admin@openballot.local
-Expires: 2027-11-21T00:00:00.000Z
-Encryption: https://open-ballot.onrender.com/.well-known/pgp-key.txt
-Acknowledgements: https://open-ballot.onrender.com/privacy
-Preferred-Languages: en, es
-Canonical: https://open-ballot.onrender.com/.well-known/security.txt
+# Open Ballot Security Policy
+# https://open-ballot.onrender.com/.well-known/security.txt
 
-Please report security issues privately. Do not include ballots, receipts or personal data in reports.
+Contact: mailto:admin@openballot.local
+Policy: https://open-ballot.onrender.com/privacy
+Preferred-Languages: en
+Canonical: https://open-ballot.onrender.com/.well-known/security.txt
