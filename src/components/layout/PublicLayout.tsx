@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, Outlet } from 'react-router-dom'
 import { useAuth } from '../../lib/auth'
 
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+export default function PublicLayout() {
   const { user, logout, isAuthenticated } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
@@ -106,7 +106,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       </header>
 
       <main id="main" className="shell" tabIndex={-1}>
-        {children}
+        <Outlet />
       </main>
 
       <footer className="site-footer">
