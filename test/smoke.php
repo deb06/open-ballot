@@ -25,6 +25,7 @@ putenv('DB_NAME=open_ballot_test');
 putenv('ADMIN_PASSWORD=TestAdmin#123');
 putenv('ADMIN_EMAIL=admin@openballot.local');
 putenv('CRON_SECRET=TestCron#123');
+putenv('SEED_DEMO=1'); // smoke tests exercise the seeded demo election
 
 require $root . '/src/php/bootstrap.php';
 

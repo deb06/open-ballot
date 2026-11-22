@@ -484,10 +484,10 @@ function db_seed(): void
         error_log('[seed] Administrator account created: ' . $admin['email']);
     }
 
-    // Demo elections are for local development and presentations only. A
-    // production deployment stays empty until its first real user creates
-    // something; set SEED_DEMO=1 explicitly if you really want the samples.
-    if (env_value('APP_ENV', 'development') === 'production' && env_value('SEED_DEMO', '0') !== '1') {
+    // Demo elections are opt-in only (SEED_DEMO=1). A live deployment stays
+    // empty until its first real user creates something, and sample content
+    // never reappears on every request.
+    if (env_value('SEED_DEMO', '0') !== '1') {
         return;
     }
 
