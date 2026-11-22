@@ -1,9 +1,17 @@
-.git
-data
-tools
-node_modules
+# Portable runtime binaries and downloads
+tools/
+data/
 *.log
+*.pid
+node_modules/
+.DS_Store
 .env
-docs
-tests
-scripts
+backups/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Build output
+dist/
+public/assets/
