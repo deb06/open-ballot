@@ -152,7 +152,7 @@ function api_routes(): array
         $id = db_insert(
             "INSERT INTO users (name, email, password_hash, role, active, created_at, age_confirmed, terms_accepted, terms_accepted_at, digest_optin)
              VALUES (?, ?, ?, 'voter', 1, ?, ?, ?, ?, ?)",
-            [$name, $email, hash_password($password), iso_to_sql($now), (int) $ageConfirmed, (int) $termsAccepted, iso_to_sql($now), (int) $marketingOptIn, iso_to_sql($now)],
+            [$name, $email, hash_password($password), iso_to_sql($now), (int) $ageConfirmed, (int) $termsAccepted, iso_to_sql($now), (int) $marketingOptIn],
         );
 
         // Members of a domain-verified organization are attached automatically.
