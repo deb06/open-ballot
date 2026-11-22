@@ -1487,6 +1487,14 @@ function initLastUpdated() {
   });
 }
 
+/* --- Copyright year ------------------------------------------------------ */
+
+function initCopyrightYear() {
+  const el = document.getElementById('copyright-year');
+  if (!el) return;
+  el.textContent = new Date().getFullYear();
+}
+
 /* --- Floating contact button --------------------------------------------- */
 
 function initFloatingContact() {
@@ -1508,6 +1516,7 @@ async function boot() {
   initPasswordToggles();
   initUTMTracking();
   initLastUpdated();
+  initCopyrightYear();
   initFloatingContact();
 
   setupErrorReporting();
