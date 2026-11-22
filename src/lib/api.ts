@@ -29,6 +29,8 @@ export async function apiRequest(
     '/api/auth/reset-password',
     '/api/auth/verify-email',
     '/api/auth/mfa/challenge',
+    '/api/auth/request-otp',
+    '/api/auth/verify-otp',
     '/api/unsubscribe',
   ]
   const isExempt = exemptPaths.some(p => path.startsWith(p))

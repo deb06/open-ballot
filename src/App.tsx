@@ -31,6 +31,7 @@ import Register from './pages/auth/Register'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 import VerifyEmail from './pages/auth/VerifyEmail'
+import VerifyEmailOtp from './pages/auth/VerifyEmailOtp'
 import RegisterOrganization from './pages/auth/RegisterOrganization'
 import Join from './pages/auth/Join'
 
@@ -118,7 +119,8 @@ function AppRoutes() {
         <Route path="register" element={<AuthLayout><Register /></AuthLayout>} />
         <Route path="forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
         <Route path="reset-password/:token" element={<AuthLayout><ResetPassword /></AuthLayout>} />
-        <Route path="verify-email/:token" element={<AuthLayout><VerifyEmail /></AuthLayout>} />
+        <Route path="verify-email" element={<AuthLayout><VerifyEmailOtp /></AuthLayout>} />
+          <Route path="verify-email/:token" element={<AuthLayout><VerifyEmail /></AuthLayout>} />
         <Route path="register-organization" element={<AuthLayout><RegisterOrganization /></AuthLayout>} />
         <Route path="join" element={<AuthLayout><Join /></AuthLayout>} />
 

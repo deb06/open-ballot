@@ -105,6 +105,13 @@ export default function PublicLayout() {
         </div>
       </header>
 
+      {user && !user.emailVerified && (
+        <div className="verify-banner" role="status">
+          <span>Please verify your email address to unlock all features.</span>
+          <Link to="/verify-email" state={{ email: user.email }}>Verify now</Link>
+        </div>
+      )}
+
       <main id="main" className="shell" tabIndex={-1}>
         <Outlet />
       </main>

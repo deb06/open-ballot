@@ -310,3 +310,103 @@
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
+
+/* ---- Glass OTP / auth shell ---- */
+@layer components {
+  .glass-otp {
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+  }
+  .glass-otp::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 70% 40% at 50% -10%, rgba(217, 164, 65, 0.18), transparent);
+    pointer-events: none;
+  }
+  .otp-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+  }
+  .otp-input {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+  }
+  .otp-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(217, 164, 65, 0.08);
+    box-shadow: 0 0 0 3px rgba(217, 164, 65, 0.22);
+  }
+  .otp-input.filled { border-color: var(--accent); }
+  .otp-shake { animation: otp-shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+  @keyframes otp-shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
+  }
+  .verified-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: var(--radius-pill);
+    background: var(--success-soft);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    color: var(--success);
+    font-weight: 700;
+  }
+  .auth-shell {
+    max-width: 30rem;
+    margin: 0 auto;
+    padding: clamp(40px, 8vh, 80px) 16px 64px;
+  }
+  .auth-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 18px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .auth-back:hover { color: var(--accent-bright); }
+  .verify-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    background: rgba(217, 164, 65, 0.12);
+    border-bottom: 1px solid rgba(217, 164, 65, 0.28);
+    color: var(--accent-bright);
+    font-size: 0.86rem;
+    font-weight: 600;
+  }
+  .verify-banner a {
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--accent);
+    color: var(--accent-bright);
+    font-weight: 700;
+  }
+  .verify-banner a:hover { background: var(--accent-soft); }
+}

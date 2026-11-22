@@ -28,7 +28,7 @@ interface AuthContextType {
   csrf: string | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (data: any) => Promise<void>
+  register: (data: any) => Promise<{ user: User; csrf: string; devCode?: string }>
   logout: () => Promise<void>
   refresh: () => Promise<void>
   isAuthenticated: () => boolean
@@ -70,10 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCsrf(data.csrf)
   }
 
-  const register = async (data: any) => {
-    const res = await post<{ user: User; csrf: string }>('/api/auth/register', data)
+  const register = async (data: any): Promise<{ user: User; csrf: string; devCode?: string }> => {
+    const res = await post<{ user: User; csrf: string; devCode?: string }>('/api/auth/register', data)
     setUser(res.user)
     setCsrf(res.csrf)
+    return res
   }
 
   const logout = async () => {

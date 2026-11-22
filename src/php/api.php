@@ -9,6 +9,39 @@ declare(strict_types=1);
  * session-bound CSRF token. Request/response shapes match the frontend.
  */
 
+/**
+ * Issue a 6-digit email OTP: invalidate previous codes, store a user-scoped
+ * hash, e-mail the code, and return it for dev/testing when no mail transport
+ * is configured. 15-minute expiry.
+ *
+ * @return array{code:string,expiresAt:string,delivered:bool}
+ */
+function issue_email_otp(int $userId, string $email): array
+{
+    // Invalidate any previous unused codes so only the newest one works.
+    db_exec('DELETE FROM email_verifications WHERE user_id = ? AND used_at IS NULL', [$userId]);
+
+    $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $expiresAt = now_iso_at(time() + 900);
+    db_exec(
+        'INSERT INTO email_verifications (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)',
+        [$userId, sha256($userId . ':' . $code), iso_to_sql($expiresAt), iso_to_sql(now_iso())],
+    );
+
+    $body = "Your Open Ballot verification code is:\n\n    {$code}\n\n"
+        . "Enter this 6-digit code to verify your email. It expires in 15 minutes.\n"
+        . "If you did not request this, you can ignore this email.";
+
+    $delivered = mail_configured();
+    if ($delivered) {
+        @send_mail($email, "{$code} is your Open Ballot verification code", $body);
+    }
+    // When no transporter is configured the code is not e-mailed; the caller
+    // surfaces it as devCode so the flow can be tested without SMTP.
+
+    return ['code' => $code, 'expiresAt' => iso_to_sql($expiresAt), 'delivered' => $delivered];
+}
+
 function api_routes(): array
 {
     static $routes = null;
@@ -128,20 +161,17 @@ function api_routes(): array
         $inviteToken = as_text($body['inviteToken'] ?? null);
         $inviteOrg = accept_invite_for_user($id, $email, $inviteToken);
 
-        // Send verification e-mail (best effort; link is also written to data/mail.log).
-        $token = random_token(32);
-        $hash = sha256($token);
-        db_exec(
-            'INSERT INTO email_verifications (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)',
-            [$id, $hash, iso_to_sql(now_iso_at(time() + 86400)), iso_to_sql($now)],
-        );
-        $link = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/verify-email/' . $token);
-        send_mail($email, 'Verify your Open Ballot e-mail', "Verify your e-mail address:\n\n{$link}\n\nThe link expires in 24 hours.");
+        // Issue a 6-digit email OTP (best effort; dev code returned when no mailer).
+        $otp = issue_email_otp($id, $email);
 
         $user = public_user(db_one('SELECT * FROM users WHERE id = ?', [$id]));
         $csrf = create_session($user, $ctx['ip']);
         audit($id, 'auth.register', ['email' => $email, 'organizationId' => $user['organizationId']], $ctx['ip']);
-        send_json(201, ['user' => $user, 'csrf' => $csrf]);
+        $payload = ['user' => $user, 'csrf' => $csrf, 'emailVerified' => false];
+        if (!$otp['delivered']) {
+            $payload['devCode'] = $otp['code']; // testing only: no mail transport configured
+        }
+        send_json(201, $payload);
     });
 
     $add('GET', '/api/search', static function (array $ctx): void {
@@ -910,6 +940,60 @@ function api_routes(): array
         send_json(200, ['ok' => true]);
     });
 
+    $add('POST', '/api/auth/request-otp', static function (array $ctx): void {
+        ensure_limit('otp-request:ip:' . $ctx['ip'], 15, 900, 'Too many code requests. Wait a few minutes.');
+        $body = $ctx['body'];
+        $email = strtolower(trim(as_text($body['email'] ?? null)));
+        if ($email === '') {
+            fail(400, 'Enter your email address.', 'email_required');
+        }
+        ensure_limit('otp-request:email:' . $email, 6, 900, 'Too many code requests for this address. Wait a few minutes.');
+
+        // Generic response shape (does not reveal whether the account exists).
+        $row = db_one('SELECT id, email_verified_at FROM users WHERE email = ?', [$email]);
+        if ($row === null || $row['email_verified_at'] !== null) {
+            audit(null, 'auth.otp_requested', ['email' => $email, 'known' => $row !== null], $ctx['ip']);
+            send_json(200, ['ok' => true, 'sent' => false]);
+            return;
+        }
+        $otp = issue_email_otp((int) $row['id'], $email);
+        audit((int) $row['id'], 'auth.otp_requested', ['email' => $email], $ctx['ip']);
+        $payload = ['ok' => true, 'sent' => true];
+        if (!$otp['delivered']) {
+            $payload['devCode'] = $otp['code'];
+        }
+        send_json(200, $payload);
+    });
+
+    $add('POST', '/api/auth/verify-otp', static function (array $ctx): void {
+        ensure_limit('otp-verify:ip:' . $ctx['ip'], 30, 600, 'Too many attempts. Wait a moment.');
+        $body = $ctx['body'];
+        $email = strtolower(trim(as_text($body['email'] ?? null)));
+        $code = preg_replace('/\D/', '', as_text($body['code'] ?? null)) ?? '';
+        if ($email === '' || strlen($code) !== 6) {
+            fail(400, 'Enter the 6-digit code.', 'otp_invalid');
+        }
+        ensure_limit('otp-verify:email:' . $email, 8, 600, 'Too many attempts for this address. Wait a moment.');
+
+        $row = db_one('SELECT * FROM users WHERE email = ?', [$email]);
+        if ($row === null) {
+            audit(null, 'auth.otp_failed', ['email' => $email], $ctx['ip']);
+            fail(400, 'That code is incorrect or has expired.', 'otp_invalid');
+        }
+        $vrow = db_one(
+            'SELECT * FROM email_verifications WHERE user_id = ? AND token_hash = ? AND used_at IS NULL AND expires_at > ?',
+            [(int) $row['id'], sha256((int) $row['id'] . ':' . $code), iso_to_sql(now_iso())],
+        );
+        if ($vrow === null) {
+            audit((int) $row['id'], 'auth.otp_failed', ['email' => $email], $ctx['ip']);
+            fail(400, 'That code is incorrect or has expired.', 'otp_invalid');
+        }
+        db_exec('UPDATE users SET email_verified_at = ? WHERE id = ?', [iso_to_sql(now_iso()), (int) $row['id']]);
+        db_exec('UPDATE email_verifications SET used_at = ? WHERE id = ?', [iso_to_sql(now_iso()), (int) $vrow['id']]);
+        audit((int) $row['id'], 'auth.otp_verified', ['email' => $email], $ctx['ip']);
+        send_json(200, ['ok' => true, 'verified' => true]);
+    });
+
     $add('POST', '/api/auth/resend-verification', static function (array $ctx): void {
         $user = $ctx['user'];
         if ($user === null) {
@@ -917,15 +1001,14 @@ function api_routes(): array
         }
         $row = db_one('SELECT * FROM users WHERE id = ?', [$user['id']]);
         if ($row !== null && $row['email_verified_at'] === null) {
-            $token = random_token(32);
-            $hash = sha256($token);
-            db_exec(
-                'INSERT INTO email_verifications (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)',
-                [(int) $row['id'], $hash, iso_to_sql(now_iso_at(time() + 86400)), iso_to_sql(now_iso())],
-            );
-            $link = (string) (env_value('APP_URL', 'http://127.0.0.1:3000') . '/verify-email/' . $token);
-            send_mail((string) $row['email'], 'Verify your Open Ballot e-mail', "Verify your e-mail address:\n\n{$link}\n\nThe link expires in 24 hours.");
+            $otp = issue_email_otp((int) $row['id'], (string) $row['email']);
             audit((int) $row['id'], 'auth.verification_sent', [], $ctx['ip']);
+            $payload = ['ok' => true];
+            if (!$otp['delivered']) {
+                $payload['devCode'] = $otp['code'];
+            }
+            send_json(200, $payload);
+            return;
         }
         send_json(200, ['ok' => true]);
     }, ['auth' => true]);
@@ -3054,6 +3137,7 @@ function handle_api(string $pathname, string $method, string $version = 'v0'): v
                 || $pathname === '/api/organizations/register'
                 || $pathname === '/api/auth/forgot-password' || $pathname === '/api/auth/reset-password'
                 || $pathname === '/api/auth/verify-email' || $pathname === '/api/auth/mfa/challenge'
+                || $pathname === '/api/auth/request-otp' || $pathname === '/api/auth/verify-otp'
                 || $pathname === '/api/unsubscribe'
                 || preg_match('#^/api/elections/\d+/results/verify$#', $pathname) === 1
                 || preg_match('#^/api/polls/[^/]+/(vote|report)$#', $pathname) === 1;

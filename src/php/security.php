@@ -415,6 +415,18 @@ function resend_send(string $apiKey, string $from, string $to, string $subject, 
     return true;
 }
 
+/** True when a real outbound mail transport is configured (SMTP or HTTP API). */
+function mail_configured(): bool
+{
+    foreach (['EMAIL_API_URL', 'RESEND_API_KEY', 'SMTP_HOST'] as $key) {
+        $v = env_value($key);
+        if ($v !== null && trim($v) !== '') {
+            return true;
+        }
+    }
+    return false;
+}
+
 function send_mail(string $to, string $subject, string $body): bool
 {
     $from = (string) (env_value('SMTP_FROM') ?? config('mail.from') ?? 'no-reply@openballot.local');

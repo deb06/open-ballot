@@ -31,9 +31,9 @@ export default function Register() {
     }
     setLoading(true)
     try {
-      await register({ name, email, password, ageConfirmed: age13, termsAccepted: terms, marketingOptIn: false })
-      toast('Account created successfully!', 'success')
-      navigate('/')
+      const res = await register({ name, email, password, ageConfirmed: age13, termsAccepted: terms, marketingOptIn: false })
+      toast('Account created — verify your email to finish.', 'success')
+      navigate('/verify-email', { state: { email, devCode: res?.devCode } })
     } catch (err: any) {
       toast(err.message || 'Registration failed', 'error')
     } finally {
