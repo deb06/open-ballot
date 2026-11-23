@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 FROM php:8.3-cli-alpine
 
-# Cache bust - force rebuild for pre-brass cyan-only design with full UI
+# Cache bust - force rebuild for brass editorial design (Nov 22 screenshot match)
 ARG CACHE_BUST=20241123900
 
 # System deps + PHP extensions.
