@@ -7,11 +7,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        accent: '#8b7bff',
-        'accent-bright': '#b0a0ff',
-        'accent-soft': 'rgba(139, 123, 255, 0.10)',
-        'accent-strong': '#6552d8',
-        'on-accent': '#141006',
+        accent: '#22d3ee',
+        'accent-bright': '#67e8f9',
+        'accent-soft': 'rgba(34, 211, 238, 0.10)',
+        'accent-strong': '#0891b2',
+        'on-accent': '#0a0714',
         panel: 'rgba(255, 255, 255, 0.03)',
         'panel-strong': 'rgba(255, 255, 255, 0.06)',
         'panel-hover': 'rgba(255, 255, 255, 0.09)',
