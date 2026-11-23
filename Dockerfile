@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 FROM php:8.3-cli-alpine
 
-# Cache bust - force rebuild for cyan-only theme with dark/light toggle
-ARG CACHE_BUST=20241123800
+# Cache bust - force rebuild for pre-brass cyan-only design with full UI
+ARG CACHE_BUST=20241123900
 
 # System deps + PHP extensions.
 RUN apk add --no-cache postgresql-dev git unzip curl \
