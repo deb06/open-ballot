@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 FROM php:8.3-cli-alpine
 
-# Cache bust - force rebuild for brass editorial design (Nov 22 screenshot match)
-ARG CACHE_BUST=20241123900
+# Cache bust - force rebuild for brass editorial stylesheets + theme toggle
+ARG CACHE_BUST=20241124000
 
 # System deps + PHP extensions.
 RUN apk add --no-cache postgresql-dev git unzip curl \
