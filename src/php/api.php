@@ -180,7 +180,10 @@ function api_routes(): array
         $marketingOptIn = (bool) ($body['marketingOptIn'] ?? false);
 
         if (!$ageConfirmed) {
-            fail(400, 'You must confirm you are at least 13 (or have parental consent) to register.', 'age_required');
+            // DPDP Act, 2023 (India), s.9 — a child is any person under 18 years
+            // of age. Open Ballot does not process the personal data of children
+            // without verifiable parental consent.
+            fail(400, 'You must confirm you are at least 18 years old to register.', 'age_required');
         }
         if (!$termsAccepted) {
             fail(400, 'You must accept the Terms of Service and Privacy Policy to register.', 'terms_required');
@@ -1646,8 +1649,96 @@ function api_routes(): array
     });
 
     /* ------------------------------------------------------------------ */
-    /* Remaining features                                                  */
+    /* DPDP Act, 2023 / GDPR — Data Principal rights                       */
     /* ------------------------------------------------------------------ */
+
+    /* Log a Data Principal request (access / export / correction / erasure /
+       consent withdrawal). Art. 15-22 GDPR, s.11-14 DPDP. */
+    $add('POST', '/api/account/data-request', static function (array $ctx): void {
+        $body = $ctx['body'];
+        $type = as_text($body['type'] ?? '');
+        $email = normalize_email($body['email'] ?? null);
+        $details = as_text($body['details'] ?? '');
+        $allowed = ['access', 'export', 'correct', 'delete', 'withdraw'];
+
+        if (!in_array($type, $allowed, true)) {
+            fail(400, 'Unknown request type. Valid types: ' . implode(', ', $allowed) . '.', 'invalid_type');
+        }
+        if ($email === '') {
+            fail(400, 'An email address is required to look up your account.', 'email_required');
+        }
+
+        // If the requester is signed in, tie the request to their account.
+        $userId = $ctx['user']['id'] ?? null;
+        $row = db_one('SELECT id FROM users WHERE email = ?', [$email]);
+        if ($row !== null) {
+            $userId = (int) $row['id'];
+        }
+
+        db_exec(
+            'INSERT INTO data_requests (user_id, email, type, details, status, created_at)
+             VALUES (?, ?, ?, ?, ?, ?)',
+            [$userId, $email, $type, $details !== '' ? $details : null, 'pending', iso_to_sql(now_iso())],
+        );
+        audit($userId, 'dpdp.data_request', ['type' => $type, 'email' => $email], $ctx['ip']);
+
+        send_json(201, [
+            'ok' => true,
+            'message' => 'Your request has been recorded. We respond within 30 days.',
+        ]);
+    });
+
+    /* Machine-readable personal-data export (GDPR portability, DPDP s.12). */
+    $add('GET', '/api/account/export', static function (array $ctx): void {
+        $uid = (int) $ctx['user']['id'];
+        $user = db_one('SELECT id, name, email, role, created_at, email_verified_at FROM users WHERE id = ?', [$uid]);
+        if ($user === null) fail(404, 'Account not found.', 'not_found');
+
+        $payload = [
+            'exportedAt' => now_iso(),
+            'controller' => 'Open Ballot Project',
+            'legalBasis' => 'Consent (DPDP Act, 2023 s.6) / Contract & legitimate interests (GDPR Art. 6)',
+            'account' => [
+                'id' => (int) $user['id'],
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'role' => $user['role'],
+                'createdAt' => $user['created_at'],
+                'emailVerifiedAt' => $user['email_verified_at'],
+            ],
+            'participation' => array_map(static fn (array $r): array => [
+                'electionId' => (int) $r['election_id'],
+                'participatedAt' => $r['voted_at'],
+            ], db_all('SELECT election_id, voted_at FROM participation WHERE voter_id = ?', [$uid])),
+            'receipts' => 'Receipt codes are issued once at voting time and stored only as one-way keyed hashes. They cannot be reverse-engineered, so no exportable receipt list exists. Your receipt code remains valid on the verification page.',
+            'note' => 'Ballot choices are stored anonymously and are not linked to your account.',
+        ];
+        audit($uid, 'dpdp.data_export', [], $ctx['ip']);
+
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="open-ballot-data-export.json"');
+        send_json(200, $payload);
+    }, ['auth' => true]);
+
+    /* Erasure (GDPR Art. 17 / DPDP s.12). Anonymises ballot-linked rows and
+       removes the account. Receipt codes are retained because they contain no
+       personal data and cannot identify the Data Principal. */
+    $add('DELETE', '/api/account', static function (array $ctx): void {
+        $uid = (int) $ctx['user']['id'];
+        $user = db_one('SELECT id, name, email FROM users WHERE id = ?', [$uid]);
+        if ($user === null) fail(404, 'Account not found.', 'not_found');
+
+        $now = iso_to_sql(now_iso());
+        // Strip identity while preserving election integrity (tallies, receipt hashes).
+        db_exec('UPDATE participation SET voter_id = NULL, voter_token = NULL WHERE voter_id = ?', [$uid]);
+        db_exec('DELETE FROM email_verifications WHERE user_id = ?', [$uid]);
+        db_exec('DELETE FROM sessions WHERE user_id = ?', [$uid]);
+        db_exec('DELETE FROM data_requests WHERE user_id = ?', [$uid]);
+        db_exec('DELETE FROM users WHERE id = ?', [$uid]);
+        audit(null, 'dpdp.data_erased', ['erasedUserId' => $uid], $ctx['ip']);
+
+        send_json(200, ['ok' => true, 'message' => 'Your account and personal data have been erased.']);
+    }, ['auth' => true]);
 
     /* Recovery contact */
     $add('GET', '/api/account/recovery', static function (array $ctx): void {

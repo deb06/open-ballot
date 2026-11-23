@@ -9,7 +9,7 @@ export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [age13, setAge13] = useState(false)
+  const [age18, setAge18] = useState(false)
   const [terms, setTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
@@ -21,7 +21,7 @@ export default function Register() {
       toast('Passwords do not match', 'error')
       return
     }
-    if (!age13) {
+    if (!age18) {
       toast('You must confirm your age to register', 'error')
       return
     }
@@ -31,7 +31,7 @@ export default function Register() {
     }
     setLoading(true)
     try {
-      const res = await register({ name, email, password, ageConfirmed: age13, termsAccepted: terms, marketingOptIn: false })
+      const res = await register({ name, email, password, ageConfirmed: age18, termsAccepted: terms, marketingOptIn: false })
       toast('Account created — verify your email to finish.', 'success')
       navigate('/verify-email', { state: { email, devCode: res?.devCode } })
     } catch (err: any) {
@@ -98,13 +98,13 @@ export default function Register() {
           <div className="field flex items-start gap-2 pt-2 border-t border-[var(--line)]">
             <input
               type="checkbox"
-              id="age13"
-              checked={age13}
-              onChange={(e) => setAge13(e.target.checked)}
+              id="age18"
+              checked={age18}
+              onChange={(e) => setAge18(e.target.checked)}
               required
             />
-            <label className="text-sm text-text-secondary" htmlFor="age13">
-              I am at least 13 years old, or I have verifiable parental or guardian consent to register.
+            <label className="text-sm text-text-secondary" htmlFor="age18">
+              I am at least 18 years old.
             </label>
           </div>
           <div className="field flex items-start gap-2 pt-2 border-t border-[var(--line)]">

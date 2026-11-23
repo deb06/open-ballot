@@ -219,6 +219,21 @@ CREATE TABLE IF NOT EXISTS email_verifications (
   CONSTRAINT fk_email_verifications_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- DPDP Act, 2023 s.11 / GDPR Art.15-22 — Data Principal rights requests.
+CREATE TABLE IF NOT EXISTS data_requests (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id    INT UNSIGNED NULL DEFAULT NULL,
+  email      VARCHAR(160) NOT NULL,
+  type       VARCHAR(32) NOT NULL,
+  details    TEXT NULL DEFAULT NULL,
+  status     VARCHAR(24) NOT NULL DEFAULT 'pending',
+  created_at DATETIME(3) NOT NULL,
+  resolved_at DATETIME(3) NULL DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY idx_data_requests_user (user_id),
+  KEY idx_data_requests_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS rate_limits (
   `key`       VARCHAR(120) NOT NULL,
   window_start DATETIME(3) NOT NULL,

@@ -170,7 +170,7 @@ function db_reset(): void
     } else {
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
     }
-    foreach (['audit_log', 'sessions', 'participation', 'votes', 'vote_choices', 'candidates', 'elections', 'users', 'password_resets', 'email_verifications', 'rate_limits', 'mfa_challenges'] as $table) {
+    foreach (['audit_log', 'sessions', 'participation', 'votes', 'vote_choices', 'candidates', 'elections', 'users', 'password_resets', 'email_verifications', 'data_requests', 'rate_limits', 'mfa_challenges'] as $table) {
         $pdo->exec('DROP TABLE IF EXISTS ' . $table . ' CASCADE');
     }
     if (($cfg['driver'] ?? 'mysql') === 'pgsql') {

@@ -173,6 +173,20 @@ CREATE TABLE IF NOT EXISTS email_verifications (
 );
 CREATE INDEX IF NOT EXISTS idx_email_verifications_user ON email_verifications(user_id);
 
+-- DPDP Act, 2023 s.11 / GDPR Art.15-22 — Data Principal rights requests.
+CREATE TABLE IF NOT EXISTS data_requests (
+  id          SERIAL PRIMARY KEY,
+  user_id     INT NULL REFERENCES users(id) ON DELETE CASCADE,
+  email       VARCHAR(160) NOT NULL,
+  type        VARCHAR(32) NOT NULL,
+  details     TEXT NULL,
+  status      VARCHAR(24) NOT NULL DEFAULT 'pending',
+  created_at  TIMESTAMP(3) NOT NULL,
+  resolved_at TIMESTAMP(3) NULL
+);
+CREATE INDEX IF NOT EXISTS idx_data_requests_user ON data_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_data_requests_status ON data_requests(status);
+
 CREATE TABLE IF NOT EXISTS rate_limits (
   key          VARCHAR(120) NOT NULL PRIMARY KEY,
   window_start TIMESTAMP(3) NOT NULL,
