@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1
 FROM php:8.3-cli-alpine
 
+# Cache bust - force rebuild for theme-init.js in index.html
+ARG CACHE_BUST=20241123500
+
 # System deps + PHP extensions.
 RUN apk add --no-cache postgresql-dev git unzip curl \
  && docker-php-ext-install pdo_pgsql pdo_mysql \
