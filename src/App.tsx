@@ -14,6 +14,7 @@ import Elections from './pages/Elections'
 import ElectionDetail from './pages/ElectionDetail'
 import Verify from './pages/Verify'
 import Help from './pages/Help'
+import Organizations from './pages/Organizations'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import Refunds from './pages/Refunds'
@@ -102,6 +103,7 @@ function AppRoutes() {
           <Route path="election/:id" element={<ElectionDetail />} />
           <Route path="verify" element={<Verify />} />
           <Route path="help" element={<Help />} />
+          <Route path="organizations" element={<Organizations />} />
           <Route path="privacy" element={<Privacy />} />
           <Route path="terms" element={<Terms />} />
           <Route path="refunds" element={<Refunds />} />

@@ -17,13 +17,15 @@ interface SearchResult {
 
 const copy = {
   en: {
-    elections: 'Elections', verify: 'Verify', help: 'Help', privacy: 'Privacy', terms: 'Terms', status: 'Status',
-    account: 'Account', signOut: 'Sign out', signIn: 'Sign in', createAccount: 'Create account',
+    elections: 'Elections', verify: 'Verify ballot', organizations: 'Organizations', createPoll: 'Create a poll',
+    help: 'Help', privacy: 'Privacy', terms: 'Terms', status: 'Status',
+    account: 'Account', signOut: 'Sign out', signIn: 'Sign in', createAccount: 'Create account', registerOrg: 'Register organization',
     search: 'Search elections', searchPlaceholder: 'Search elections or candidates…', noResults: 'No matching elections found.',
   },
   es: {
-    elections: 'Elecciones', verify: 'Verificar', help: 'Ayuda', privacy: 'Privacidad', terms: 'Términos', status: 'Estado',
-    account: 'Cuenta', signOut: 'Cerrar sesión', signIn: 'Iniciar sesión', createAccount: 'Crear cuenta',
+    elections: 'Elecciones', verify: 'Verificar papeleta', organizations: 'Organizaciones', createPoll: 'Crear encuesta',
+    help: 'Ayuda', privacy: 'Privacidad', terms: 'Términos', status: 'Estado',
+    account: 'Cuenta', signOut: 'Cerrar sesión', signIn: 'Iniciar sesión', createAccount: 'Crear cuenta', registerOrg: 'Registrar organización',
     search: 'Buscar elecciones', searchPlaceholder: 'Buscar elecciones o candidatos…', noResults: 'No se encontraron elecciones.',
   },
 } as const
@@ -54,10 +56,8 @@ export default function PublicLayout() {
   const navItems = [
     { label: labels.elections, href: '/elections', key: 'elections' },
     { label: labels.verify, href: '/verify', key: 'verify' },
-    { label: labels.help, href: '/help', key: 'help' },
-    { label: labels.privacy, href: '/privacy', key: 'privacy' },
-    { label: labels.terms, href: '/terms', key: 'terms' },
-    { label: labels.status, href: '/status', key: 'status' },
+    { label: labels.organizations, href: '/organizations', key: 'organizations' },
+    { label: labels.createPoll, href: '/polls/new', key: 'create-poll' },
   ]
 
   useEffect(() => {
@@ -182,6 +182,7 @@ export default function PublicLayout() {
                 )}
                 {!signedIn && (
                   <>
+                    <Link to="/register-organization" onClick={() => setMobileOpen(false)} className="btn btn-ghost btn-sm">{labels.registerOrg}</Link>
                     <Link to="/login" onClick={() => setMobileOpen(false)} className="btn btn-ghost btn-sm">{labels.signIn}</Link>
                     <Link to="/register" onClick={() => setMobileOpen(false)} className="btn btn-primary btn-sm">{labels.createAccount}</Link>
                   </>
@@ -228,6 +229,7 @@ export default function PublicLayout() {
                 </>
               ) : (
                 <>
+                  <Link to="/register-organization" className="btn btn-ghost btn-sm header-org">{labels.registerOrg}</Link>
                   <Link to="/login" className="btn btn-ghost btn-sm">{labels.signIn}</Link>
                   <Link to="/register" className="btn btn-primary btn-sm">{labels.createAccount}</Link>
                 </>
