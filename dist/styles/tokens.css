@@ -1,61 +1,48 @@
 /* ==========================================================================
-   Open Ballot — design tokens
+   Open Ballot — design tokens (Cyan-only theme)
    ==========================================================================
    Single source of truth for the visual language.
    Loaded by styles.css. Never reference raw hex values elsewhere.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   Brand
+   Brand — Cyan accent system
    -------------------------------------------------------------------------- */
 :root {
-  --brand-50: #f3f1ff;
-  --brand-100: #e7e2ff;
-  --brand-200: #cfc4ff;
-  --brand-300: #b0a0ff;
-  --brand-400: #9d8bff;
-  --brand-500: #8b7bff;
-  --brand-600: #7a66f2;
-  --brand-700: #6552d8;
-  --brand-800: #5344ad;
-  --brand-900: #3f3478;
+  /* Cyan accent — the single brand color */
+  --cyan-50: #e0f8fd;
+  --cyan-100: #b9eefb;
+  --cyan-200: #7dd3fc;
+  --cyan-300: #38bdf8;
+  --cyan-400: #0ea5e9;
+  --cyan-500: #0284c7;
+  --cyan-600: #0369a1;
+  --cyan-700: #075985;
+  --cyan-800: #0c4a6e;
+  --cyan-900: #083344;
 
-  --cyan-400: #22d3ee;
-  --cyan-500: #06b6d4;
-  --cyan-600: #0891b2;
+  /* Semantic accents built from cyan */
+  --accent: var(--cyan-400);
+  --accent-bright: var(--cyan-300);
+  --accent-soft: rgba(14, 165, 233, 0.14);
+  --accent-strong: var(--cyan-600);
+  --on-accent: #0a0d16;
 
-  --emerald-400: #34d399;
-  --emerald-500: #10b981;
-  --emerald-600: #059669;
-
-  --amber-400: #fbbf24;
-  --amber-500: #f59e0b;
-  --amber-600: #d97706;
-
-  --rose-400: #fb7185;
-  --rose-500: #f43f5e;
-  --rose-600: #e11d48;
-
-  /* semantic */
-  --accent: var(--brand-500);
-  --accent-bright: var(--brand-300);
-  --accent-2: var(--cyan-400);
-  --accent-soft: rgba(139, 123, 255, 0.14);
-
-  --success: var(--emerald-400);
-  --success-strong: var(--emerald-500);
+  /* Status colors */
+  --success: #34d399;
+  --success-strong: #10b981;
   --success-soft: rgba(52, 211, 153, 0.12);
 
-  --warning: var(--amber-400);
-  --warning-strong: var(--amber-500);
+  --warning: #fbbf24;
+  --warning-strong: #f59e0b;
   --warning-soft: rgba(251, 191, 36, 0.12);
 
-  --danger: var(--rose-400);
-  --danger-strong: var(--rose-500);
+  --danger: #fb7185;
+  --danger-strong: #f43f5e;
   --danger-soft: rgba(248, 113, 113, 0.12);
 
   --info: var(--cyan-400);
-  --info-soft: rgba(34, 211, 238, 0.12);
+  --info-soft: rgba(14, 165, 233, 0.12);
 
   /* --------------------------------------------------------------------------
      Surfaces (dark theme — default)
@@ -92,7 +79,7 @@
   --muted: var(--text-muted);
   --faint: var(--text-faint);
 
-  --on-accent: #ffffff;
+  --on-accent: #0a0d16;
   --on-brand: #ffffff;
 
   /* --------------------------------------------------------------------------
@@ -131,14 +118,16 @@
   --shadow-sm: 0 10px 30px -14px rgba(0, 0, 0, 0.6);
   --shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.65);
   --shadow-lg: 0 40px 90px -30px rgba(0, 0, 0, 0.8);
-  --ring: 0 0 0 3px rgba(139, 123, 255, 0.35);
-  --shadow-focus-ring: 0 0 0 3px rgba(139, 123, 255, 0.4);
+  --ring: 0 0 0 3px rgba(14, 165, 233, 0.35);
+  --shadow-focus-ring: 0 0 0 3px rgba(14, 165, 233, 0.4);
 
   /* --------------------------------------------------------------------------
      Typography
      -------------------------------------------------------------------------- */
   --font: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  --font-mono: var(--mono);
+  --font-display: "Iowan Old Style", "Palatino Linotype", Georgia, "Times New Roman", serif;
 
   --text-xs: 0.75rem;    /* 12px */
   --text-sm: 0.875rem;   /* 14px */
@@ -194,112 +183,51 @@
   --z-drawer: 300;
   --z-modal: 400;
   --z-toast: 500;
-  --z-tooltip: 600.
+  --z-tooltip: 600;
 
   /* --------------------------------------------------------------------------
      Status scale (election lifecycle) — theme-aware
      -------------------------------------------------------------------------- */
-  --status-open-fg: #6ee7b7;
-  --status-open-bg: rgba(16, 185, 129, 0.14);
-  --status-open-line: rgba(16, 185, 129, 0.4);
-
-  --status-closed-fg: #cbd5e1;
-  --status-closed-bg: rgba(148, 163, 184, 0.14);
-  --status-closed-line: rgba(148, 163, 184, 0.35);
-
-  --status-scheduled-fg: #7dd3fc;
-  --status-scheduled-bg: rgba(14, 165, 233, 0.14);
-  --status-scheduled-line: rgba(14, 165, 233, 0.4).
-
-  --status-draft-fg: #c4b5fd;
-  --status-draft-bg: rgba(139, 123, 255, 0.14).
-  --status-draft-line: rgba(139, 123, 255, 0.4).
-
-  /* --------------------------------------------------------------------------
-     Data-visualization palette (6 categorical, accessible on dark)
-     -------------------------------------------------------------------------- */
-  --viz-1: #8b7bff;
-  --viz-2: #22d3ee;
-  --viz-3: #34d399;
-  --viz-4: #fbbf24;
-  --viz-5: #fb7185;
-  --viz-6: #a78bfa.
-  --viz-grid: rgba(255, 255, 255, 0.08).
+  --status-open: var(--success);
+  --status-scheduled: var(--warning);
+  --status-closed: var(--text-muted);
+  --status-draft: var(--accent);
 }
 
 /* --------------------------------------------------------------------------
    Light theme
    -------------------------------------------------------------------------- */
 [data-theme="light"] {
-  --bg: #f6f7fb;
+  --bg: #fdfbf7;
   --bg-elevated: #ffffff;
-  --surface-1: #ffffff;
-  --surface-2: #f1f3f9.
-  --surface-3: #e8ebf3.
-  --panel: rgba(17, 24, 39, 0.03).
-  --panel-strong: rgba(17, 24, 39, 0.05).
-  --panel-hover: rgba(17, 24, 39, 0.08).
+  --surface-1: #fdfbf7;
+  --surface-2: #f5f2eb;
+  --surface-3: #ebe8e0;
+  --panel: rgba(0, 0, 0, 0.028);
+  --panel-strong: rgba(0, 0, 0, 0.05);
+  --panel-hover: rgba(0, 0, 0, 0.075);
 
-  --line: rgba(17, 24, 39, 0.1).
-  --line-strong: rgba(17, 24, 39, 0.18).
-  --line-hover: rgba(17, 24, 39, 0.3).
+  --line: rgba(0, 0, 0, 0.09);
+  --line-strong: rgba(0, 0, 0, 0.16);
+  --line-hover: rgba(0, 0, 0, 0.24);
 
-  --header-bg: rgba(255, 255, 255, 0.82).
-  --nav-bg: #ffffff.
-  --input-bg: #ffffff.
-  --input-bg-focus: #ffffff.
-  --inset-bg: rgba(17, 24, 39, 0.035).
-  --backdrop: rgba(15, 23, 42, 0.42).
-  --modal-bg: linear-gradient(165deg, #ffffff, #f7f8fc).
-  --surface-gradient: linear-gradient(160deg, #ffffff, #f7f8fc).
+  --header-bg: rgba(253, 251, 247, 0.82);
+  --nav-bg: #f5f2eb;
+  --input-bg: rgba(0, 0, 0, 0.03);
+  --input-bg-focus: rgba(0, 0, 0, 0.06);
+  --inset-bg: rgba(0, 0, 0, 0.04);
+  --backdrop: rgba(6, 6, 4, 0.5);
+  --modal-bg: #ffffff;
+  --surface-gradient: linear-gradient(160deg, #ffffff, #f0f0eb);
 
-  --text: #141a2a.
-  --text-secondary: #3d465c.
-  --text-muted: #667085.
-  --text-faint: #98a2b3.
-  --text-inverse: #ffffff.
+  --text: #0c0c0a;
+  --text-secondary: #3a3832;
+  --text-muted: #6d6a63;
+  --text-faint: #9d9a91;
+  --text-inverse: #fdfbf7;
+  --muted: var(--text-muted);
+  --faint: var(--text-faint);
 
-  --accent: var(--brand-600).
-  --accent-bright: var(--brand-700).
-  --accent-soft: rgba(122, 102, 242, 0.1).
-
-  --success-soft: rgba(16, 185, 129, 0.12).
-  --warning-soft: rgba(245, 158, 11, 0.14).
-  --danger-soft: rgba(244, 63, 94, 0.1).
-  --info-soft: rgba(6, 182, 212, 0.12).
-
-  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.06).
-  --shadow-sm: 0 8px 24px -12px rgba(16, 24, 40, 0.18).
-  --shadow: 0 20px 50px -20px rgba(16, 24, 40, 0.28).
-  --shadow-lg: 0 32px 70px -28px rgba(16, 24, 40, 0.35).
-  --ring: 0 0 0 3px rgba(122, 102, 242, 0.25).
-  --shadow-focus-ring: 0 0 0 3px rgba(122, 102, 242, 0.3).
-
-  /* status scale — darker foregrounds for light surfaces */
-  --status-open-fg: #047857.
-  --status-open-bg: rgba(16, 185, 129, 0.12).
-  --status-open-line: rgba(5, 150, 105, 0.35).
-
-  --status-closed-fg: #475569.
-  --status-closed-bg: rgba(100, 116, 139, 0.12).
-  --status-closed-line: rgba(100, 116, 139, 0.3).
-
-  --status-scheduled-fg: #0369a1.
-  --status-scheduled-bg: rgba(14, 165, 233, 0.12).
-  --status-scheduled-line: rgba(3, 105, 161, 0.3).
-
-  --status-draft-fg: #6d28d9.
-  --status-draft-bg: rgba(139, 123, 255, 0.12).
-  --status-draft-line: rgba(109, 40, 217, 0.3).
-
-  --viz-grid: rgba(17, 24, 39, 0.1).
-}
-
-/* Respect reduced-motion preferences */
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --duration-fast: 0ms.
-    --duration: 0ms.
-    --duration-slow: 0ms.
-  }
+  --on-accent: #0a0d16;
+  --on-brand: #0a0d16;
 }

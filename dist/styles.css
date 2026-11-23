@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Open Ballot — design system
+   Open Ballot — design system (Cyan-only theme)
    ========================================================================== */
 
 @import url('/styles/tokens.css');
@@ -23,8 +23,8 @@ body {
   line-height: 1.6;
   color: var(--text);
   background:
-    radial-gradient(900px 600px at 85% -10%, rgba(139, 123, 255, 0.16), transparent 60%),
-    radial-gradient(800px 500px at 0% 5%, rgba(34, 211, 238, 0.09), transparent 55%),
+    radial-gradient(900px 600px at 85% -10%, rgba(14, 165, 233, 0.16), transparent 60%),
+    radial-gradient(800px 500px at 0% 5%, rgba(14, 165, 233, 0.09), transparent 55%),
     var(--bg);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
@@ -61,14 +61,14 @@ a {
   text-decoration: none;
   transition: color 0.16s ease;
 }
-a:hover { color: #c4bbff; }
+a:hover { color: #67e8f9; }
 
 img, svg { display: block; max-width: 100%; }
 
 button, input, select, textarea { font: inherit; color: inherit; }
 
 ::selection {
-  background: rgba(139, 123, 255, 0.35);
+  background: rgba(14, 165, 233, 0.35);
   color: #fff;
 }
 
@@ -86,7 +86,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 10px 16px;
   border-radius: 10px;
   background: var(--accent);
-  color: #0a0714;
+  color: #0a0d16;
   font-weight: 700;
   transition: top 0.2s ease;
 }
@@ -168,8 +168,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   display: grid;
   place-items: center;
   border-radius: 11px;
-  background: linear-gradient(145deg, rgba(139, 123, 255, 0.22), rgba(34, 211, 238, 0.12));
-  border: 1px solid rgba(139, 123, 255, 0.35);
+  background: linear-gradient(145deg, rgba(14, 165, 233, 0.22), rgba(14, 165, 233, 0.12));
+  border: 1px solid rgba(14, 165, 233, 0.35);
   color: var(--accent-bright);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
@@ -215,7 +215,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   bottom: 2px;
   height: 2px;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: var(--accent);
 }
 
 .header-actions {
@@ -269,9 +269,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-size: 1.45rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  background: linear-gradient(145deg, rgba(139, 123, 255, 0.25), rgba(34, 211, 238, 0.14));
-  border: 1px solid rgba(139, 123, 255, 0.35);
-  color: #dcd6ff;
+  background: linear-gradient(145deg, rgba(14, 165, 233, 0.25), rgba(14, 165, 233, 0.14));
+  border: 1px solid rgba(14, 165, 233, 0.35);
+  color: var(--accent-bright);
   flex-shrink: 0;
 }
 
@@ -287,7 +287,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   transition: color 0.16s ease, background 0.16s ease;
 }
 .admin-nav button:hover { color: var(--text); background: var(--panel-strong); }
-.admin-nav button.active { color: #0b0716; background: linear-gradient(135deg, #a99cff, #67e8f9); }
+.admin-nav button.active { color: #0b0716; background: linear-gradient(135deg, var(--accent), var(--accent-bright)); }
 
 /* --------------------------------------------------------------------------
    Buttons
@@ -318,16 +318,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 
 .btn-primary {
-  --btn-bg: linear-gradient(135deg, #8b7bff, #6f5bf0 55%, #5b8cf7);
+  --btn-bg: linear-gradient(135deg, var(--accent), var(--accent-strong) 55%, var(--cyan-600));
   --btn-border: transparent;
   --btn-fg: #0b0716;
-  box-shadow: 0 10px 28px -10px rgba(139, 123, 255, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 28px -10px rgba(14, 165, 233, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
-.btn-primary:hover { box-shadow: 0 14px 34px -10px rgba(139, 123, 255, 0.8); }
+.btn-primary:hover { box-shadow: 0 14px 34px -10px rgba(14, 165, 233, 0.8); }
 
 .btn-outline {
   --btn-bg: transparent;
-  --btn-border: rgba(139, 123, 255, 0.5);
+  --btn-border: rgba(14, 165, 233, 0.5);
   --btn-fg: var(--accent-bright);
 }
 .btn-outline:hover { --btn-bg: var(--accent-soft); }
@@ -415,7 +415,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   width: 22px;
   height: 2px;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: var(--accent);
 }
 
 .divider {
@@ -440,7 +440,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hero h1 { margin-bottom: 18px; }
 .hero h1 em {
   font-style: normal;
-  background: linear-gradient(100deg, #b3a8ff 10%, #7dd3fc 90%);
+  background: linear-gradient(100deg, var(--accent-bright) 10%, var(--accent) 90%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -461,7 +461,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 26px;
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(120% 120% at 100% 0%, rgba(139, 123, 255, 0.22), transparent 60%),
+    radial-gradient(120% 120% at 100% 0%, rgba(14, 165, 233, 0.22), transparent 60%),
     linear-gradient(160deg, var(--panel-strong), var(--panel));
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow);
@@ -472,7 +472,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   position: absolute;
   inset: auto -30% -55% 30%;
   height: 260px;
-  background: radial-gradient(closest-side, rgba(34, 211, 238, 0.22), transparent);
+  background: radial-gradient(closest-side, rgba(14, 165, 233, 0.22), transparent);
   pointer-events: none;
 }
 .hero-art-head {
@@ -503,7 +503,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hero-art-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: var(--accent);
   animation: grow 1.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -578,7 +578,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   inset: 0 auto auto 0;
   width: 100%;
   height: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: var(--accent);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -648,7 +648,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pill-open::before { animation: pulse 2.2s ease-in-out infinite; }
 .pill-scheduled { color: #fcd34d; background: var(--warning-soft); border-color: rgba(251, 191, 36, 0.26); }
 .pill-closed { color: var(--muted); background: var(--panel-strong); border-color: var(--line); }
-.pill-draft { color: #c4bbff; background: var(--accent-soft); border-color: rgba(139, 123, 255, 0.3); }
+.pill-draft { color: var(--accent-bright); background: var(--accent-soft); border-color: rgba(14, 165, 233, 0.3); }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5); }
@@ -667,7 +667,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   border: 1px solid var(--line);
   color: var(--text-secondary);
 }
-.badge-accent { background: var(--accent-soft); border-color: rgba(139, 123, 255, 0.3); color: #c4bbff; }
+.badge-accent { background: var(--accent-soft); border-color: rgba(14, 165, 233, 0.3); color: var(--accent-bright); }
 .badge-success { background: var(--success-soft); border-color: rgba(52, 211, 153, 0.3); color: #6ee7b7; }
 .badge-warning { background: var(--warning-soft); border-color: rgba(251, 191, 36, 0.3); color: #fcd34d; }
 .badge-danger { background: var(--danger-soft); border-color: rgba(248, 113, 113, 0.3); color: #fca5a5; }
@@ -702,7 +702,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .input:focus, .select:focus, .textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(139, 123, 255, 0.2);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
   background: var(--input-bg-focus);
 }
 .textarea { resize: vertical; min-height: 96px; line-height: 1.55; }
@@ -811,9 +811,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   transform: scale(0.4);
 }
 .candidate:has(input:checked) {
-  border-color: rgba(139, 123, 255, 0.65);
-  background: linear-gradient(140deg, rgba(139, 123, 255, 0.13), rgba(34, 211, 238, 0.05));
-  box-shadow: 0 0 0 3px rgba(139, 123, 255, 0.12);
+  border-color: rgba(14, 165, 233, 0.65);
+  background: linear-gradient(140deg, rgba(14, 165, 233, 0.13), rgba(14, 165, 233, 0.05));
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
 }
 .candidate:has(input:checked) .choice { border-color: var(--accent-bright); }
 .candidate:has(input:checked) .choice::after { background: var(--accent-bright); transform: scale(1); }
@@ -832,9 +832,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   place-items: center;
   font-weight: 700;
   font-size: 1rem;
-  background: linear-gradient(145deg, rgba(139, 123, 255, 0.22), rgba(34, 211, 238, 0.12));
-  border: 1px solid rgba(139, 123, 255, 0.28);
-  color: #d9d2ff;
+  background: linear-gradient(145deg, rgba(14, 165, 233, 0.22), rgba(14, 165, 233, 0.12));
+  border: 1px solid rgba(14, 165, 233, 0.28);
+  color: var(--accent-bright);
   flex-shrink: 0;
 }
 
@@ -883,13 +883,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .bar-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: var(--accent);
   transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
   min-width: 0;
 }
 .result-row.leader .bar-fill {
-  background: linear-gradient(90deg, #a99cff, #67e8f9);
-  box-shadow: 0 0 18px rgba(139, 123, 255, 0.5);
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+  box-shadow: 0 0 18px rgba(14, 165, 233, 0.5);
 }
 .result-row.leader .result-name::after {
   content: "Leading";
@@ -897,9 +897,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #c4bbff;
+  color: var(--accent-bright);
   background: var(--accent-soft);
-  border: 1px solid rgba(139, 123, 255, 0.28);
+  border: 1px solid rgba(14, 165, 233, 0.28);
   padding: 2px 7px;
   border-radius: 99px;
 }
@@ -1060,14 +1060,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 13px 16px.
   border-radius: var(--radius-sm).
   background: var(--inset-bg).
-  border: 1px dashed rgba(139, 123, 255, 0.4).
+  border: 1px dashed rgba(14, 165, 233, 0.4).
 }
 .receipt-code {
   font-family: var(--mono).
   font-size: 1rem.
   font-weight: 600.
   letter-spacing: 0.06em.
-  color: #d9d2ff.
+  color: var(--accent-bright).
   word-break: break-all.
 }
 
@@ -1096,11 +1096,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
    exactly one period is seamless, so the flow never blinks or empties. */
 .schema-worm {
   fill: none.
-  stroke: url(#worm-grad).
+  stroke: var(--accent).
   stroke-width: 4.
   stroke-linecap: round.
   stroke-dasharray: 1 17.
-  filter: drop-shadow(0 0 5px rgba(139, 123, 255, 0.9)).
+  filter: drop-shadow(0 0 5px rgba(14, 165, 233, 0.9)).
   animation: schema-worm-flow 0.9s linear infinite.
 }
 @keyframes schema-worm-flow {
@@ -1111,7 +1111,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .schema-worm { animation: none; stroke-dasharray: 2 14; opacity: 0.75; }
 }
 
-.schema-arrow { fill: var(--cyan-400); opacity: 0.85; }
+.schema-arrow { fill: var(--accent); opacity: 0.85; }
 
 .schema-card {
   position: absolute.
@@ -1152,8 +1152,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-weight: 700.
   padding: 1px 4px.
   border-radius: 4px.
-  background: rgba(34, 211, 238, 0.12).
-  color: var(--cyan-400).
+  background: rgba(14, 165, 233, 0.12).
+  color: var(--accent).
   letter-spacing: 0.04em.
 }
 .schema-legend {
@@ -1175,7 +1175,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background-size: 9px 4px.
   background-repeat: repeat-x.
   animation: legend-dots 0.9s linear infinite.
-  filter: drop-shadow(0 0 4px rgba(139, 123, 255, 0.9)).
+  filter: drop-shadow(0 0 4px rgba(14, 165, 233, 0.9)).
 }
 @keyframes legend-dots {
   from { background-position: 0 0; }
@@ -1249,7 +1249,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   position: absolute.
   inset: 0 0 auto.
   height: 3px.
-  background: linear-gradient(90deg, var(--brand-400), var(--cyan-400)).
+  background: var(--accent).
 }
 .election-hero-title {
   margin: 14px 0 6px.
@@ -1282,7 +1282,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--muted).
 }
 .admin-nav a:hover { color: var(--text); background: var(--panel-strong); }
-.admin-nav a.active { color: #0b0716; background: linear-gradient(135deg, #a99cff, #67e8f9); }
+.admin-nav a.active { color: #0b0716; background: linear-gradient(135deg, var(--accent), var(--accent-bright)); }
 
 .stat-grid {
   display: grid.
@@ -1305,7 +1305,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   position: absolute.
   inset: auto -20% -60% 40%.
   height: 120px.
-  background: radial-gradient(closest-side, rgba(139, 123, 255, 0.16), transparent).
+  background: radial-gradient(closest-side, rgba(14, 165, 233, 0.16), transparent).
 }
 .stat-card .stat-value { font-size: 1.7rem; }
 .stat-card .stat-label { display: flex; align-items: center; gap: 6px; }
@@ -1367,7 +1367,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   display: grid.
   place-items: center.
   background: var(--accent-soft).
-  border: 1px solid rgba(139, 123, 255, 0.3).
+  border: 1px solid rgba(14, 165, 233, 0.3).
   color: var(--accent-bright).
 }
 
@@ -1428,8 +1428,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   display: block.
   overflow: visible.
 }
-.spark polyline { fill: none; stroke: url(#spark-gradient); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-.spark .area { fill: url(#spark-area); stroke: none; opacity: 0.5; }
+.spark polyline { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.spark .area { fill: var(--accent-soft); stroke: none; opacity: 0.5; }
 .spark .grid-line { stroke: var(--line); stroke-width: 1; }
 
 /* --------------------------------------------------------------------------
@@ -1589,9 +1589,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 14px 16px.
   border-radius: var(--radius-sm).
   background: var(--accent-soft).
-  border: 1px solid rgba(139, 123, 255, 0.28).
+  border: 1px solid rgba(14, 165, 233, 0.28).
   font-size: 0.87rem.
-  color: #cfc8ff.
+  color: var(--accent-bright).
 }
 .notice svg { width: 19px; height: 19px; flex-shrink: 0; margin-top: 1px; }
 
@@ -1702,32 +1702,32 @@ button, input, select, textarea { font: inherit; color: inherit; }
    Components that need stronger text on pale tinted backgrounds.
    ========================================================================== */
 
-[data-theme="light"] a:hover { color: var(--brand-700); }
+[data-theme="light"] a:hover { color: var(--cyan-600); }
 
 [data-theme="light"] .badge-accent,
 [data-theme="light"] .pill-draft,
 [data-theme="light"] .admin-nav button.active,
-[data-theme="light"] .admin-nav a.active { color: var(--brand-700); }
+[data-theme="light"] .admin-nav a.active { color: var(--cyan-700); }
 
 [data-theme="light"] .badge-success,
 [data-theme="light"] .pill-open,
-[data-theme="light"] .text-success { color: var(--emerald-600); }
+[data-theme="light"] .text-success { color: var(--success-strong); }
 
 [data-theme="light"] .badge-warning,
 [data-theme="light"] .pill-scheduled,
-[data-theme="light"] .text-warning { color: var(--amber-600); }
+[data-theme="light"] .text-warning { color: var(--warning-strong); }
 
 [data-theme="light"] .badge-danger,
-[data-theme="light"] .text-danger { color: var(--rose-600); }
+[data-theme="light"] .text-danger { color: var(--danger-strong); }
 
 [data-theme="light"] .badge-info { color: var(--cyan-600); }
 
-[data-theme="light"] .btn-danger { --btn-fg: var(--rose-600); }
-[data-theme="light"] .btn-success { --btn-fg: var(--emerald-600); }
+[data-theme="light"] .btn-danger { --btn-fg: var(--danger-strong); }
+[data-theme="light"] .btn-success { --btn-fg: var(--success-strong); }
 
 [data-theme="light"] .admin-nav button.active,
 [data-theme="light"] .admin-nav a.active {
-  background: linear-gradient(135deg, var(--brand-300), var(--cyan-400));
+  background: linear-gradient(135deg, var(--accent), var(--accent-bright));
   color: #0b0716;
 }
 
@@ -1735,10 +1735,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 [data-theme="light"] .hero-art {
   background:
-    radial-gradient(120% 120% at 100% 0%, rgba(122, 102, 242, 0.16), transparent 60%),
-    linear-gradient(160deg, #ffffff, #f4f6fb);
+    radial-gradient(120% 120% at 100% 0%, rgba(14, 165, 233, 0.16), transparent 60%),
+    linear-gradient(160deg, #ffffff, #f0f4f8);
 }
 
-[data-theme="light"] .receipt-code { color: var(--brand-700); }
+[data-theme="light"] .receipt-code { color: var(--cyan-600); }
 
-[data-theme="light"] ::selection { background: rgba(122, 102, 242, 0.22); }
+[data-theme="light"] ::selection { background: rgba(14, 165, 233, 0.22); }
