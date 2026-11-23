@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 FROM php:8.3-cli-alpine
 
-# Cache bust - force rebuild for theme-init.js in index.html
-ARG CACHE_BUST=20241123500
+# Cache bust - force rebuild for violet/cyan theme CSS
+ARG CACHE_BUST=20241123600
 
 # System deps + PHP extensions.
 RUN apk add --no-cache postgresql-dev git unzip curl \
