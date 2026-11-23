@@ -7,10 +7,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        accent: '#8b7bff',
-        'accent-bright': '#b0a0ff',
-        'accent-soft': 'rgba(139, 123, 255, 0.10)',
-        'accent-strong': '#6552d8',
+        accent: '#d9a441',
+        'accent-bright': '#e1bd77',
+        'accent-soft': 'rgba(217, 164, 65, 0.10)',
+        'accent-strong': '#b57c14',
         'on-accent': '#141006',
         panel: 'rgba(255, 255, 255, 0.03)',
         'panel-strong': 'rgba(255, 255, 255, 0.06)',
@@ -22,11 +22,11 @@ export default {
         'text-secondary': '#cfc7b7',
         'text-muted': '#a59b8c',
         'text-faint': '#7d7566',
-        bg: '#080b12',
-        'bg-elevated': '#0d1220',
-        'surface-1': '#0b0e17',
-        'surface-2': '#11172a',
-        'surface-3': '#171f36',
+        bg: '#171511',
+        'bg-elevated': '#1e1b15',
+        'surface-1': '#1f1c16',
+        'surface-2': '#29251e',
+        'surface-3': '#332e25',
       },
       fontFamily: {
         sans: ['"Segoe UI Variable"', '"Segoe UI"', 'system-ui', '-apple-system', 'sans-serif'],
