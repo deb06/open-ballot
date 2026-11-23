@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0c0c0a" />
+    <title>Open Ballot — Secure Online Voting</title>
+    <link rel="canonical" href="https://open-ballot.onrender.com/" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Open Ballot" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Open Ballot" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://open-ballot.onrender.com/" />
+    <meta property="og:title" content="Open Ballot — Secure Online Voting" />
+    <meta property="og:description" content="Secure, anonymous and receipt-verifiable online voting. One person, one vote." />
+    <meta property="og:image" content="https://open-ballot.onrender.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Open Ballot — secure online voting" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@openballot" />
+    <meta name="twitter:title" content="Open Ballot — Secure Online Voting" />
+    <meta name="twitter:description" content="Secure, anonymous and receipt-verifiable online voting. One person, one vote." />
+    <meta name="twitter:image" content="https://open-ballot.onrender.com/og-image.png" />
+    <meta name="robots" content="index, follow" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "name": "Open Ballot",
+            "url": "https://open-ballot.onrender.com/",
+            "description": "Secure, anonymous and receipt-verifiable online voting.",
+            "contactPoint": { "@type": "ContactPoint", "contactType": "contact", "email": "openballot@outlook.com" }
+          },
+          {
+            "@type": "WebSite",
+            "name": "Open Ballot",
+            "url": "https://open-ballot.onrender.com/",
+            "inLanguage": "en",
+            "potentialAction": { "@type": "SearchAction", "target": "https://open-ballot.onrender.com/?q={search_term_string}", "query-input": "required name=search_term_string" }
+          }
+        ]
+      }
+    </script>
+    <meta name="description" content="Open Ballot is a secure, anonymous and receipt-verifiable online voting platform for student and community elections. One person, one vote." />
+    <link rel="stylesheet" href="/styles/tokens.css" />
+    <link rel="stylesheet" href="/styles/manus-tokens.css" />
+    <link rel="stylesheet" href="/styles/components.css" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" crossorigin src="/assets/index-BdSV7qy_.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-fiAaY3bO.css">
+  </head>
+  <body>
+    <div id="root"></div>
+
+
+  </body>
+</html>
