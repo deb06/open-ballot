@@ -84,12 +84,8 @@ export default function Home() {
     <div className="space-y-0">
       {/* Hero */}
       <section className="hero relative overflow-hidden">
-        {/* Decorative background */}
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(217,164,65,0.15),transparent)]" />
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_0%_100%,rgba(125,168,200,0.1),transparent)]" />
-
         <div className="relative z-10 max-w-7xl mx-auto px-4 lg:px-0 py-12 lg:py-24">
-          <div className={`grid grid-cols-1 ${isOrgAdminUser ? 'lg:grid-cols-2' : 'max-w-3xl'} gap-8 lg:gap-16 items-center`}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
             <div className="space-y-6">
               <p className="eyebrow">Secure · anonymous · receipt-verified</p>
               <h1 className="text-[clamp(2.4rem,5vw,3.9rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-text">
@@ -99,15 +95,12 @@ export default function Home() {
                 Open Ballot is a secure online voting platform for student and community elections. One person, one vote — with a secret ballot, a receipt you can check at any time and a public audit trail.
               </p>
               <div className="flex flex-wrap gap-3">
-                <Link to="/register" className="btn btn-primary btn-lg">
-                  Get started
+                <Link to="/elections" className="btn btn-primary btn-lg">
+                  Browse elections
                   <svg className="ml-2 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14" />
                     <path d="m13 6 6 6-6 6" />
                   </svg>
-                </Link>
-                <Link to="/elections" className="btn btn-outline btn-lg">
-                  Browse elections
                 </Link>
                 <Link to="/verify" className="btn btn-outline btn-lg">
                   Verify a receipt
@@ -154,9 +147,9 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Platform activity - organization admins only */}
-            {isOrgAdminUser && (
+            {/* Right-hand panel: how it works for everyone, platform activity for org admins */}
             <aside className="relative w-full max-w-[520px] mx-auto">
+              {isOrgAdminUser ? (
               <div className="relative rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)] shadow-[var(--shadow-sm)]">
                 <div className="flex items-center justify-between gap-3 mb-5">
                   <p className="text-[0.78rem] text-text-muted tracking-[0.06em] uppercase mb-0">Platform activity</p>
@@ -195,8 +188,42 @@ export default function Home() {
                 </div>
                 <Link to="/admin" className="btn btn-primary btn-sm mt-5">Open admin dashboard</Link>
               </div>
+              ) : (
+              <div className="relative rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)] shadow-[var(--shadow-sm)]">
+                <div className="text-text-secondary text-[0.8rem] tracking-[0.08em] uppercase border-b border-[var(--line)] pb-3 mb-[10px] flex items-center gap-2">
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v2" /><path d="M12 20v2" /><path d="M4 9.5L9 4l5 5M5 20h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2v12a2 2 0 0 0 2 2z" /></svg>
+                  How it works
+                </div>
+                <div className="space-y-0 py-2">
+                  <div className="flex items-start gap-3 border-b border-[var(--line)] pb-[2px] pt-0">
+                    <span className="w-[28px] h-[28px] flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center border border-[var(--accent)]">1</span>
+                    <div>
+                      <strong className="text-text">Register once</strong>
+                      <p className="text-[0.8rem] text-text-secondary mt-[2px] leading-[1.2]">Create your account with email verification.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 border-b border-[var(--line)] pb-[2px] pt-0">
+                    <span className="w-[28px] h-[28px] flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center border border-[var(--accent)]">2</span>
+                    <div>
+                      <strong className="text-text">Vote anonymously</strong>
+                      <p className="text-[0.8rem] text-text-secondary mt-[2px] leading-[1.2]">Your ballot is stored without your identity.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start pb-0 pt-0">
+                    <span className="w-[28px] h-[28px] flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center border border-[var(--accent)]">3</span>
+                    <div>
+                      <strong className="text-text">Verify your receipt</strong>
+                      <p className="text-[0.8rem] text-text-secondary mt-[2px] leading-[1.2]">Check your ballot is counted — anytime.</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-6 pt-4 border-t border-[var(--line)] flex flex-wrap gap-2">
+                  <Link to="/register" className="btn btn-primary btn-sm">Get started</Link>
+                  <Link to="/organizations" className="btn btn-outline btn-sm">Browse organizations</Link>
+                </div>
+              </div>
+              )}
             </aside>
-            )}
           </div>
         </div>
       </section>
