@@ -1725,7 +1725,7 @@ function api_routes(): array
        personal data and cannot identify the Data Principal. */
     $add('DELETE', '/api/account', static function (array $ctx): void {
         $uid = (int) $ctx['user']['id'];
-        $user = db_one('SELECT id, name, email FROM users WHERE id = ?', [$uid]);
+        $user = db_one('SELECT id, name, email, password_hash FROM users WHERE id = ?', [$uid]);
         if ($user === null) fail(404, 'Account not found.', 'not_found');
 
         // Re-authentication before an irreversible action (OWASP / GDPR Art.32).
