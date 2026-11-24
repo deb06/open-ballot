@@ -2,62 +2,233 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#0c0c0a" />
-    <title>Open Ballot — Secure Online Voting</title>
+    <meta name="theme-color" content="#0c0c0a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fdfbf7" media="(prefers-color-scheme: light)" />
     <link rel="canonical" href="https://open-ballot.onrender.com/" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Open Ballot" />
+
+    <!-- Primary Meta Tags -->
+    <title>Open Ballot — Secure, Anonymous & Receipt-Verifiable Online Voting</title>
+    <meta name="title" content="Open Ballot — Secure, Anonymous & Receipt-Verifiable Online Voting" />
+    <meta name="description" content="Open Ballot is a secure, anonymous and receipt-verifiable online voting platform for student, community, and organizational elections. One person, one vote — with secret ballots, receipt verification, and public audit trails." />
+    <meta name="keywords" content="online voting, secure voting, anonymous voting, receipt verification, student elections, community elections, organization elections, democratic voting, ballot verification, audit trail" />
+
+    <!-- Open Graph / Facebook / LinkedIn -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Open Ballot" />
-    <meta property="og:locale" content="en_US" />
     <meta property="og:url" content="https://open-ballot.onrender.com/" />
-    <meta property="og:title" content="Open Ballot — Secure Online Voting" />
-    <meta property="og:description" content="Secure, anonymous and receipt-verifiable online voting. One person, one vote." />
+    <meta property="og:title" content="Open Ballot — Secure, Anonymous & Receipt-Verifiable Online Voting" />
+    <meta property="og:description" content="Secure, anonymous and receipt-verifiable online voting platform for student, community, and organizational elections. One person, one vote — with secret ballots, receipt verification, and public audit trails." />
     <meta property="og:image" content="https://open-ballot.onrender.com/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Open Ballot — secure online voting" />
+    <meta property="og:image:alt" content="Open Ballot — secure online voting platform with receipt verification" />
+    <meta property="og:site_name" content="Open Ballot" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="es_ES" />
+
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@openballot" />
-    <meta name="twitter:title" content="Open Ballot — Secure Online Voting" />
-    <meta name="twitter:description" content="Secure, anonymous and receipt-verifiable online voting. One person, one vote." />
+    <meta name="twitter:creator" content="@openballot" />
+    <meta name="twitter:url" content="https://open-ballot.onrender.com/" />
+    <meta name="twitter:title" content="Open Ballot — Secure, Anonymous & Receipt-Verifiable Online Voting" />
+    <meta name="twitter:description" content="Secure, anonymous and receipt-verifiable online voting platform for student, community, and organizational elections. One person, one vote." />
     <meta name="twitter:image" content="https://open-ballot.onrender.com/og-image.png" />
-    <meta name="robots" content="index, follow" />
+    <meta name="twitter:image:alt" content="Open Ballot — secure online voting platform with receipt verification" />
+
+    <!-- Additional Meta Tags -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="bingbot" content="index, follow" />
+    <meta name="format-detection" content="telephone=no, address=no, email=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Open Ballot" />
+
+    <!-- Language Alternates -->
+    <link rel="alternate" hreflang="en" href="https://open-ballot.onrender.com/" />
+    <link rel="alternate" hreflang="es" href="https://open-ballot.onrender.com/es/" />
+    <link rel="alternate" hreflang="x-default" href="https://open-ballot.onrender.com/" />
+
+    <!-- Favicon & Icons -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/icons/icon-192.png" sizes="192x192" type="image/png" />
+    <link rel="icon" href="/icons/icon-512.png" sizes="512x512" type="image/png" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" sizes="180x180" />
+    <link rel="mask-icon" href="/favicon.svg" color="#0c0c0a" />
+
+    <!-- Manifest & PWA -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0c0c0a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fdfbf7" media="(prefers-color-scheme: light)" />
+    <meta name="msapplication-TileColor" content="#0c0c0a" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+
+    <!-- DNS Prefetch & Preconnect -->
+    <link rel="dns-prefetch" href="https://open-ballot.onrender.com" />
+    <link rel="preconnect" href="https://open-ballot.onrender.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- JSON-LD Structured Data (Schema.org) for AEO -->
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@graph": [
-          {
-            "@type": "Organization",
-            "name": "Open Ballot",
-            "url": "https://open-ballot.onrender.com/",
-            "description": "Secure, anonymous and receipt-verifiable online voting.",
-            "contactPoint": { "@type": "ContactPoint", "contactType": "contact", "email": "openballot@outlook.com" }
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": "Open Ballot",
+          "url": "https://open-ballot.onrender.com/",
+          "logo": "https://open-ballot.onrender.com/icons/icon-512.png",
+          "sameAs": [
+            "https://github.com/deb06/open-ballot",
+            "https://twitter.com/openballot"
+          ],
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+91-000-000-0000",
+            "contactType": "customer service",
+            "availableLanguage": ["English", "Hindi", "Spanish"],
+            "email": "openballot@outlook.com"
           },
-          {
-            "@type": "WebSite",
-            "name": "Open Ballot",
-            "url": "https://open-ballot.onrender.com/",
-            "inLanguage": "en",
-            "potentialAction": { "@type": "SearchAction", "target": "https://open-ballot.onrender.com/?q={search_term_string}", "query-input": "required name=search_term_string" }
+          "description": "Open Ballot is a secure, anonymous and receipt-verifiable online voting platform for student, community, and organizational elections.",
+          "foundingDate": "2024",
+          "knowsAbout": ["Online Voting", "Election Security", "Cryptographic Verification", "Democratic Process"],
+          "areaServed": "IN, US, GB, CA, AU, ES, MX, BR",
+          "availableLanguage": ["English", "Spanish", "Hindi", "French", "Portuguese"]
+        },
+        {
+          "@type": "WebSite",
+          "name": "Open Ballot",
+          "url": "https://open-ballot.onrender.com/",
+          "inLanguage": "en",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://open-ballot.onrender.com/search?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          },
+          "publisher": {
+            "@id": "https://open-ballot.onrender.com/#organization"
           }
-        ]
-      }
+        },
+        {
+          "@type": "WebApplication",
+          "name": "Open Ballot",
+          "url": "https://open-ballot.onrender.com/",
+          "applicationCategory": "GovernmentApplication",
+          "operatingSystem": "Web, PWA",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR",
+            "availability": "https://schema.org/InStock"
+          },
+          "featureList": [
+            "End-to-end verifiable voting",
+            "Receipt verification",
+            "Anonymous ballots",
+            "Public audit trail",
+            "Multi-language support",
+            "Offline-first PWA"
+          ],
+          "operatingSystem": "Cloud, Web, iOS, Android",
+          "permissions": "Camera (for QR scanning), Storage (offline voting)"
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "How does Open Ballot ensure vote privacy?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Open Ballot uses cryptographic separation of identity and ballot. The participation table records THAT you voted, while the ballots table records WHAT was chosen — with no linkable columns between them. Your vote is mathematically unlinkable to your identity."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I verify my vote was counted?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. After voting, you receive a unique receipt code (format: OB-XXXX-XXXX-XXXX-XXXX). Enter this code on the verification page to cryptographically prove your ballot was included in the final tally — without revealing how you voted."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is Open Ballot free to use?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, Open Ballot is completely free for all users. There are no subscription fees, per-election fees, or hidden costs. All core features — account creation, voting, receipt verification, and organization management — are free."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How does Open Ballot prevent double voting?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "A unique database constraint on the participation table ensures one person = one vote per election. Even under concurrent requests, the database enforces a single participation record per voter per election."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What laws does Open Ballot comply with?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Open Ballot complies with the Digital Personal Data Protection Act, 2023 (India), the EU General Data Protection Regulation (GDPR), and the Information Technology Act, 2000 (India). Our privacy policy details all rights including access, correction, erasure, and data portability."
+              }
+            }
+          ]
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://open-ballot.onrender.com/"
+            }
+          ]
+        }
+      ]
+    }
     </script>
-    <meta name="description" content="Open Ballot is a secure, anonymous and receipt-verifiable online voting platform for student and community elections. One person, one vote." />
+
+    <!-- Additional Structured Data for Organization Elections -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "Open Ballot Elections",
+      "description": "Browse all open and upcoming elections on Open Ballot",
+      "numberOfItems": 0,
+      "itemListElement": []
+    }
+    </script>
+
+    <!-- Preload Critical Resources -->
+    <link rel="preload" as="style" href="/assets/index-ClBXppYR.css" />
+    <link rel="preload" as="script" href="/assets/index-BR9ePeuU.js" />
+
+    <!-- Browser Config for Windows Tiles -->
+    <meta name="msapplication-TileColor" content="#0c0c0a" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+
     <script src="/js/theme-init.js"></script>
     <link rel="stylesheet" href="/styles/tokens.css" />
     <link rel="stylesheet" href="/styles/components.css" />
     <link rel="stylesheet" href="/styles.css" />
     <script type="module" crossorigin src="/assets/index-BR9ePeuU.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-ClBXppYR.css">
+    <script type="module" crossorigin src="/assets/index-B5Qt9EMX.js"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
   </body>
 </html>

@@ -1,63 +1,142 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <!-- Homepage -->
   <url>
     <loc>https://open-ballot.onrender.com/</loc>
+    <lastmod>2024-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://open-ballot.onrender.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://open-ballot.onrender.com/es/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://open-ballot.onrender.com/" />
   </url>
+
+  <!-- Public pages -->
   <url>
     <loc>https://open-ballot.onrender.com/verify</loc>
+    <lastmod>2024-11-24</lastmod>
     <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://open-ballot.onrender.com/elections</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://open-ballot.onrender.com/organizations</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://open-ballot.onrender.com/help</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Legal pages -->
+  <url>
+    <loc>https://open-ballot.onrender.com/privacy</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://open-ballot.onrender.com/terms</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://open-ballot.onrender.com/refunds</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://open-ballot.onrender.com/terms-of-service</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://open-ballot.onrender.com/dpa</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://open-ballot.onrender.com/subprocessors</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://open-ballot.onrender.com/data-request</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- Status & transparency -->
+  <url>
+    <loc>https://open-ballot.onrender.com/status</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://open-ballot.onrender.com/audit</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://open-ballot.onrender.com/archive</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Onboarding & Registration -->
+  <url>
     <loc>https://open-ballot.onrender.com/login</loc>
+    <lastmod>2024-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://open-ballot.onrender.com/register</loc>
+    <lastmod>2024-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://open-ballot.onrender.com/help</loc>
+    <loc>https://open-ballot.onrender.com/forgot-password</loc>
+    <lastmod>2024-11-24</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://open-ballot.onrender.com/privacy</loc>
-    <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://open-ballot.onrender.com/audit</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://open-ballot.onrender.com/archive</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://open-ballot.onrender.com/status</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://open-ballot.onrender.com/orgs</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://open-ballot.onrender.com/verify-email</loc>
+    <lastmod>2024-11-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
   </url>
   <url>
     <loc>https://open-ballot.onrender.com/register-organization</loc>
+    <lastmod>2024-11-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
-  <url>
-    <loc>https://open-ballot.onrender.com/polls/new</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
+
+  <!-- Organization public pages (dynamic - will be added via sitemap generation) -->
+  <!-- /organizations/:slug -->
+  <!-- /organization/:slug -->
+  <!-- /polls/:slug -->
 </urlset>

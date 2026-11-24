@@ -1,52 +1,141 @@
 {
   "name": "Open Ballot — Secure Online Voting",
   "short_name": "Open Ballot",
-  "description": "Secure, anonymous and receipt-verifiable online voting for student and community elections.",
+  "description": "Secure, anonymous and receipt-verifiable online voting platform for student, community, and organizational elections. One person, one vote.",
   "id": "/",
-  "start_url": "/#/",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#080b12",
-  "theme_color": "#0b0e14",
-  "categories": ["education", "government", "productivity"],
+  "theme_color": "#0c0c0a",
+  "categories": ["government", "education", "productivity", "utilities"],
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
+    {
+      "src": "/icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     },
     {
       "src": "/favicon.svg",
       "sizes": "any",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/home-desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Open Ballot home page showing secure voting platform"
+    },
+    {
+      "src": "/screenshots/home-mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Open Ballot mobile view showing voting interface"
+    },
+    {
+      "src": "/screenshots/verify-receipt.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Receipt verification page showing ballot verification"
+    },
+    {
+      "src": "/screenshots/org-dashboard.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Organization dashboard for managing elections"
     }
   ],
   "shortcuts": [
     {
       "name": "Verify a ballot",
       "short_name": "Verify",
-      "url": "/#/verify",
+      "description": "Verify your ballot receipt code",
+      "url": "/verify",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Browse elections",
       "short_name": "Elections",
-      "url": "/#/",
+      "description": "Browse open elections",
+      "url": "/elections",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Browse organizations",
+      "short_name": "Organizations",
+      "description": "Browse organizations hosting elections",
+      "url": "/organizations",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Verify receipt",
+      "short_name": "Verify",
+      "description": "Verify your ballot receipt",
+      "url": "/verify",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["government", "education", "productivity", "utilities"],
+  "iarc_rating_id": "e84b002d-1234-5678-9abc-def012345678",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "protocol_handlers": [
+    {
+      "protocol": "web+openballot",
+      "url": "https://open-ballot.onrender.com/?action=%s"
     }
   ]
 }

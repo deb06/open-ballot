@@ -1,26 +1,104 @@
+# Open Ballot — robots.txt
+# This file controls how search engines crawl the site.
+
+# All user agents
 User-agent: *
 Allow: /
+
+# Disallow private/admin areas
 Disallow: /api/
-Disallow: /admin
-Disallow: /account
-Disallow: /passkeys
-Disallow: /verify
+Disallow: /admin/
+Disallow: /account/
+Disallow: /passkeys/
+Disallow: /verify-email
+Disallow: /reset-password/
+Disallow: /forgot-password
 Disallow: /login
 Disallow: /register
-Disallow: /forgot-password
+Disallow: /join
+Disallow: /passkeys/
+Disallow: /mfa/
+Disallow: /oauth/
+
+# Allow specific public pages
+Allow: /verify$
+Allow: /verify/
+Allow: /elections
+Allow: /elections/
+Allow: /organizations
+Allow: /organizations/
+Allow: /organization/
+Allow: /verify/
+Allow: /election/
+Allow: /polls/
+Allow: /polls/
+Allow: /p/
+Allow: /organization/
+Allow: /organizations/
+
+# Sitemap location
+Sitemap: https://open-ballot.onrender.com/sitemap.xml
+
+# Host preference
+Host: https://open-ballot.onrender.com
+
+# Crawl delay (optional - be respectful)
+Crawl-delay: 10
 
 # AI training crawlers — do not use site content for model training
 User-agent: GPTBot
 Disallow: /
+
 User-agent: ChatGPT-User
 Disallow: /
+
 User-agent: Google-Extended
 Disallow: /
+
 User-agent: CCBot
 Disallow: /
+
 User-agent: anthropic-ai
 Disallow: /
+
 User-agent: PerplexityBot
 Disallow: /
 
-Sitemap: https://open-ballot.onrender.com/sitemap.xml
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: Meta-ExternalAgent
+Disallow: /
+
+User-agent: Applebot
+Disallow: /
+
+# Explicitly allow Googlebot for all public pages
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Mobile
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: AdsBot-Google
+Allow: /
+
+# Bing
+User-agent: bingbot
+Allow: /
+Crawl-delay: 10
+
+# DuckDuckGo
+User-agent: DuckDuckBot
+Allow: /
+
+# Yandex
+User-agent: YandexBot
+Allow: /
+Crawl-delay: 10

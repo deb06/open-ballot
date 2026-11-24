@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<browserconfig>
+  <msapplication>
+    <tile>
+      <square70x70logo src="/icons/icon-70.png"/>
+      <square150x150logo src="/icons/icon-150.png"/>
+      <square310x310logo src="/icons/icon-310.png"/>
+      <TileColor>#0c0c0a</TileColor>
+    </tile>
+    <notification>
+      <polling-uri src="https://open-ballot.onrender.com/api/notifications/badge"/>
+      <frequency>30</frequency>
+      <cycle>1</cycle>
+    </notification>
+  </msapplication>
+</browserconfig>
