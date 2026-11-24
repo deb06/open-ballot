@@ -81,8 +81,9 @@ export default function Home() {
 
   return (
     <div className="space-y-0">
+      {/* Hero */}
       <section className="hero relative overflow-hidden">
-        <div className="relative z-10 max-w-5xl mx-auto px-4 lg:px-6 py-12 lg:py-24">
+        <div className="relative z-10 max-w-5xl mx-auto px-4 lg:px-0 py-12 lg:py-24">
           <div className="space-y-8">
             <p className="eyebrow">Secure · anonymous · receipt-verified</p>
             <h1 className="text-[clamp(2.4rem,5vw,3.9rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-text">
@@ -133,7 +134,7 @@ export default function Home() {
                 One person, one vote
               </span>
               <span className="flex items-center gap-2 px-3 py-1 rounded text-xs font-bold text-text bg-[var(--accent-soft)] border border-[rgba(217,164,65,0.2)]">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v6" /><path d="M19 21v-6a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v6" /></svg>
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v6" /><path d="M19 21v-6a4 4 0 0 0-4-4H9a4 4 0 0 0-4-4v6" /></svg>
                 Secret ballot
               </span>
               <span className="flex items-center gap-2 px-3 py-1 rounded text-xs font-bold text-text bg-[var(--accent-soft)] border border-[rgba(217,164,65,0.2)]">
@@ -223,82 +224,92 @@ export default function Home() {
           </div>
         </section>
       )}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-6 lg:py-12 px-4 lg:px-0 animate-[page-enter_0.45s_cubic-bezier(0.22,1,0.36,1)_both]">
-        {[
-          { label: 'Elections open now', value: stats?.openElections ?? 0, icon: 'ballot', color: 'var(--success)' },
-          { label: 'Ballots recorded', value: stats?.ballotsCast ?? 0, icon: 'check', color: 'var(--accent-bright)' },
-          { label: 'Registered voters', value: stats?.registeredVoters ?? 0, icon: 'users', color: 'var(--info)' },
-          { label: 'Elections completed', value: stats?.completedElections ?? 0, icon: 'chart', color: 'var(--text-muted)' },
-        ].map((tile) => (
-          <div key={tile.label} className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,3vw,24px)] hover:border-[var(--line-hover)] transition-all duration-200">
-            <span className="text-[clamp(1.5rem,3vw,2rem)] font-bold leading-[1.1] tracking-[-0.03em] text-text font-variant-numeric">{formatNumber(tile.value)}</span>
-            <p className="mt-[4px] text-[0.8rem] text-text-secondary tracking-[0.02em]">{tile.label}</p>
-          </div>
-        ))}
-      </section>
 
-      <section id="elections" className="px-4 lg:px-0 py-8">
-        <div className="flex items-end justify-between gap-20px flex-wrap mb-6">
-          <div>
-            <h2 id="elections-title" className="text-[clamp(1.5rem,3vw,2.05rem)] font-semibold text-text">Elections</h2>
-            <p className="text-text-secondary mt-[6px]">Every published ballot, open and past.</p>
-          </div>
-          <div className="flex gap-10px flex-wrap">
-            <select className="select w-[200px]" defaultValue="closing" onChange={(e) => {/* sorting handled by API */}}>
-              <option value="closing">Closing soonest</option>
-              <option value="turnout">Highest turnout</option>
-              <option value="newest">Newest first</option>
-            </select>
-            <div className="inline-flex gap-2 rounded bg-[var(--panel)] border border-[var(--line)] p-1">
-              {[
-                { key: 'all', label: 'All', count: elections.length },
-                { key: 'open', label: 'Open', count: openCount },
-                { key: 'closed', label: 'Closed', count: completedCount },
-              ].map((f) => (
-                <button key={f.key} onClick={() => setFilter(f.key)} className={`text-[0.83rem] font-bold px-4 py-2 rounded transition-all ${filter === f.key ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-sm' : 'text-text bg-transparent hover:bg-[var(--panel-strong)]'}`}>
-                  {f.label} <span className="ml-1 text-text-muted font-normal">{f.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[18px]">
-          {filteredElections.length === 0 ? (
-            <div className="col-span-full">
-              <div className="rounded border border-[var(--line)] bg-[var(--panel)] p-[clamp(40px,7vw,72px)] text-center">
-                <div className="icon" style={{ width: '56px', height: '56px', borderRadius: '18px', background: 'var(--accent-soft)', color: 'var(--accent-bright)', display: 'grid', placeItems: 'center', margin: '0 auto 8px' }}>
-                  <svg className="w-[28px] h-[28px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx={11} cy={11} r={7} /><path d="m20 20-3.5-3.5" /></svg>
-                </div>
-                <h2 className="text-[1.15rem] mb-0">No elections here yet</h2>
-                <p className="text-text-secondary max-w-[46ch] mx-auto">There are no published elections at the moment. Check back soon.</p>
-              </div>
-            </div>
-          ) : filteredElections.map((election) => (
-            <div key={election.id} className="group relative flex flex-col gap-[14px] p-[22px] rounded-lg bg-[var(--panel)] border border-[var(--line)] shadow-[var(--shadow-sm)] transition-[transform_0.2s_ease,border-color_0.2s_ease,box-shadow_0.2s_ease] text-inherit hover:translate-y-[-3px] hover:border-[var(--line-strong)] hover:shadow-[var(--shadow)] cursor-pointer">
-              <div className="flex items-center justify-between gap-3">
-                <span className={`text-xs font-bold tracking-[0.06em] uppercase border rounded px-[11px] py-[4px] ${election.status === 'open' ? 'text-[var(--success)] bg-[var(--success-soft)] border-[rgba(52,211,153,0.28)]' : 'text-text-secondary bg-[var(--panel-strong)] border-[var(--line-strong)]'}`}>
-                  {election.status === 'open' ? 'Open' : election.status === 'closed' ? 'Closed' : 'Scheduled'}
-                </span>
-                <span className="text-[0.8rem] text-text-secondary">{election.candidateCount} {election.candidateCount === 1 ? 'candidate' : 'candidates'}</span>
-              </div>
-              <h3 className="text-[1.16rem] leading-[1.3]">{election.title}</h3>
-              <p className="text-[0.9rem] text-text-secondary line-clamp-3">{election.description || 'No description was provided for this election.'}</p>
-              {election.status === 'open' && election.closesAt && (
-                <div className="flex items-center gap-6px rounded-[var(--radius-pill)] bg-[var(--accent-soft)] text-[var(--accent-bright)] px-[10px] py-[5px] text-[0.8rem] font-semibold">
-                  <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx={12} cy={12} r={9} /><path d="M12 7v6" /></svg>
-                  Closes {new Date(election.closesAt!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                </div>
-              )}
-              <div className="flex items-center justify-between gap-[16px] mt-auto pt-[14px] border-t border-[var(--line)] font-[0.8rem] text-text-secondary">
-                <div className="flex items-center gap-[6px]"><svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx={12} cy={12} r={9} /><path d="M12 7v6" /></svg>{new Date(election.opensAt!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
-                <div className="flex items-center gap-[6px]"><svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx={11} cy={11} r={7} /><path d="m20 20-3.5-3.5" /></svg>{formatNumber(election.totalVotes)} {election.totalVotes === 1 ? 'ballot' : 'ballots'} cast</div>
-                <div className="flex items-center gap-[6px]">{Math.round((election.totalVotes / election.registeredVoters) * 100)}% turnout</div>
-              </div>
-              <div className="flex items-center justify-between gap-[12px] mt-auto pt-[14px] border-t border-[var(--line)]"><span className="text-[0.8rem] text-text-secondary">{election.status === 'closed' ? 'View final outcome' : 'Open ballot'}</span><Link to={`/election/${election.id}`} className="btn btn-sm btn-outline">{election.status === 'closed' ? 'View results' : election.hasVoted ? 'Your ballot' : 'Vote now'}</Link></div>
+      {isOrgAdminUser && (
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-6 lg:py-12 px-4 lg:px-0 animate-[page-enter_0.45s_cubic-bezier(0.22,1,0.36,1)_both]">
+          {[
+            { label: 'Elections open now', value: stats?.openElections ?? 0 },
+            { label: 'Ballots recorded', value: stats?.ballotsCast ?? 0 },
+            { label: 'Registered voters', value: stats?.registeredVoters ?? 0 },
+            { label: 'Elections completed', value: stats?.completedElections ?? 0 },
+          ].map((tile) => (
+            <div key={tile.label} className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,3vw,24px)] hover:border-[var(--line-hover)] transition-all duration-200">
+              <span className="text-[clamp(1.5rem,3vw,2rem)] font-bold leading-[1.1] tracking-[-0.03em] text-text font-variant-numeric">{formatNumber(tile.value)}</span>
+              <p className="mt-[4px] text-[0.8rem] text-text-secondary tracking-[0.02em]">{tile.label}</p>
             </div>
           ))}
-        </div>
-      </section>
+        </section>
+      )}
+
+      {isOrgAdminUser && (
+        <section id="elections" className="px-4 lg:px-0 py-8">
+          <div className="flex items-end justify-between gap-20px flex-wrap mb-6">
+            <div>
+              <h2 id="elections-title" className="text-[clamp(1.5rem,3vw,2.05rem)] font-semibold text-text">Elections</h2>
+              <p className="text-text-secondary mt-[6px]">Every published ballot, open and past.</p>
+            </div>
+            <div className="flex gap-10px flex-wrap">
+              <select className="select w-[200px]" defaultValue="closing" onChange={(e) => {
+                // sorting handled by API
+              }}>
+                <option value="closing">Closing soonest</option>
+                <option value="turnout">Highest turnout</option>
+                <option value="newest">Newest first</option>
+              </select>
+              <div className="inline-flex gap-2 rounded bg-[var(--panel)] border border-[var(--line)] p-1">
+                {[
+                  { key: 'all', label: 'All', count: elections.length },
+                  { key: 'open', label: 'Open', count: openCount },
+                  { key: 'closed', label: 'Closed', count: completedCount },
+                ].map((f) => (
+                  <button key={f.key} onClick={() => setFilter(f.key)} className={`text-[0.83rem] font-bold px-4 py-2 rounded transition-all ${filter === f.key ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-sm' : 'text-text bg-transparent hover:bg-[var(--panel-strong)]'}`}>
+                    {f.label} <span className="ml-1 text-text-muted font-normal">{f.count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[18px]">
+            {filteredElections.length === 0 ? (
+              <div className="col-span-full">
+                <div className="rounded border border-[var(--line)] bg-[var(--panel)] p-[clamp(40px,7vw,72px)] text-center">
+                  <div className="icon" style={{ width: '56px', height: '56px', borderRadius: '18px', background: 'var(--accent-soft)', color: 'var(--accent-bright)', display: 'grid', placeItems: 'center', margin: '0 auto 8px' }}>
+                    <svg className="w-[28px] h-[28px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx={11} cy={11} r={7} /><path d="m20 20-3.5-3.5" /></svg>
+                  </div>
+                  <h2 className="text-[1.15rem] mb-0">No elections here yet</h2>
+                  <p className="text-text-secondary max-w-[46ch] mx-auto">There are no published elections at the moment. Check back soon.</p>
+                </div>
+              </div>
+            ) : filteredElections.map((election) => (
+              <div key={election.id} className="group relative flex flex-col gap-[14px] p-[22px] rounded-lg bg-[var(--panel)] border border-[var(--line)] shadow-[var(--shadow-sm)] transition-[transform_0.2s_ease,border-color_0.2s_ease,box-shadow_0.2s_ease] text-inherit hover:translate-y-[-3px] hover:border-[var(--line-strong)] hover:shadow-[var(--shadow)] cursor-pointer">
+                <div className="flex items-center justify-between gap-3">
+                  <span className={`text-xs font-bold tracking-[0.06em] uppercase border rounded px-[11px] py-[4px] ${election.status === 'open' ? 'text-[var(--success)] bg-[var(--success-soft)] border-[rgba(52,211,153,0.28)]' : 'text-text-secondary bg-[var(--panel-strong)] border-[var(--line-strong)]'}`}>
+                    {election.status === 'open' ? 'Open' : election.status === 'closed' ? 'Closed' : 'Scheduled'}
+                  </span>
+                  <span className="text-[0.8rem] text-text-secondary">{election.candidateCount} {election.candidateCount === 1 ? 'candidate' : 'candidates'}</span>
+                </div>
+                <h3 className="text-[1.16rem] leading-[1.3]">{election.title}</h3>
+                <p className="text-[0.9rem] text-text-secondary line-clamp-3">{election.description || 'No description was provided for this election.'}</p>
+                {election.status === 'open' && election.closesAt && (
+                  <div className="flex items-center gap-6px rounded-[var(--radius-pill)] bg-[var(--accent-soft)] text-[var(--accent-bright)] px-[10px] py-[5px] text-[0.8rem] font-semibold">
+                    <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx={12} cy={12} r={9} /><path d="M12 7v6" /></svg>
+                    Closes {new Date(election.closesAt!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-[16px] mt-auto pt-[14px] border-t border-[var(--line)] font-[0.8rem] text-text-secondary">
+                  <div className="flex items-center gap-[6px]"><svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx={12} cy={12} r={9} /><path d="M12 7v6" /></svg>{new Date(election.opensAt!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+                  <div className="flex items-center gap-[6px]"><svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx={11} cy={11} r={7} /><path d="m20 20-3.5-3.5" /></svg>{formatNumber(election.totalVotes)} {election.totalVotes === 1 ? 'ballot' : 'ballots'} cast</div>
+                  <div className="flex items-center gap-[6px]">{Math.round((election.totalVotes / election.registeredVoters) * 100)}% turnout</div>
+                </div>
+                <div className="flex items-center justify-between gap-[12px] mt-auto pt-[14px] border-t border-[var(--line)]">
+                  <span className="text-[0.8rem] text-text-secondary">{election.status === 'closed' ? 'View final outcome' : 'Open ballot'}</span>
+                  <Link to={`/election/${election.id}`} className="btn btn-sm btn-outline">{election.status === 'closed' ? 'View results' : election.hasVoted ? 'Your ballot' : 'Vote now'}</Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="py-[clamp(48px,7vw,88px)] px-4 lg:px-0">
         <div className="flex items-center gap-[16px] flex-wrap mb-[22px]">
@@ -318,45 +329,45 @@ export default function Home() {
             <div className="flex items-start gap-[14px] mb-[14px]">
               <span className="flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center w-[28px] h-[28px] border border-[var(--accent)]">2</span>
               <svg className="flex-none w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x={4} y={10} width={16} height={11} rx={2.5} /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+            </div>
+            <h3 className="text-[1.02rem] font-semibold text-text">Vote anonymously</h3>
+            <p className="text-[0.88rem] text-text-secondary mt-0 leading-[1.55]">Choose your candidate and confirm. Your identity and your choice are stored separately, so no one can tell how you voted.</p>
           </div>
-          <h3 className="text-[1.02rem] font-semibold text-text">Vote anonymously</h3>
-          <p className="text-[0.88rem] text-text-secondary mt-0 leading-[1.55]">Choose your candidate and confirm. Your identity and your choice are stored separately, so no one can tell how you voted.</p>
-        </div>
-        <div className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)]">
-          <div className="flex items-start gap-[14px] mb-[14px]">
-            <span className="flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center w-[28px] h-[28px] border border-[var(--accent)]">3</span>
-            <svg className="flex-none w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4" /><path d="M20 4v7a4 4 0 0 1-4 4H5a4 4 0 0 0-4-4V4a4 4 0 0 1 4 4h9a4 4 0 0 1 4 4v7" /></svg>
+          <div className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)]">
+            <div className="flex items-start gap-[14px] mb-[14px]">
+              <span className="flex-none rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs font-bold flex items-center justify-center w-[28px] h-[28px] border border-[var(--accent)]">3</span>
+              <svg className="flex-none w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4" /><path d="M20 4v7a4 4 0 0 1-4 4H5a4 4 0 0 0-4-4V4a4 4 0 0 1 4 4h9a4 4 0 0 1 4 4v7" /></svg>
+            </div>
+            <h3 className="text-[1.02rem] font-semibold text-text">Verify with your receipt</h3>
+            <p className="text-[0.88rem] text-text-secondary mt-0 leading-[1.55]">Every ballot produces a unique receipt code. Use it any time to prove your ballot was included in the final tally.</p>
           </div>
-          <h3 className="text-[1.02rem] font-semibold text-text">Verify with your receipt</h3>
-          <p className="text-[0.88rem] text-text-secondary mt-0 leading-[1.55]">Every ballot produces a unique receipt code. Use it any time to prove your ballot was included in the final tally.</p>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)] shadow-[var(--shadow-sm)] mt-[clamp(40px,6vw,64px)]">
-      <div className="flex items-center justify-between gap-[16px] mb-[18px]">
-        <div>
-          <h2 className="text-[1.2rem] font-semibold text-text mb-0">Built for integrity</h2>
-          <p className="text-[0.88rem] text-text-secondary mt-[6px]">The safeguards behind every tally.</p>
-        </div>
-        <span className="px-[9px] py-[3px] rounded-[7px] text-[0.74rem] font-bold text-[var(--accent-bright)] bg-[var(--accent-soft)] border border-[rgba(217,164,65,0.3)]">
-          <svg className="w-[14px] h-[14px] mr-[6px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x={3} y={11} width={18} height={11} rx={2} /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-          Audited design
-        </span>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
-        {[
-          { title: 'One person, one vote', text: 'A unique key on the participation table rejects a second ballot from the same voter, even under concurrent requests.' },
-          { title: 'Secret ballots', text: 'Participation (who voted) and ballots (what was chosen) are separate tables. Ballots have no voter id and no timestamp.' },
-          { title: 'Tamper evidence', text: 'Every administrative action and ballot event is written to an append-only audit log with timestamps and IPs.' },
-        ].map((item, i) => (
-          <div key={item.title} className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)]">
-            <h4 className="text-[1rem] font-semibold text-text mb-[6px]">{item.title}</h4>
-            <p className="text-[0.88rem] text-text-secondary mt-0 leading-[1.55]">{item.text}</p>
+      <section className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)] shadow-[var(--shadow-sm)] mt-[clamp(40px,6vw,64px)]">
+        <div className="flex items-center justify-between gap-[16px] mb-[18px]">
+          <div>
+            <h2 className="text-[1.2rem] font-semibold text-text mb-0">Built for integrity</h2>
+            <p className="text-[0.88rem] text-text-secondary mt-[6px]">The safeguards behind every tally.</p>
           </div>
-        ))}
-      </div>
-    </section>
-  </div>
+          <span className="px-[9px] py-[3px] rounded-[7px] text-[0.74rem] font-bold text-[var(--accent-bright)] bg-[var(--accent-soft)] border border-[rgba(217,164,65,0.3)]">
+            <svg className="w-[14px] h-[14px] mr-[6px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x={3} y={11} width={18} height={11} rx={2} /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+            Audited design
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
+          {[
+            { title: 'One person, one vote', text: 'A unique key on the participation table rejects a second ballot from the same voter, even under concurrent requests.' },
+            { title: 'Secret ballots', text: 'Participation (who voted) and ballots (what was chosen) are separate tables. Ballots have no voter id and no timestamp.' },
+            { title: 'Tamper evidence', text: 'Every administrative action and ballot event is written to an append-only audit log with timestamps and IPs.' },
+          ].map((item, i) => (
+            <div key={item.title} className="rounded-lg bg-[var(--panel)] border border-[var(--line)] p-[clamp(18px,2.4vw,24px)]">
+              <h4 className="text-[1rem] font-semibold text-text mb-[6px]">{item.title}</h4>
+              <p className="text-[0.88rem] text-text-secondary mt-0 leading-[1.55]">{item.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
   )
 }
