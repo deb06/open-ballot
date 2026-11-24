@@ -114,9 +114,13 @@ export async function patch<T = any>(
 }
 
 export async function del<T = any>(
-  path: string
+  path: string,
+  body?: any
 ): Promise<T> {
-  return apiJson<T>(path, { method: 'DELETE' })
+  return apiJson<T>(path, {
+    method: 'DELETE',
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
 }
 
 // Convenience object with all methods

@@ -1728,6 +1728,12 @@ function api_routes(): array
         $user = db_one('SELECT id, name, email FROM users WHERE id = ?', [$uid]);
         if ($user === null) fail(404, 'Account not found.', 'not_found');
 
+        // Re-authentication before an irreversible action (OWASP / GDPR Art.32).
+        $password = as_text($ctx['body']['password'] ?? '');
+        if ($password === '' || !verify_password($password, (string) ($user['password_hash'] ?? ''))) {
+            fail(403, 'Your password is incorrect. Account deletion was cancelled.', 'password_required');
+        }
+
         $now = iso_to_sql(now_iso());
         // Strip identity while preserving election integrity (tallies, receipt hashes).
         db_exec('UPDATE participation SET voter_id = NULL, voter_token = NULL WHERE voter_id = ?', [$uid]);
@@ -1738,6 +1744,16 @@ function api_routes(): array
         audit(null, 'dpdp.data_erased', ['erasedUserId' => $uid], $ctx['ip']);
 
         send_json(200, ['ok' => true, 'message' => 'Your account and personal data have been erased.']);
+    }, ['auth' => true]);
+
+    /* Update own profile name (GDPR Art.16 rectification). */
+    $add('PATCH', '/api/account/profile', static function (array $ctx): void {
+        $uid = (int) $ctx['user']['id'];
+        $name = require_text($ctx['body']['name'] ?? null, 2, 80, 'Full name');
+        db_exec('UPDATE users SET name = ? WHERE id = ?', [$name, $uid]);
+        audit($uid, 'account.profile_update', [], $ctx['ip']);
+        $row = db_one('SELECT * FROM users WHERE id = ?', [$uid]);
+        send_json(200, ['user' => $row === null ? null : public_user($row)]);
     }, ['auth' => true]);
 
     /* Recovery contact */
