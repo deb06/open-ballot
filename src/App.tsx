@@ -15,6 +15,7 @@ import ElectionDetail from './pages/ElectionDetail'
 import Verify from './pages/Verify'
 import Help from './pages/Help'
 import Organizations from './pages/Organizations'
+import OrganizationDetail from './pages/OrganizationDetail'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import Refunds from './pages/Refunds'
@@ -50,6 +51,7 @@ import AdminApiKeys from './pages/admin/ApiKeys'
 import AdminSchema from './pages/admin/Schema'
 import AdminOrganization from './pages/admin/Organization'
 import AdminOrganizations from './pages/admin/Organizations'
+import AdminMembers from './pages/admin/Members'
 
 // Poll pages
 import PollNew from './pages/polls/PollNew'
@@ -104,6 +106,7 @@ function AppRoutes() {
           <Route path="verify" element={<Verify />} />
           <Route path="help" element={<Help />} />
           <Route path="organizations" element={<Organizations />} />
+          <Route path="organization/:slug" element={<OrganizationDetail />} />
           <Route path="privacy" element={<Privacy />} />
           <Route path="terms" element={<Terms />} />
           <Route path="refunds" element={<Refunds />} />
@@ -141,6 +144,7 @@ function AppRoutes() {
           <Route path="api-keys" element={<AdminApiKeys />} />
           <Route path="schema" element={<AdminSchema />} />
           <Route path="org" element={<AdminOrganization />} />
+          <Route path="members" element={<AdminMembers />} />
           <Route path="organizations" element={<AdminOrganizations />} />
         </Route>
 

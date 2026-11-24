@@ -92,7 +92,7 @@ export default function Organizations() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[18px]">
           {filtered.map((org) => (
             <div key={org.id} className="group relative flex flex-col gap-[14px] p-[22px] rounded-lg bg-[var(--panel)] border border-[var(--line)] shadow-[var(--shadow-sm)] transition-[transform_0.2s_ease,border-color_0.2s_ease,box-shadow_0.2s_ease] hover:translate-y-[-3px] hover:border-[var(--line-strong)] hover:shadow-[var(--shadow)]">
-              <div className="flex items-center gap-3">
+              <Link to={`/organization/${org.slug}`} className="flex items-center gap-3">
                 <span className="flex-none w-[40px] h-[40px] rounded-full bg-[var(--accent-soft)] text-[var(--accent)] font-bold flex items-center justify-center border border-[var(--accent)]">
                   {org.name.charAt(0).toUpperCase()}
                 </span>
@@ -100,11 +100,11 @@ export default function Organizations() {
                   <h3 className="text-[1.05rem] font-semibold text-text leading-[1.3]">{org.name}</h3>
                   <p className="text-[0.78rem] text-text-muted">/{org.slug}</p>
                 </div>
-              </div>
+              </Link>
               <p className="text-[0.9rem] text-text-secondary line-clamp-3">{org.description || 'No description provided.'}</p>
-              <div className="flex items-center gap-4 mt-auto pt-[14px] border-t border-[var(--line)] text-[0.8rem] text-text-secondary">
-                <span>{org.memberCount} {org.memberCount === 1 ? 'member' : 'members'}</span>
-                <span>{org.electionCount} {org.electionCount === 1 ? 'election' : 'elections'}</span>
+              <div className="flex items-center justify-between gap-4 mt-auto pt-[14px] border-t border-[var(--line)] text-[0.8rem] text-text-secondary">
+                <span>{org.memberCount} {org.memberCount === 1 ? 'member' : 'members'} · {org.electionCount} {org.electionCount === 1 ? 'election' : 'elections'}</span>
+                <Link to={`/organization/${org.slug}`} className="btn btn-sm btn-outline">View</Link>
               </div>
             </div>
           ))}
