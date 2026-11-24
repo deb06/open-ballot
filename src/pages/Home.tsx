@@ -85,7 +85,7 @@ export default function Home() {
       {/* Hero */}
       <section className="hero relative overflow-hidden">
         <div className="relative z-10 max-w-7xl mx-auto px-4 lg:px-0 py-12 lg:py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start">
             <div className="space-y-6">
               <p className="eyebrow">Secure · anonymous · receipt-verified</p>
               <h1 className="text-[clamp(2.4rem,5vw,3.9rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-text">
